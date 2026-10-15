@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Font 404 Errors: Missing PublicPath Explained - webpack</title>
+    <meta name="description" content="When bundling web applications with Webpack, developers often encounter 404 Not Found errors when the browser attempts to fetch custom font files referenced in CSS. This issue typically occurs because omitting the publicPath configuration causes the brows">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-font-404-errors-missing-public-path-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Font 404 Errors: Missing PublicPath Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-font-404-errors-missing-public-path-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When bundling web applications with Webpack, developers often encounter 404 Not Found errors when the browser attempts to fetch custom font files referenced in CSS. This issue typically occurs because omitting the publicPath configuration causes the brows" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-font-404-errors-missing-publicpath-explained">Webpack
+Font 404 Errors: Missing PublicPath Explained</h1>
+<p>When bundling web applications with Webpack, developers often
+encounter 404 Not Found errors when the browser attempts to fetch custom
+font files referenced in CSS. This issue typically occurs because
+omitting the <code>publicPath</code> configuration causes the browser to
+resolve font asset paths relative to the current page URL or the HTML
+document rather than the correct asset output directory. Without an
+explicit base path, dynamically routed pages and injected stylesheets
+misdirect requests, resulting in broken asset loading.</p>
+<h3 id="how-webpack-processes-font-assets-in-css">How Webpack Processes
+Font Assets in CSS</h3>
+<p>When <code>css-loader</code> encounters a font declaration such as
+<code>url('./fonts/font.woff2')</code>, it treats the URL as a module
+dependency. In modern Webpack (version 5), Asset Modules handle this
+file, emitting the font file into the output directory and rewriting the
+CSS URL to reference that emitted file.</p>
+<p>However, Webpack does not automatically know where those emitted
+files will reside on your production or development web server. It
+relies on the <code>output.publicPath</code> configuration option to
+determine the prefix applied to every emitted asset URL in the generated
+bundles.</p>
+<h3 id="the-role-of-relative-paths-and-execution-context">The Role of
+Relative Paths and Execution Context</h3>
+<p>If <code>output.publicPath</code> is left undefined or set to an
+empty string, Webpack outputs relative paths for assets. The browser
+must then resolve these paths at runtime based on its current execution
+context. This creates two distinct scenarios where 404 errors occur:</p>
+<ol type="1">
+<li><p><strong>Nested Routes and HTML History API:</strong><br />
+If your application uses client-side routing, a user might visit a
+nested URL like <code>https://example.com/user/profile</code>. If the
+generated CSS references a font as <code>fonts/roboto.woff2</code>, the
+browser resolves this relative to the current path, requesting
+<code>https://example.com/user/fonts/roboto.woff2</code>. Because the
+font actually resides at
+<code>https://example.com/fonts/roboto.woff2</code>, the web server
+returns a 404 error.</p></li>
+<li><p><strong>CSS Injected via
+<code>style-loader</code>:</strong><br />
+During development, developers frequently pair <code>css-loader</code>
+with <code>style-loader</code> to enable Hot Module Replacement (HMR).
+<code>style-loader</code> inlines compiled CSS directly into the HTML
+document using <code>&lt;style&gt;</code> tags. Because the CSS is
+embedded in the document itself, any relative <code>url()</code> paths
+are evaluated relative to the document's base URL, not the location of
+the bundle. On any page other than the root directory, these asset
+lookups will fail.</p></li>
+</ol>
+<h3 id="extracted-stylesheets-with-minicssextractplugin">Extracted
+Stylesheets with <code>MiniCssExtractPlugin</code></h3>
+<p>When using <code>mini-css-extract-plugin</code> for production
+builds, CSS is extracted into standalone <code>.css</code> files. If
+these CSS files are stored in a subdirectory (such as
+<code>dist/css/main.css</code>) and fonts are saved in another (such as
+<code>dist/fonts/font.woff2</code>), relative paths must accurately
+navigate back up the tree (e.g., <code>../fonts/font.woff2</code>).</p>
+<p>Without configuring <code>publicPath</code> either globally in
+<code>output.publicPath</code> or locally within the
+<code>MiniCssExtractPlugin.loader</code> options, the rewritten paths
+frequently fail to account for the directory structure difference
+between the source files and the compiled output directories.</p>
+<h3 id="resolving-the-issue">Resolving the Issue</h3>
+<p>To fix these 404 errors, configure <code>output.publicPath</code> in
+your <code>webpack.config.js</code>. Setting this property provides an
+absolute base URL or server-relative root to which all asset paths
+prepend:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">publicPath</span><span class="op">:</span> <span class="st">&#39;/&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// or a CDN path like &#39;https://cdn.example.com/assets/&#39;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Using a server-relative path (such as <code>/</code>) ensures that
+regardless of how deeply nested the current browser URL is, or whether
+the CSS is embedded into a <code>&lt;style&gt;</code> tag, the browser
+always requests font assets from the absolute root of the server.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

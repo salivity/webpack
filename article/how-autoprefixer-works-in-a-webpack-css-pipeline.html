@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Autoprefixer Works in a Webpack CSS Pipeline - webpack</title>
+    <meta name="description" content="Autoprefixer ensures cross-browser CSS compatibility by automatically adding or removing vendor prefixes based on targeted browser environments. Within a Webpack build pipeline, Autoprefixer does not run in isolation; instead, it acts as a plugin within p">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-autoprefixer-works-in-a-webpack-css-pipeline">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Autoprefixer Works in a Webpack CSS Pipeline - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-autoprefixer-works-in-a-webpack-css-pipeline" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Autoprefixer ensures cross-browser CSS compatibility by automatically adding or removing vendor prefixes based on targeted browser environments. Within a Webpack build pipeline, Autoprefixer does not run in isolation; instead, it acts as a plugin within p" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-autoprefixer-works-in-a-webpack-css-pipeline">How
+Autoprefixer Works in a Webpack CSS Pipeline</h1>
+<p>Autoprefixer ensures cross-browser CSS compatibility by automatically
+adding or removing vendor prefixes based on targeted browser
+environments. Within a Webpack build pipeline, Autoprefixer does not run
+in isolation; instead, it acts as a plugin within
+<code>postcss-loader</code>. This article breaks down how Autoprefixer
+integrates into the Webpack loader chain, how it evaluates your target
+environments using Browserslist, and how it modifies your stylesheets
+through Abstract Syntax Tree (AST) manipulation.</p>
+<h3 id="the-webpack-loader-chain">The Webpack Loader Chain</h3>
+<p>Webpack processes files using chained loaders that execute in reverse
+order (bottom-to-top or right-to-left). A standard CSS pipeline that
+includes Autoprefixer generally looks like this:</p>
+<ol type="1">
+<li><strong><code>sass-loader</code> / <code>less-loader</code></strong>
+(optional): Compiles preprocessor syntax into raw CSS.</li>
+<li><strong><code>postcss-loader</code></strong>: Passes the CSS string
+through PostCSS plugins, including Autoprefixer.</li>
+<li><strong><code>css-loader</code></strong>: Resolves
+<code>url()</code>, <code>@import</code>, and translates the CSS into a
+JavaScript module.</li>
+<li><strong><code>MiniCssExtractPlugin.loader</code></strong> or
+<strong><code>style-loader</code></strong>: Extracts the CSS into
+separate production files or injects styles directly into the DOM via
+<code>&lt;style&gt;</code> tags.</li>
+</ol>
+<p>Autoprefixer executes during the <code>postcss-loader</code> phase,
+after preprocessors have output standard CSS syntax but before
+<code>css-loader</code> interprets the dependencies.</p>
+<h3 id="step-1-parsing-css-into-an-ast">Step 1: Parsing CSS into an
+AST</h3>
+<p>When <code>postcss-loader</code> encounters a CSS payload, it hands
+the code to the PostCSS core parser. PostCSS converts the plain text
+stylesheet into an Abstract Syntax Tree (AST). The AST is a node-based
+JavaScript object representing the document structure, including rules,
+selectors, declarations, values, and at-rules. Working with an AST
+ensures that Autoprefixer can programmatically inspect and modify CSS
+properties without resorting to fragile regular expressions.</p>
+<h3 id="step-2-querying-targeted-browsers">Step 2: Querying Targeted
+Browsers</h3>
+<p>Before modifying any code, Autoprefixer must determine which CSS
+properties actually require prefixes. It achieves this by reading your
+project's target browser criteria—typically defined in a
+<code>.browserslistrc</code> file or the <code>browserslist</code> key
+inside <code>package.json</code> (for example,
+<code>&gt; 0.5%, last 2 versions, not dead</code>).</p>
+<p>Autoprefixer queries the <code>caniuse-lite</code> database, a
+compact version of the Can I Use data, using the Browserslist
+configuration. This query generates a list of exact browser versions
+that must be supported and maps them to the specific CSS features
+requiring vendor prefixes (<code>-webkit-</code>, <code>-moz-</code>, or
+<code>-ms-</code>).</p>
+<h3 id="step-3-ast-traversal-and-transformation">Step 3: AST Traversal
+and Transformation</h3>
+<p>With the browser requirements mapped, Autoprefixer traverses the AST
+generated by PostCSS:</p>
+<ul>
+<li><strong>Adding Prefixes</strong>: When Autoprefixer identifies a
+rule, declaration, or property (such as <code>user-select</code> or
+<code>display: flex</code>) that requires prefixing according to the
+target dataset, it clones the node and creates prefixed versions,
+placing them directly before the standard declaration.</li>
+<li><strong>Cleaning Deprecated Prefixes</strong>: Autoprefixer also
+inspects existing vendor prefixes written manually in the source code.
+If a prefix is outdated, unnecessary for the selected browser targets,
+or improperly implemented, Autoprefixer removes it by default to prevent
+CSS bloat.</li>
+<li><strong>Grid Polyfilling</strong>: If configured, Autoprefixer
+translates modern CSS Grid specifications into legacy
+<code>-ms-grid</code> properties for Internet Explorer
+compatibility.</li>
+</ul>
+<h3 id="step-4-stringification-and-pipeline-continuation">Step 4:
+Stringification and Pipeline Continuation</h3>
+<p>Once all nodes are traversed and updated, PostCSS stringifies the
+modified AST back into a standard CSS string. This updated CSS—now
+containing all necessary vendor prefixes—is passed to the next loader in
+the Webpack chain (<code>css-loader</code>). From there, Webpack bundles
+the styles alongside your assets, ensuring your final production CSS
+functions uniformly across all designated browsers.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

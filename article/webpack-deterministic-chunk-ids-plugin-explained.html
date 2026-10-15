@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack DeterministicChunkIdsPlugin Explained - webpack</title>
+    <meta name="description" content="The webpack.ids.DeterministicChunkIdsPlugin generates short, predictable numeric IDs for output chunks to optimize long-term client-side caching. This article covers the purpose of this plugin, how it prevents unnecessary cache invalidations across code u">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-deterministic-chunk-ids-plugin-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack DeterministicChunkIdsPlugin Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-deterministic-chunk-ids-plugin-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The webpack.ids.DeterministicChunkIdsPlugin generates short, predictable numeric IDs for output chunks to optimize long-term client-side caching. This article covers the purpose of this plugin, how it prevents unnecessary cache invalidations across code u" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-deterministicchunkidsplugin-explained">Webpack
+DeterministicChunkIdsPlugin Explained</h1>
+<p>The <code>webpack.ids.DeterministicChunkIdsPlugin</code> generates
+short, predictable numeric IDs for output chunks to optimize long-term
+client-side caching. This article covers the purpose of this plugin, how
+it prevents unnecessary cache invalidations across code updates, how it
+compares to alternative ID strategies, and how it is configured in
+modern Webpack builds.</p>
+<h3 id="the-problem-with-default-chunk-ids">The Problem with Default
+Chunk IDs</h3>
+<p>In standard Webpack configurations, dynamically imported or
+code-split chunks are assigned sequential numeric IDs (such as
+<code>0.js</code>, <code>1.js</code>, <code>2.js</code>) based on the
+order in which Webpack resolves them.</p>
+<p>This approach creates a significant caching issue: if a developer
+adds, removes, or reorders a dynamic import, Webpack recalculates the
+resolution sequence. As a result, chunks containing entirely untouched
+source code may receive a different ID number. Because the chunk's
+filename and the internal runtime manifests change, client browsers are
+forced to re-download assets that have not actually changed, defeating
+the purpose of HTTP long-term caching.</p>
+<h3 id="what-deterministicchunkidsplugin-does">What
+DeterministicChunkIdsPlugin Does</h3>
+<p>The <code>webpack.ids.DeterministicChunkIdsPlugin</code> assigns
+consistent, deterministic numeric identifiers to chunks. Instead of
+relying on resolution order, Webpack generates each chunk ID by hashing
+its constituent modules and paths, then converting that hash into a
+short numeric value (typically 3 to 4 digits).</p>
+<p>Key benefits of this approach include:</p>
+<ul>
+<li><strong>Cache Persistence:</strong> If you alter one part of your
+application, unchanged chunks retain their existing chunk IDs and
+filenames, allowing returning users to load them directly from the
+browser cache.</li>
+<li><strong>Minimal File Size:</strong> While named chunk IDs (like
+<code>src_components_Button_js.js</code>) are deterministic, they
+inflate bundle size. Deterministic chunk IDs remain extremely small
+numbers, preserving low runtime overhead while retaining
+determinism.</li>
+<li><strong>Consistent Manifests:</strong> The Webpack runtime manifest
+does not undergo massive diffs between builds, resulting in smaller and
+more stable entry point files.</li>
+</ul>
+<h3 id="webpack-5-integration">Webpack 5 Integration</h3>
+<p>In Webpack 5, you rarely need to instantiate the
+<code>DeterministicChunkIdsPlugin</code> directly. Webpack sets
+<code>optimization.chunkIds</code> to <code>'deterministic'</code> by
+default in <code>production</code> mode.</p>
+<p>However, if you need to declare it explicitly or customize the
+configuration, it can be defined inside the <code>optimization</code>
+block:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunkIds</span><span class="op">:</span> <span class="st">&#39;deterministic&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Alternatively, it can be imported and added via the plugins
+array:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpack <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> webpack<span class="op">.</span><span class="at">ids</span><span class="op">.</span><span class="fu">DeterministicChunkIdsPlugin</span>({</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">maxLength</span><span class="op">:</span> <span class="dv">3</span><span class="op">,</span> <span class="co">// Optional: customize ID length</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="deterministic-vs-other-chunk-id-strategies">Deterministic vs.
+Other Chunk ID Strategies</h3>
+<ul>
+<li><strong><code>natural</code>:</strong> Assigns IDs based on
+resolution order (0, 1, 2). Highly volatile and poor for caching.</li>
+<li><strong><code>named</code>:</strong> Uses readable file paths. Ideal
+for development and debugging, but too large for production.</li>
+<li><strong><code>size</code>:</strong> Prioritizes initial download
+size by assigning the smallest numeric IDs to the most frequently used
+chunks, though less stable across builds than
+<code>deterministic</code>.</li>
+<li><strong><code>deterministic</code>:</strong> The optimal balance for
+production, delivering tiny, stable IDs that rarely shift between builds
+unless the chunk contents change.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

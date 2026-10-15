@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack HMR Works in Local Development - webpack</title>
+    <meta name="description" content="Hot Module Replacement (HMR) is a Webpack feature that updates modules in a running application without requiring a full browser refresh. By exchanging, adding, or removing modules on the fly, HMR significantly speeds up the local development feedback loo">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-hmr-works-in-local-development">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack HMR Works in Local Development - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-hmr-works-in-local-development" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Hot Module Replacement (HMR) is a Webpack feature that updates modules in a running application without requiring a full browser refresh. By exchanging, adding, or removing modules on the fly, HMR significantly speeds up the local development feedback loo" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-hmr-works-in-local-development">How Webpack HMR
+Works in Local Development</h1>
+<p>Hot Module Replacement (HMR) is a Webpack feature that updates
+modules in a running application without requiring a full browser
+refresh. By exchanging, adding, or removing modules on the fly, HMR
+significantly speeds up the local development feedback loop while
+preserving application state, such as form inputs or UI toggles.
+Understanding how Webpack orchestrates HMR involves looking at the
+interplay between the Webpack compiler, the development server, a
+WebSocket connection, and the client-side runtime.</p>
+<h3 id="1-the-core-architecture">1. The Core Architecture</h3>
+<p>During local development, HMR relies on several key components:</p>
+<ul>
+<li><strong>Webpack Compiler:</strong> Watches the project files for
+modifications and compiles delta updates rather than rebuilding the
+entire bundle.</li>
+<li><strong>Webpack Dev Server (WDS):</strong> Serves the assets in
+memory and maintains a persistent communication channel (via WebSockets
+or Server-Sent Events) with the browser.</li>
+<li><strong>HMR Runtime:</strong> A small runtime library injected
+directly into the client bundle that listens for update events and
+applies incoming code changes.</li>
+</ul>
+<h3 id="2-detecting-changes-and-compiling-deltas">2. Detecting Changes
+and Compiling Deltas</h3>
+<p>When a developer edits and saves a source file, Webpack's file
+watcher triggers a partial compilation:</p>
+<ol type="1">
+<li><strong>Change Detection:</strong> The compiler identifies which
+specific module was altered.</li>
+<li><strong>Manifest Generation:</strong> Webpack generates two primary
+artifacts:
+<ul>
+<li>An <strong>HMR Manifest</strong> (JSON file) containing the new
+compilation hash and a list of updated chunk IDs.</li>
+<li>One or more <strong>HMR Chunks</strong> (JavaScript files)
+containing the updated code for only the affected modules.</li>
+</ul></li>
+<li><strong>Memory Storage:</strong> These files are retained in memory
+via <code>memfs</code> rather than written to disk, ensuring
+near-instant access.</li>
+</ol>
+<h3 id="3-communicating-with-the-client">3. Communicating with the
+Client</h3>
+<p>Once compilation finishes, the development server broadcasts an
+update message across the active WebSocket connection to the
+browser:</p>
+<ul>
+<li>The server sends an <code>invalid</code> message when compilation
+starts, followed by a <code>hash</code> message containing the new build
+hash.</li>
+<li>Finally, it emits an <code>ok</code> message indicating that the new
+assets are ready to be fetched.</li>
+</ul>
+<h3 id="4-fetching-the-update">4. Fetching the Update</h3>
+<p>When the HMR runtime inside the browser receives the
+notification:</p>
+<ol type="1">
+<li><strong>Requesting the Manifest:</strong> The runtime sends an HTTP
+request for the update manifest
+(<code>[hash].hot-update.json</code>).</li>
+<li><strong>Requesting the Chunks:</strong> If the manifest contains
+module changes, the runtime downloads the corresponding delta chunks
+(<code>[id].[hash].hot-update.js</code>) via standard JSONP or
+<code>fetch</code>/script injection.</li>
+</ol>
+<h3 id="5-applying-module-updates-bubble-and-accept">5. Applying Module
+Updates (Bubble and Accept)</h3>
+<p>Once the new module code arrives, the HMR runtime attempts to apply
+it using the module graph:</p>
+<ul>
+<li><strong>Opt-in Mechanism:</strong> Modules must explicitly declare
+support for HMR using the <code>module.hot.accept()</code> API.
+Framework integrations (like React Fast Refresh or Vue Loader) inject
+these handlers automatically under the hood.</li>
+<li><strong>Bubbling:</strong> If the changed module does not have a
+<code>module.hot.accept()</code> handler, the runtime bubbles the update
+up to its parent module in the dependency graph. This search continues
+upward until a parent module accepts the update.</li>
+<li><strong>Replacement:</strong> When an acceptance handler is found,
+the old module is flagged for disposal via
+<code>module.hot.dispose()</code>, allowing cleanup logic (such as
+clearing event listeners or timers) to execute. The new code then
+replaces the old module in the internal cache, and the acceptance
+callback runs to re-render the affected component.</li>
+<li><strong>Fallback to Reload:</strong> If the update bubbles all the
+way to the root entry file without finding an accepting module, the
+runtime aborts the hot replacement and triggers a full browser reload to
+ensure the application does not run in an inconsistent state.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

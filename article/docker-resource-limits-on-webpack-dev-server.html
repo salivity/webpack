@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Resource Limits on Webpack Dev Server - webpack</title>
+    <meta name="description" content="Running Webpack development server inside Docker containers is standard practice for modern web development, but improper container resource constraints can severely compromise its stability. When Docker allocates insufficient memory or CPU to a container">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/docker-resource-limits-on-webpack-dev-server">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Docker Resource Limits on Webpack Dev Server - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/docker-resource-limits-on-webpack-dev-server" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Running Webpack development server inside Docker containers is standard practice for modern web development, but improper container resource constraints can severely compromise its stability. When Docker allocates insufficient memory or CPU to a container" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="docker-resource-limits-on-webpack-dev-server">Docker Resource
+Limits on Webpack Dev Server</h1>
+<p>Running Webpack development server inside Docker containers is
+standard practice for modern web development, but improper container
+resource constraints can severely compromise its stability. When Docker
+allocates insufficient memory or CPU to a container, Webpack can suffer
+from silent crashes via Out-Of-Memory (OOM) kills, degraded Hot Module
+Replacement (HMR) performance, and unresponsive compilation loops.
+Understanding how container limits interact with the Node.js runtime and
+Webpack's internal architecture is critical for maintaining a stable and
+responsive local development environment.</p>
+<h3 id="memory-constraints-and-silent-oom-kills">Memory Constraints and
+Silent OOM Kills</h3>
+<p>Webpack is fundamentally memory-intensive. During development, it
+maintains an extensive in-memory Abstract Syntax Tree (AST), dependency
+graph, and unminified bundle assets to allow fast incremental
+rebuilds.</p>
+<p>When a Docker container is assigned a strict memory limit (e.g.,
+<code>--memory="1g"</code>), the Linux kernel monitors its usage. If
+Webpack's memory consumption exceeds this threshold, the kernel's
+Out-Of-Memory killer abruptly terminates the process, typically logging
+an <code>Exit Code 137</code>.</p>
+<p>A frequent source of instability is the mismatch between Docker's
+memory ceiling and the Node.js V8 engine's default heap allocation. If
+Node.js assumes it has access to more memory than Docker permits, it
+will not trigger garbage collection aggressively enough to prevent an
+OOM kill. Without explicitly configuring the Node.js memory envelope
+using <code>--max-old-space-size</code> to fit safely within Docker's
+constraints, large codebases will repeatedly crash during initial
+compilation or heavy rebuilds.</p>
+<h3 id="cpu-throttling-and-hmr-timeouts">CPU Throttling and HMR
+Timeouts</h3>
+<p>Docker enforces CPU limits using Completely Fair Scheduler (CFS)
+quotas. When a container exceeds its allotted CPU quota within a given
+period, its execution is throttled until the next cycle.</p>
+<p>Webpack relies on multi-threaded compilation steps (via worker pools
+or thread-loaders) and intensive JavaScript execution for transpilation
+and bundling. When CPU throttling occurs:</p>
+<ul>
+<li><strong>Build Times Balloon:</strong> Incremental rebuilds that
+normally take milliseconds can stretch to tens of seconds.</li>
+<li><strong>WebSocket/SSE Timeouts:</strong> Webpack Dev Server
+maintains a live WebSocket or Server-Sent Events (SSE) connection with
+the browser to push Hot Module Replacement updates. Heavy CPU starvation
+can delay heartbeat pings, causing the client-side socket to drop and
+force full-page reloads or disconnect entirely.</li>
+<li><strong>Stalled Compilations:</strong> Tasks can queue up faster
+than they are resolved, leading to a backlog that makes the development
+server appear completely frozen.</li>
+</ul>
+<h3 id="file-watching-and-polling-overhead">File Watching and Polling
+Overhead</h3>
+<p>File watching inside Docker containers presents unique overhead,
+especially across mounted host volumes on operating systems like macOS
+or Windows.</p>
+<p>When native filesystem notifications (<code>inotify</code>) fail to
+bridge the host-container boundary, developers often enable polling in
+Webpack (<code>watchOptions.poll</code>). Polling forces the container
+to repeatedly scan the filesystem for changes. Under constrained CPU and
+memory limits, polling consumes a massive proportion of available
+resources, starving the actual compilation process and triggering
+lockups or delayed builds.</p>
+<h3 id="stabilizing-webpack-in-docker">Stabilizing Webpack in
+Docker</h3>
+<p>To ensure stability under Docker resource constraints:</p>
+<ol type="1">
+<li><strong>Align Node Heap with Container Limits:</strong> Always set
+<code>NODE_OPTIONS="--max-old-space-size=&lt;megabytes&gt;"</code> to
+roughly 75–80% of Docker's total assigned memory limit, leaving headroom
+for the operating system and background processes.</li>
+<li><strong>Allocate Sufficient Baseline Resources:</strong> A modern
+Webpack dev server typically requires a minimum of 2GB to 4GB of RAM and
+at least 2 dedicated CPU cores for mid-to-large single-page
+applications.</li>
+<li><strong>Use Persistent Filesystem Caching:</strong> Configure
+Webpack 5's <code>cache: { type: 'filesystem' }</code> to reduce heap
+memory pressure between rebuilds.</li>
+<li><strong>Avoid High-Frequency Polling:</strong> If polling is
+mandatory, increase the interval (e.g., <code>poll: 1000</code>) and use
+<code>ignored</code> patterns to exclude heavy directories like
+<code>node_modules</code>.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

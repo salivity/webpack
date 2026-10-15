@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniCssExtractPlugin CSS Order Warnings Explained - webpack</title>
+    <meta name="description" content="The mini-css-extract-plugin in Webpack emits &quot;Conflicting order&quot; warnings when the order in which your CSS files are imported differs across multiple JavaScript chunks or entry points. Because CSS relies heavily on the cascade, the order of rules in the c">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/mini-css-extract-plugin-css-order-warnings-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="MiniCssExtractPlugin CSS Order Warnings Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/mini-css-extract-plugin-css-order-warnings-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The mini-css-extract-plugin in Webpack emits &quot;Conflicting order&quot; warnings when the order in which your CSS files are imported differs across multiple JavaScript chunks or entry points. Because CSS relies heavily on the cascade, the order of rules in the c" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="minicssextractplugin-css-order-warnings-explained">MiniCssExtractPlugin
+CSS Order Warnings Explained</h1>
+<p>The <code>mini-css-extract-plugin</code> in Webpack emits
+"Conflicting order" warnings when the order in which your CSS files are
+imported differs across multiple JavaScript chunks or entry points.
+Because CSS relies heavily on the cascade, the order of rules in the
+compiled stylesheet determines which styles override others. This
+article explains the underlying mechanism that triggers this warning,
+the primary causes in modern module systems, and how to address it.</p>
+<h3 id="how-the-warning-occurs">How the Warning Occurs</h3>
+<p>When Webpack builds your dependency graph, it traverses module import
+statements. If you split your code into multiple bundles (chunks) or
+have multiple entry points, different components might import the same
+CSS files in contrasting sequences.</p>
+<p>For example, consider two components:</p>
+<ul>
+<li><strong>Component A:</strong> imports <code>base.css</code>, then
+<code>theme.css</code></li>
+<li><strong>Component B:</strong> imports <code>theme.css</code>, then
+<code>base.css</code></li>
+</ul>
+<p><code>mini-css-extract-plugin</code> extracts all imported CSS into
+unified files. When merging the styles from Component A and Component B,
+it detects that <code>theme.css</code> comes after <code>base.css</code>
+in one path, but before it in another. Because a static CSS file can
+only order these rules once, Webpack cannot guarantee that the cascade
+will behave identically for both components, prompting it to throw a
+conflict warning.</p>
+<h3 id="primary-causes">Primary Causes</h3>
+<ol type="1">
+<li><strong>Inconsistent Import Sequences:</strong> The most common
+cause is developers importing shared styles, utility classes, or UI
+libraries in an arbitrary order across different files.</li>
+<li><strong>Dynamic / Code-Split Imports:</strong> When using
+asynchronous imports (<code>import()</code>), Webpack generates separate
+chunks. If a dynamically loaded component imports CSS that conflicts
+with the order established in an existing chunk, Webpack flags the
+discrepancy.</li>
+<li><strong>Circular Dependencies:</strong> Modules importing each other
+can alter Webpack's resolution order depending on which file acts as the
+initial entry, triggering unexpected evaluation sequences for CSS.</li>
+</ol>
+<h3 id="how-to-fix-or-mitigate-the-warning">How to Fix or Mitigate the
+Warning</h3>
+<ul>
+<li><strong>Enforce Strict Import Order:</strong> Use linting tools like
+<code>eslint-plugin-import</code> with rule configurations like
+<code>import/order</code> to enforce a deterministic sequence (for
+example: external libraries first, then global styles, followed by local
+component styles).</li>
+<li><strong>Use Scoped Styles or CSS Modules:</strong> The cascade order
+problem primarily impacts global class names. By adopting CSS Modules,
+unique class hashes prevent rules from unintentionally overriding each
+other, making the extraction order largely irrelevant.</li>
+<li><strong>Mute the Warning (<code>ignoreOrder</code>):</strong> If you
+are using CSS Modules or are confident that your styles do not rely on
+source order to override one another, you can suppress the warning by
+setting <code>ignoreOrder: true</code> in your Webpack configuration
+under the <code>MiniCssExtractPlugin</code> options.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Difference Between Webpack Externals and Plugins - webpack</title>
+    <meta name="description" content="Webpack is a popular module bundler for modern JavaScript applications, relying on configuration properties to control how assets are processed, bundled, and delivered. Two distinct configuration options that serve completely different purposes are extern">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/difference-between-webpack-externals-and-plugins">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Difference Between Webpack Externals and Plugins - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/difference-between-webpack-externals-and-plugins" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack is a popular module bundler for modern JavaScript applications, relying on configuration properties to control how assets are processed, bundled, and delivered. Two distinct configuration options that serve completely different purposes are extern" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="difference-between-webpack-externals-and-plugins">Difference
+Between Webpack Externals and Plugins</h1>
+<p>Webpack is a popular module bundler for modern JavaScript
+applications, relying on configuration properties to control how assets
+are processed, bundled, and delivered. Two distinct configuration
+options that serve completely different purposes are
+<code>externals</code> and <code>plugins</code>. In short,
+<code>externals</code> tells Webpack to exclude specific dependencies
+from the bundle so they can be provided at runtime via external sources
+like CDNs, whereas <code>plugins</code> are programmable extensions that
+tap into Webpack's build lifecycle to perform tasks like bundle
+optimization, asset extraction, and environment management.</p>
+<h2 id="what-are-webpack-externals">What Are Webpack Externals?</h2>
+<p>The <code>externals</code> configuration option provides a way to
+prevent specific imported packages from being bundled into your final
+JavaScript files. Instead of packaging the library directly into your
+bundle, Webpack assumes the dependency will be available in the runtime
+environment—such as a global variable injected via a
+<code>&lt;script&gt;</code> tag from a Content Delivery Network (CDN) or
+supplied by a host application.</p>
+<p>Key characteristics of <code>externals</code>:</p>
+<ul>
+<li><strong>Bundle Size Reduction:</strong> Dramatically decreases
+bundle size by not inlining large third-party libraries (e.g., React,
+Lodash, or jQuery).</li>
+<li><strong>Runtime Dependency:</strong> The excluded module must be
+available in the host environment (for example, attached to the
+<code>window</code> object).</li>
+<li><strong>Simple Syntax:</strong> Defined as an object, array, regex,
+or function in the <code>webpack.config.js</code> mapping module names
+to global variable names.</li>
+</ul>
+<p>Example:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">externals</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">react</span><span class="op">:</span> <span class="st">&#39;React&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;react-dom&#39;</span><span class="op">:</span> <span class="st">&#39;ReactDOM&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>In this scenario, <code>import React from 'react'</code> continues to
+work in your source code, but Webpack simply resolves <code>React</code>
+from the global <code>window.React</code> object instead of bundling the
+node module.</p>
+<h2 id="what-are-webpack-plugins">What Are Webpack Plugins?</h2>
+<p>Webpack <code>plugins</code> represent the backbone of the bundler's
+flexible architecture. A plugin is a JavaScript object with an
+<code>apply</code> method that hooks directly into the Webpack
+compilation lifecycle. While loaders transform individual files before
+they are bundled, plugins have full access to the compiler and
+compilation instances, allowing them to manipulate the overall build
+process and modify assets at any stage.</p>
+<p>Key characteristics of <code>plugins</code>:</p>
+<ul>
+<li><strong>Lifecycle Access:</strong> Plugins hook into tapable events
+during the build process, enabling custom behaviors from start to
+finish.</li>
+<li><strong>Broad Utility:</strong> Used for tasks like minifying code,
+generating HTML files (<code>HtmlWebpackPlugin</code>), injecting
+environment variables (<code>DefinePlugin</code>), copying static
+assets, and analyzing bundle sizes.</li>
+<li><strong>Instantiated Objects:</strong> Included in an array in the
+Webpack configuration using the <code>new</code> keyword to create
+instances of the plugin classes.</li>
+</ul>
+<p>Example:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> HtmlWebpackPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;html-webpack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { CleanWebpackPlugin } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;clean-webpack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">CleanWebpackPlugin</span>()<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">HtmlWebpackPlugin</span>({ <span class="dt">template</span><span class="op">:</span> <span class="st">&#39;./src/index.html&#39;</span> })<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h2 id="direct-comparison-externals-vs-plugins">Direct Comparison:
+Externals vs. Plugins</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Externals</th>
+<th style="text-align: left;">Plugins</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Primary Goal</strong></td>
+<td style="text-align: left;">Exclude dependencies from output
+bundles</td>
+<td style="text-align: left;">Extend and customize Webpack's build
+process</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Scope</strong></td>
+<td style="text-align: left;">Module resolution</td>
+<td style="text-align: left;">The entire build and compilation
+lifecycle</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Execution Point</strong></td>
+<td style="text-align: left;">Runtime (resolved in browser/host
+environment)</td>
+<td style="text-align: left;">Build time (executed by Node.js during
+compilation)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Typical Use Case</strong></td>
+<td style="text-align: left;">Loading React, Vue, or jQuery from a
+CDN</td>
+<td style="text-align: left;">Minifying assets, injecting HTML, managing
+environments</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Configuration</strong></td>
+<td style="text-align: left;">Object, regex, array, or function mapping
+modules</td>
+<td style="text-align: left;">Array of instantiated class instances</td>
+</tr>
+</tbody>
+</table>
+<h2 id="conclusion">Conclusion</h2>
+<p>The distinction between <code>externals</code> and
+<code>plugins</code> comes down to module exclusion versus build
+augmentation. Use <code>externals</code> when you want to keep
+third-party libraries out of your bundle files to take advantage of
+caching, CDN delivery, or existing global objects. Use
+<code>plugins</code> whenever you need to automate, optimize, or extend
+the compilation steps that produce your application's build output.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

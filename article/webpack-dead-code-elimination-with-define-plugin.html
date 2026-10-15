@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Dead Code Elimination with DefinePlugin - webpack</title>
+    <meta name="description" content="This article explains how Webpack performs dead-code branch elimination by combining the DefinePlugin with an AST-aware minifier like Terser. When you configure compile-time constants through DefinePlugin, Webpack directly substitutes matching identifier">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-dead-code-elimination-with-define-plugin">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Dead Code Elimination with DefinePlugin - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-dead-code-elimination-with-define-plugin" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how Webpack performs dead-code branch elimination by combining the DefinePlugin with an AST-aware minifier like Terser. When you configure compile-time constants through DefinePlugin, Webpack directly substitutes matching identifier" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-dead-code-elimination-with-defineplugin">Webpack Dead
+Code Elimination with DefinePlugin</h1>
+<p>This article explains how Webpack performs dead-code branch
+elimination by combining the <code>DefinePlugin</code> with an AST-aware
+minifier like Terser. When you configure compile-time constants through
+<code>DefinePlugin</code>, Webpack directly substitutes matching
+identifier tokens in your source code with defined values. During the
+production optimization phase, the minifier evaluates these static
+conditionals, identifies unreachable code branches, and permanently
+strips them from the bundle to optimize runtime performance and bundle
+size.</p>
+<h3 id="1-compile-time-value-inlining-with-defineplugin">1. Compile-Time
+Value Inlining with DefinePlugin</h3>
+<p>The <code>DefinePlugin</code> works at the AST (Abstract Syntax Tree)
+level during Webpack's compilation phase, functioning essentially as a
+direct code-replacement mechanism. It replaces occurrences of specified
+keys with given expressions before any minification occurs.</p>
+<p>For example, when setting:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> webpack<span class="op">.</span><span class="fu">DefinePlugin</span>({</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;process.env.NODE_ENV&#39;</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(<span class="st">&#39;production&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;__FEATURE_FLAG__&#39;</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(<span class="kw">false</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p>Webpack scans the codebase and replaces references directly:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Source code</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">NODE_ENV</span> <span class="op">!==</span> <span class="st">&#39;production&#39;</span>) {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;Running in development mode&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (__FEATURE_FLAG__) {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">enableExperimentalFeature</span>()<span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Becomes:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Intermediate representation after DefinePlugin</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="st">&#39;production&#39;</span> <span class="op">!==</span> <span class="st">&#39;production&#39;</span>) {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;Running in development mode&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="kw">false</span>) {</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">enableExperimentalFeature</span>()<span class="op">;</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="2-constant-folding-and-dead-code-elimination">2. Constant
+Folding and Dead-Code Elimination</h3>
+<p><code>DefinePlugin</code> itself does not remove code; it merely
+rewrites the variables. The actual branch elimination occurs during the
+code-minification step, typically executed by Terser or SWC when
+Webpack's <code>mode</code> is set to <code>'production'</code>.</p>
+<p>This process involves two steps:</p>
+<ol type="1">
+<li><strong>Constant Folding:</strong> The minifier analyzes expressions
+composed of literal values and simplifies them. It computes
+<code>'production' !== 'production'</code> to <code>false</code>.</li>
+<li><strong>Dead-Code Elimination (DCE):</strong> Once the conditional
+expression resolves to a static boolean (<code>if (false)</code>), the
+minifier determines that the enclosed block is unreachable. It drops the
+entire branch, including the conditional statement itself.</li>
+</ol>
+<p>The intermediate code above collapses to:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Final output</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co">// The entire blocks are stripped; nothing is output to the bundle.</span></span></code></pre></div>
+<h3 id="3-impact-on-module-bundling-and-tree-shaking">3. Impact on
+Module Bundling and Tree Shaking</h3>
+<p>When combined with ECMAScript (ESM) module imports, dead-code branch
+elimination can trigger cascading tree-shaking optimizations. If an
+unreachable branch contains an isolated function call or variable
+reference, the minifier removes it. If that was the only reference to an
+imported module, Webpack's unused export elimination (tree shaking)
+flags the module export as unused and omits it from the final bundle
+entirely.</p>
+<p>However, this requires the imported modules to be ES modules
+(<code>import</code>/<code>export</code>) and marked as free of side
+effects via the <code>sideEffects: false</code> property in
+<code>package.json</code>. If a CommonJS <code>require()</code> is used
+inside a dead branch, Terser can eliminate the call, but Webpack may
+still include the required module wrapper in the bundle unless properly
+analyzed.</p>
+<h3 id="4-common-pitfalls-to-avoid">4. Common Pitfalls to Avoid</h3>
+<ul>
+<li><strong>String Literal Quoting:</strong> <code>DefinePlugin</code>
+performs direct code substitution. Setting
+<code>'process.env.NODE_ENV': 'production'</code> evaluates to
+<code>process.env.NODE_ENV = production</code> (an undeclared variable
+reference), causing a runtime error. Values must be wrapped using
+<code>JSON.stringify('production')</code> or
+<code>"'production'"</code>.</li>
+<li><strong>Dynamic Property Access:</strong> The plugin only matches
+exact identifier tokens. While <code>process.env.NODE_ENV</code> is
+replaced, dynamic access such as <code>process.env[key]</code> cannot be
+statically matched and will remain intact, preventing dead-code
+elimination.</li>
+<li><strong>Non-Minified Builds:</strong> In development mode
+(<code>mode: 'development'</code>), minification is disabled by default.
+The substitutions from <code>DefinePlugin</code> will still occur, but
+the dead branches (<code>if (false) { ... }</code>) will remain visible
+in the output bundle.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Redux or Zustand Across Webpack Micro-Frontends - webpack</title>
+    <meta name="description" content="Sharing an active state management store like Redux or Zustand across micro-frontends requires maintaining a single, shared runtime instance across independently bundled applications. Using Webpack 5 Module Federation, you can configure both the state lib">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/share-redux-or-zustand-across-webpack-micro-frontends">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Share Redux or Zustand Across Webpack Micro-Frontends - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/share-redux-or-zustand-across-webpack-micro-frontends" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Sharing an active state management store like Redux or Zustand across micro-frontends requires maintaining a single, shared runtime instance across independently bundled applications. Using Webpack 5 Module Federation, you can configure both the state lib" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="share-redux-or-zustand-across-webpack-micro-frontends">Share
+Redux or Zustand Across Webpack Micro-Frontends</h1>
+<p>Sharing an active state management store like Redux or Zustand across
+micro-frontends requires maintaining a single, shared runtime instance
+across independently bundled applications. Using Webpack 5 Module
+Federation, you can configure both the state libraries and the actual
+store instance as shared singletons. This article explains how to
+configure Webpack Module Federation and architect your code to share an
+active, reactive Redux or Zustand store seamlessly between a host
+application and remote micro-frontends.</p>
+<hr />
+<h3 id="the-core-problem-module-isolation">The Core Problem: Module
+Isolation</h3>
+<p>By default, Webpack isolates bundles. If the host container and a
+remote micro-frontend both import <code>zustand</code> or
+<code>react-redux</code>, Webpack may bundle separate instances of those
+libraries. Even if they load the same code, their in-memory execution
+contexts remain split, causing state updates in one micro-frontend to be
+invisible to another.</p>
+<p>To share an active store, you must satisfy two requirements:</p>
+<ol type="1">
+<li><strong>Shared Dependency Singleton:</strong> The state library
+(<code>zustand</code>, <code>redux</code>, <code>react-redux</code>)
+must resolve to a single runtime instance.</li>
+<li><strong>Shared Store Reference:</strong> The instantiated store must
+be accessible across bundle boundaries either through Module Federation
+exports, React Context at the root, or window-level registry.</li>
+</ol>
+<hr />
+<h3 id="1-webpack-configuration-for-singletons">1. Webpack Configuration
+for Singletons</h3>
+<p>In both your host and remote <code>webpack.config.js</code> files,
+use <code>ModuleFederationPlugin</code> to declare your state libraries
+as singletons under the <code>shared</code> key.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js (Host and Remotes)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { ModuleFederationPlugin } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&quot;webpack&quot;</span>)<span class="op">.</span><span class="at">container</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> deps <span class="op">=</span> <span class="pp">require</span>(<span class="st">&quot;./package.json&quot;</span>)<span class="op">.</span><span class="at">dependencies</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">name</span><span class="op">:</span> <span class="st">&quot;host&quot;</span><span class="op">,</span> <span class="co">// or &quot;remote&quot;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">shared</span><span class="op">:</span> {</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="op">...</span>deps<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="dt">react</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> <span class="dt">requiredVersion</span><span class="op">:</span> deps<span class="op">.</span><span class="at">react</span> }<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;react-dom&quot;</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> <span class="dt">requiredVersion</span><span class="op">:</span> deps[<span class="st">&quot;react-dom&quot;</span>] }<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        <span class="dt">zustand</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> <span class="dt">requiredVersion</span><span class="op">:</span> deps<span class="op">.</span><span class="at">zustand</span> }<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        <span class="co">// If using Redux:</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        <span class="co">// &quot;@reduxjs/toolkit&quot;: { singleton: true, requiredVersion: deps[&quot;@reduxjs/toolkit&quot;] },</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="co">// &quot;react-redux&quot;: { singleton: true, requiredVersion: deps[&quot;react-redux&quot;] },</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Setting <code>singleton: true</code> forces Webpack to load only one
+copy of the library, preventing conflicting internal React contexts or
+distinct memory registries.</p>
+<hr />
+<h3 id="2-sharing-a-zustand-store">2. Sharing a Zustand Store</h3>
+<p>Zustand is particularly well-suited for micro-frontends because its
+store is a simple JavaScript closure that can exist independently of the
+React tree.</p>
+<h4 id="step-a-create-and-expose-the-store-host-or-shared-library">Step
+A: Create and Expose the Store (Host or Shared Library)</h4>
+<p>Define the store in the host (or a dedicated "shared" micro-frontend)
+and expose it via Module Federation:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// host/src/store.js</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { create } <span class="im">from</span> <span class="st">&quot;zustand&quot;</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> useSharedStore <span class="op">=</span> <span class="fu">create</span>((<span class="kw">set</span>) <span class="kw">=&gt;</span> ({</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">user</span><span class="op">:</span> <span class="kw">null</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">theme</span><span class="op">:</span> <span class="st">&quot;light&quot;</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">setUser</span><span class="op">:</span> (user) <span class="kw">=&gt;</span> <span class="kw">set</span>({ user })<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">setTheme</span><span class="op">:</span> (theme) <span class="kw">=&gt;</span> <span class="kw">set</span>({ theme })<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>}))<span class="op">;</span></span></code></pre></div>
+<p>Expose the file in the host’s <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// host/webpack.config.js</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&quot;host&quot;</span><span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">filename</span><span class="op">:</span> <span class="st">&quot;remoteEntry.js&quot;</span><span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">exposes</span><span class="op">:</span> {</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;./store&quot;</span><span class="op">:</span> <span class="st">&quot;./src/store&quot;</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">shared</span><span class="op">:</span> {</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">zustand</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span> }<span class="op">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">react</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span> }<span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;react-dom&quot;</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span> }<span class="op">,</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<h4 id="step-b-consume-the-store-in-the-remote">Step B: Consume the
+Store in the Remote</h4>
+<p>Declare the host remote in the remote’s Webpack configuration:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// remote/webpack.config.js</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&quot;remoteApp&quot;</span><span class="op">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">remotes</span><span class="op">:</span> {</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">host</span><span class="op">:</span> <span class="st">&quot;host@http://localhost:3000/remoteEntry.js&quot;</span><span class="op">,</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">shared</span><span class="op">:</span> {</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">zustand</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span> }<span class="op">,</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">react</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span> }<span class="op">,</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;react-dom&quot;</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span> }<span class="op">,</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p>Import and use the store hook directly inside remote components:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// remote/src/UserProfile.jsx</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> React <span class="im">from</span> <span class="st">&quot;react&quot;</span><span class="op">;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { useSharedStore } <span class="im">from</span> <span class="st">&quot;host/store&quot;</span><span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="im">default</span> <span class="kw">function</span> <span class="fu">UserProfile</span>() {</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> { user<span class="op">,</span> setUser } <span class="op">=</span> <span class="fu">useSharedStore</span>()<span class="op">;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> (</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">&lt;</span>div<span class="op">&gt;</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>      <span class="op">&lt;</span>p<span class="op">&gt;</span>Current <span class="dt">User</span><span class="op">:</span> {user <span class="op">?</span> user<span class="op">.</span><span class="at">name</span> <span class="op">:</span> <span class="st">&quot;Guest&quot;</span>}<span class="op">&lt;/</span>p<span class="op">&gt;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>      <span class="op">&lt;</span>button onClick<span class="op">=</span>{() <span class="kw">=&gt;</span> <span class="fu">setUser</span>({ <span class="dt">name</span><span class="op">:</span> <span class="st">&quot;Jane Doe&quot;</span> })}<span class="op">&gt;</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        Log In <span class="im">as</span> Jane</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>      <span class="op">&lt;/</span>button<span class="op">&gt;</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">&lt;/</span>div<span class="op">&gt;</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Because <code>zustand</code> is a singleton and the hook instance
+comes directly from the host bundle, any changes update all subscribers
+across micro-frontend boundaries immediately.</p>
+<hr />
+<h3 id="3-sharing-an-active-redux-store">3. Sharing an Active Redux
+Store</h3>
+<p>Redux relies on React Context via
+<code>&lt;Provider store={store}&gt;</code>. Sharing an active Redux
+store requires both a shared <code>react-redux</code> runtime and
+passing the active store instance down to the remote.</p>
+<h4 id="approach-pass-the-store-instance-via-props">Approach: Pass the
+Store Instance via Props</h4>
+<p>Passing the store instance directly from the host to the remote entry
+component avoids circular dependencies and ensures strict control over
+lifecycle management.</p>
+<p><strong>Host Implementation:</strong></p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">// host/src/App.jsx</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> React <span class="im">from</span> <span class="st">&quot;react&quot;</span><span class="op">;</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { Provider } <span class="im">from</span> <span class="st">&quot;react-redux&quot;</span><span class="op">;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { store } <span class="im">from</span> <span class="st">&quot;./store&quot;</span><span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co">// Dynamically or statically import Remote component</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> RemoteWidget <span class="op">=</span> React<span class="op">.</span><span class="fu">lazy</span>(() <span class="kw">=&gt;</span> <span class="im">import</span>(<span class="st">&quot;remoteApp/Widget&quot;</span>))<span class="op">;</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="im">default</span> <span class="kw">function</span> <span class="fu">App</span>() {</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> (</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">&lt;Provider</span> <span class="ot">store</span><span class="op">=</span><span class="va">{</span>store<span class="va">}</span><span class="fu">&gt;</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>      <span class="kw">&lt;div&gt;</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>        <span class="kw">&lt;h1&gt;</span>Host Application<span class="kw">&lt;/h1&gt;</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>        <span class="fu">&lt;React.Suspense</span> <span class="ot">fallback</span><span class="op">=</span><span class="st">&quot;Loading...&quot;</span><span class="fu">&gt;</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>          <span class="va">{</span><span class="co">/* Pass the store directly to the remote component */</span><span class="va">}</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>          <span class="fu">&lt;RemoteWidget</span> <span class="ot">store</span><span class="op">=</span><span class="va">{</span>store<span class="va">}</span> <span class="fu">/&gt;</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>        <span class="fu">&lt;/React.Suspense&gt;</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>      <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">&lt;/Provider&gt;</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p><strong>Remote Implementation:</strong></p>
+<p>In the remote component, wrap the internal tree with a
+<code>Provider</code> using the injected store instance:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">// remote/src/Widget.jsx</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> React <span class="im">from</span> <span class="st">&quot;react&quot;</span><span class="op">;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { Provider<span class="op">,</span> useSelector<span class="op">,</span> useDispatch } <span class="im">from</span> <span class="st">&quot;react-redux&quot;</span><span class="op">;</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">WidgetContent</span>() {</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> count <span class="op">=</span> <span class="fu">useSelector</span>((state) <span class="kw">=&gt;</span> state<span class="op">.</span><span class="at">counter</span><span class="op">.</span><span class="at">value</span>)<span class="op">;</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> dispatch <span class="op">=</span> <span class="fu">useDispatch</span>()<span class="op">;</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> (</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">&lt;div&gt;</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>      <span class="kw">&lt;p&gt;</span>Count from Host Store: <span class="va">{</span>count<span class="va">}</span><span class="kw">&lt;/p&gt;</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>      <span class="kw">&lt;button</span> <span class="ot">onClick</span><span class="op">=</span><span class="va">{</span>() <span class="kw">=&gt;</span> <span class="fu">dispatch</span>({ <span class="dt">type</span><span class="op">:</span> <span class="st">&quot;counter/increment&quot;</span> })<span class="va">}</span><span class="kw">&gt;</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        Increment</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>      <span class="kw">&lt;/button&gt;</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="im">default</span> <span class="kw">function</span> <span class="fu">Widget</span>({ store }) {</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>  <span class="co">// If the host provides the store, wrap with Provider; otherwise use a fallback</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="op">!</span>store) {</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return </span><span class="kw">&lt;div&gt;</span>Error: Redux store not provided.<span class="kw">&lt;/div&gt;</span><span class="op">;</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> (</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">&lt;Provider</span> <span class="ot">store</span><span class="op">=</span><span class="va">{</span>store<span class="va">}</span><span class="fu">&gt;</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>      <span class="fu">&lt;WidgetContent</span> <span class="fu">/&gt;</span></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>    <span class="fu">&lt;/Provider&gt;</span></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Since <code>react-redux</code> is configured with
+<code>singleton: true</code>, the remote's <code>useSelector</code> and
+<code>useDispatch</code> interact directly with the host's active
+dispatcher and state tree.</p>
+<hr />
+<h3 id="key-considerations">Key Considerations</h3>
+<ol type="1">
+<li><strong>Semantic Versioning (<code>requiredVersion</code>):</strong>
+Ensure that the major versions of the shared libraries match between the
+host and remotes to prevent Webpack from falling back to local
+copies.</li>
+<li><strong>State Decoupling:</strong> When using Redux across teams,
+implement dynamic reducer injection (<code>store.replaceReducer</code>)
+so micro-frontends can attach their own state slices at runtime without
+modifying the host's core reducer configuration.</li>
+<li><strong>Standalone Mode:</strong> For local development, configure
+remotes to instantiate a mock or local store if the shared store is not
+passed or available.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

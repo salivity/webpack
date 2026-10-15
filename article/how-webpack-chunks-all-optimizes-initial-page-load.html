@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Chunks All Optimizes Initial Page Load - webpack</title>
+    <meta name="description" content="Configuring chunks: &#39;all&#39; within Webpack&#39;s SplitChunksPlugin significantly improves initial page load performance by enabling code splitting across both synchronous and asynchronous modules. By default, Webpack only extracts dynamically imported code, whi">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-chunks-all-optimizes-initial-page-load">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Chunks All Optimizes Initial Page Load - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-chunks-all-optimizes-initial-page-load" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Configuring chunks: &#39;all&#39; within Webpack&#39;s SplitChunksPlugin significantly improves initial page load performance by enabling code splitting across both synchronous and asynchronous modules. By default, Webpack only extracts dynamically imported code, whi" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-chunks-all-optimizes-initial-page-load">How Webpack
+Chunks All Optimizes Initial Page Load</h1>
+<p>Configuring <code>chunks: 'all'</code> within Webpack's
+<code>SplitChunksPlugin</code> significantly improves initial page load
+performance by enabling code splitting across both synchronous and
+asynchronous modules. By default, Webpack only extracts dynamically
+imported code, which often leaves common third-party dependencies
+duplicated or bundled directly inside the critical entry files.
+Switching to <code>'all'</code> extracts shared dependencies into
+separate, cacheable vendor bundles, drastically reducing total
+JavaScript payload sizes, decreasing browser parse and compile times,
+and leveraging long-term browser caching.</p>
+<h2 id="the-limitation-of-webpacks-default-setting">The Limitation of
+Webpack's Default Setting</h2>
+<p>By default, Webpack configures
+<code>optimization.splitChunks.chunks</code> to <code>'async'</code>.
+Under this configuration, Webpack only analyzes dynamic imports (modules
+loaded via <code>import()</code>) to create separate chunks.</p>
+<p>While this prevents non-critical dynamic modules from loading
+upfront, it creates an issue with static imports
+(<code>import x from 'y'</code>). If multiple entry points or
+synchronous files import large external libraries—such as React, Lodash,
+or Moment.js—Webpack packages those libraries directly into the main
+entry bundle. In multi-page applications or complex single-page apps
+with multiple initial files, this often results in the same library
+being duplicated across multiple chunks, inflating the payload sent to
+the browser during the first visit.</p>
+<h2 id="what-chunks-all-changes">What <code>chunks: 'all'</code>
+Changes</h2>
+<p>Setting <code>chunks: 'all'</code> instructs Webpack to apply its
+splitting rules indiscriminately across both synchronous and
+asynchronous code.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">splitChunks</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>With this setting enabled, Webpack evaluates the entire dependency
+graph. If a module is shared between an initial sync bundle and an
+on-demand async route, or shared between multiple synchronous entry
+points, Webpack extracts it into an independent chunk.</p>
+<h2 id="mechanisms-that-accelerate-initial-page-load">Mechanisms That
+Accelerate Initial Page Load</h2>
+<h3 id="1-elimination-of-redundant-code">1. Elimination of Redundant
+Code</h3>
+<p>When large third-party dependencies are imported synchronously across
+different parts of an application, <code>chunks: 'all'</code> identifies
+the overlap and extracts those modules into a single shared chunk. This
+prevents the browser from downloading multiple instances of identical
+libraries on the initial render.</p>
+<h3 id="2-improved-long-term-browser-caching">2. Improved Long-Term
+Browser Caching</h3>
+<p>Application code updates frequently, while third-party vendor
+libraries remain relatively static. With <code>chunks: 'all'</code>,
+external dependencies are extracted into standalone vendor chunks with
+unique content hashes. When you deploy updates to your application
+logic, the browser only re-downloads the modified application chunk,
+keeping the vendor chunk cached. For returning users, this substantially
+decreases the initial network transfer time.</p>
+<h3 id="3-reduced-main-thread-execution-and-parse-time">3. Reduced Main
+Thread Execution and Parse Time</h3>
+<p>A monolithic JavaScript file forces the browser's JavaScript engine
+to download, parse, and compile a massive script block before the
+initial UI can become interactive. By breaking the bundle into smaller,
+discrete chunks, the browser can parse smaller units of code more
+efficiently, reducing Total Blocking Time (TBT) and improving the First
+Contentful Paint (FCP) and Time to Interactive (TTI) metrics.</p>
+<h3 id="4-parallel-network-utilization-via-http2-and-http3">4. Parallel
+Network Utilization via HTTP/2 and HTTP/3</h3>
+<p>Modern network protocols (HTTP/2 and HTTP/3) excel at multiplexing
+multiple simultaneous requests over a single connection. Rather than
+waiting on one large, blocking bundle, the browser can download multiple
+smaller chunks in parallel, saturating the network pipeline and
+completing the download phase faster.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

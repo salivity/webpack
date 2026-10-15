@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Bundle .node Files with Webpack - webpack</title>
+    <meta name="description" content="Bundling Node.js applications with Webpack often leads to build errors when projects include native C/C++ addons, which are distributed as compiled .node binaries. Because Webpack is fundamentally designed to parse JavaScript, it cannot process compiled b">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-to-bundle-node-files-with-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Bundle .node Files with Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-to-bundle-node-files-with-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Bundling Node.js applications with Webpack often leads to build errors when projects include native C/C++ addons, which are distributed as compiled .node binaries. Because Webpack is fundamentally designed to parse JavaScript, it cannot process compiled b" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-bundle-node-files-with-webpack">How to Bundle .node Files
+with Webpack</h1>
+<p>Bundling Node.js applications with Webpack often leads to build
+errors when projects include native C/C++ addons, which are distributed
+as compiled <code>.node</code> binaries. Because Webpack is
+fundamentally designed to parse JavaScript, it cannot process compiled
+binary code out of the box. This article provides straightforward
+methods to handle <code>.node</code> binary files in Webpack, covering
+the use of <code>node-loader</code>, utilizing Webpack's
+<code>externals</code> configuration, and addressing runtime path
+considerations.</p>
+<h2 id="why-native-addons-fail-in-webpack">Why Native Addons Fail in
+Webpack</h2>
+<p>Native addons (such as those used by <code>bcrypt</code>,
+<code>sharp</code>, or <code>better-sqlite3</code>) are
+platform-specific compiled binaries created via <code>node-gyp</code>.
+When Webpack encounters a <code>require('./addon.node')</code> or
+imports a package that relies on binary files, it tries to parse the
+file content as JavaScript. This triggers a syntax error (typically
+<code>Module parse failed: Unexpected character</code>).</p>
+<p>To resolve this, you must either tell Webpack how to package and
+require the binary at runtime, or exclude the binary from the bundle
+altogether.</p>
+<hr />
+<h2 id="method-1-using-node-loader">Method 1: Using
+<code>node-loader</code></h2>
+<p>The most common approach to include <code>.node</code> files in a
+Webpack build is using <code>node-loader</code>. This loader transforms
+the binary import into a runtime statement that uses Node's native
+<code>process.dlopen</code> or <code>require()</code>, while copying the
+<code>.node</code> binary to your output directory.</p>
+<h3 id="step-1-install-the-loader">Step 1: Install the Loader</h3>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">--save-dev</span> node-loader</span></code></pre></div>
+<h3 id="step-2-configure-webpack">Step 2: Configure Webpack</h3>
+<p>Add a rule inside your <code>webpack.config.js</code> to process
+<code>.node</code> files:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;node&#39;</span><span class="op">,</span> <span class="co">// Ensure Webpack targets Node.js runtime</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">node</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;node-loader&#39;</span><span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>If you are using Webpack 5 and want to customize file output
+locations or names, you can combine <code>node-loader</code> with asset
+options:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;node&#39;</span><span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">node</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;node-loader&#39;</span><span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">options</span><span class="op">:</span> {</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>          <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;[path][name].[ext]&#39;</span><span class="op">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When Webpack builds your project, it emits the <code>.node</code>
+file to your <code>dist</code> folder and injects code that loads the
+binary relative to the final bundle.</p>
+<hr />
+<h2
+id="method-2-marking-native-dependencies-as-externals-recommended">Method
+2: Marking Native Dependencies as Externals (Recommended)</h2>
+<p>In many Node.js backend deployments, bundling native modules is
+counterproductive. Native binaries are tied to the host architecture and
+operating system. If you build on macOS or a CI environment and deploy
+to a Linux container, the bundled <code>.node</code> binary will crash
+at runtime.</p>
+<p>Instead of bundling, you can mark the package containing the
+<code>.node</code> file as external. Webpack will leave the
+<code>require()</code> call untouched, allowing Node.js to resolve the
+native dependency directly from <code>node_modules</code> at
+runtime.</p>
+<h3 id="step-1-install-webpack-node-externals">Step 1: Install
+<code>webpack-node-externals</code></h3>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">--save-dev</span> webpack-node-externals</span></code></pre></div>
+<h3 id="step-2-configure-webpack-1">Step 2: Configure Webpack</h3>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> nodeExternals <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack-node-externals&#39;</span>)<span class="op">;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;node&#39;</span><span class="op">,</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">externals</span><span class="op">:</span> [</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">nodeExternals</span>()<span class="op">,</span> <span class="co">// Excludes all node_modules from the bundle</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>If you only want to exclude specific packages containing native
+modules (like <code>sharp</code>), you can configure the
+<code>externals</code> array manually:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;node&#39;</span><span class="op">,</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">externals</span><span class="op">:</span> {</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">sharp</span><span class="op">:</span> <span class="st">&#39;commonjs sharp&#39;</span><span class="op">,</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">sqlite3</span><span class="op">:</span> <span class="st">&#39;commonjs sqlite3&#39;</span><span class="op">,</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When deployed, you simply run <code>npm install --production</code>
+in your deployment environment so that the native modules compile
+specifically for the host system.</p>
+<hr />
+<h2 id="method-3-handling-dynamic-addon-resolvers">Method 3: Handling
+Dynamic Addon Resolvers</h2>
+<p>Some native modules use packages like <code>bindings</code> or
+<code>node-pre-gyp</code> to dynamically locate <code>.node</code> files
+at runtime. Webpack cannot statically analyze these dynamic paths,
+resulting in runtime errors like
+<code>Could not locate the bindings file</code>.</p>
+<p>To fix this:</p>
+<ol type="1">
+<li><strong>Use <code>node-loader</code></strong> for any explicit
+<code>.node</code> files.</li>
+<li><strong>Combine with <code>externals</code></strong> for libraries
+using dynamic loaders.</li>
+<li>Configure <code>__dirname</code> context in Webpack to prevent path
+resolution from breaking:</li>
+</ol>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;node&#39;</span><span class="op">,</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">node</span><span class="op">:</span> {</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">__dirname</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">__filename</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Setting <code>__dirname: false</code> ensures that Node's native
+directory resolution reflects the runtime file location rather than
+Webpack's compile-time virtual tree.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

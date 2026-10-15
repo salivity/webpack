@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding optimization.usedExports in Webpack - webpack</title>
+    <meta name="description" content="In Webpack, optimization.usedExports is a core configuration setting responsible for tracking which module exports are actively referenced across your application. This article covers the purpose of optimization.usedExports, how it powers Webpack&#39;s tree s">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/understanding-optimization-used-exports-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Understanding optimization.usedExports in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/understanding-optimization-used-exports-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Webpack, optimization.usedExports is a core configuration setting responsible for tracking which module exports are actively referenced across your application. This article covers the purpose of optimization.usedExports, how it powers Webpack&#39;s tree s" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="understanding-optimizationusedexports-in-webpack">Understanding
+optimization.usedExports in Webpack</h1>
+<p>In Webpack, <code>optimization.usedExports</code> is a core
+configuration setting responsible for tracking which module exports are
+actively referenced across your application. This article covers the
+purpose of <code>optimization.usedExports</code>, how it powers
+Webpack's tree shaking mechanism, how it works in tandem with code
+minifiers like Terser, and its default configuration behavior across
+different build environments.</p>
+<h3 id="what-is-optimizationusedexports">What is
+<code>optimization.usedExports</code>?</h3>
+<p>The <code>optimization.usedExports</code> option instructs Webpack to
+perform static analysis on your code to determine which exports from ES
+modules (ESM) are actually used and which are unused.</p>
+<p>Instead of stripping code on its own, <code>usedExports</code> marks
+the exports within the generated bundle with internal Webpack comments.
+For example:</p>
+<ul>
+<li>Active exports are marked with annotations like
+<code>/* harmony export (binding) */</code>.</li>
+<li>Unused exports are annotated with comments such as
+<code>/* unused harmony export [exportName] */</code>.</li>
+</ul>
+<h3 id="the-role-of-usedexports-in-tree-shaking">The Role of
+<code>usedExports</code> in Tree Shaking</h3>
+<p>Tree shaking—the process of eliminating dead or unreachable code from
+your final production bundle—requires two distinct phases:</p>
+<ol type="1">
+<li><strong>Identification (Webpack):</strong> Webpack analyzes ES
+module import and export statements. When
+<code>optimization.usedExports</code> is enabled, Webpack identifies
+exports that have no corresponding imports and flags them in the
+intermediate code graph.</li>
+<li><strong>Elimination (Minifier):</strong> Webpack delegates the
+actual removal of dead code to a minifier, typically Terser or SWC
+(configured through <code>optimization.minimizer</code>). When the
+minifier processes the bundle, it recognizes the unused export
+signatures and safely strips them, reducing the final bundle size.</li>
+</ol>
+<p>Without <code>usedExports</code>, the minifier cannot safely
+determine whether an export might be dynamically required elsewhere in
+the module, resulting in unused code being retained in the production
+bundle.</p>
+<h3 id="default-behavior-and-modes">Default Behavior and Modes</h3>
+<p>Webpack sets defaults for <code>optimization.usedExports</code> based
+on the active <code>mode</code>:</p>
+<ul>
+<li><strong>Production Mode (<code>mode: 'production'</code>):</strong>
+Automatically set to <code>true</code>. Webpack performs full export
+analysis to maximize tree shaking potential and minimize the bundle
+size.</li>
+<li><strong>Development Mode
+(<code>mode: 'development'</code>):</strong> Automatically disabled or
+set to <code>false</code>. Performing static analysis adds compile-time
+overhead, so disabling it speeds up incremental rebuilds during active
+development.</li>
+</ul>
+<h3 id="how-to-configure-optimizationusedexports">How to Configure
+<code>optimization.usedExports</code></h3>
+<p>You can manually control this setting inside your
+<code>webpack.config.js</code> file:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">usedExports</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">minimize</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When setting <code>usedExports: true</code>, ensure that
+<code>minimize: true</code> is also active if you want unused code
+physically removed, rather than just labeled in the bundle output.</p>
+<h3 id="relationship-with-the-sideeffects-flag">Relationship with the
+<code>sideEffects</code> Flag</h3>
+<p>While <code>usedExports</code> analyzes individual export statements,
+the <code>sideEffects</code> property (usually set in
+<code>package.json</code>) evaluates whether entire files can be dropped
+if none of their exports are used. The two work together:</p>
+<ul>
+<li><strong><code>sideEffects: false</code></strong> allows Webpack to
+skip analyzing and compiling entire files that have no imported members
+used.</li>
+<li><strong><code>usedExports: true</code></strong> handles granular,
+export-by-export analysis when parts of a file <em>are</em> imported,
+but other exported functions or variables within that same file are
+unused.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

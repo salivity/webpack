@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Subresource Integrity with SHA-256 and SHA-512 - webpack</title>
+    <meta name="description" content="This article explains how Webpack implements Subresource Integrity (SRI) to secure web applications against unauthorized script modifications. You will learn the mechanics of how Webpack processes output assets, generates cryptographic digests using algor">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-subresource-integrity-with-sha-256-and-sha-512">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Subresource Integrity with SHA-256 and SHA-512 - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-subresource-integrity-with-sha-256-and-sha-512" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how Webpack implements Subresource Integrity (SRI) to secure web applications against unauthorized script modifications. You will learn the mechanics of how Webpack processes output assets, generates cryptographic digests using algor" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-subresource-integrity-with-sha-256-and-sha-512">Webpack
+Subresource Integrity with SHA-256 and SHA-512</h1>
+<p>This article explains how Webpack implements Subresource Integrity
+(SRI) to secure web applications against unauthorized script
+modifications. You will learn the mechanics of how Webpack processes
+output assets, generates cryptographic digests using algorithms like
+SHA-256, SHA-384, and SHA-512, and injects integrity attributes into
+both static HTML templates and dynamic runtime chunk loaders.</p>
+<h3 id="understanding-subresource-integrity-sri">Understanding
+Subresource Integrity (SRI)</h3>
+<p>Subresource Integrity is a security specification defined by the W3C
+that allows web browsers to verify that resources they fetch (such as
+JavaScript or CSS files from CDNs) have not been unexpectedly
+manipulated. When a browser detects an <code>integrity</code> attribute
+on a <code>&lt;script&gt;</code> or <code>&lt;link&gt;</code> element,
+it hashes the fetched content using the specified algorithm and compares
+the result to the provided hash string. If the hashes match, the
+resource executes; if they differ, the browser blocks execution to
+prevent cross-site scripting (XSS) and code injection.</p>
+<p>An integrity attribute consists of the algorithm prefix followed by a
+base64-encoded cryptographic digest, formatted as
+<code>sha256-[hash]</code>, <code>sha384-[hash]</code>, or
+<code>sha512-[hash]</code>.</p>
+<h3 id="the-role-of-webpack-in-asset-integrity">The Role of Webpack in
+Asset Integrity</h3>
+<p>Webpack natively generates internal hashes (like
+<code>contenthash</code>, <code>chunkhash</code>, and
+<code>fullhash</code>) primarily for cache-busting, but these internal
+identifiers do not conform to the base64-encoded digest formats mandated
+by the SRI specification. To manage asset integrity in the browser,
+Webpack integrates with specialized plugins—most notably
+<code>webpack-subresource-integrity</code>—which interface with
+Webpack’s compilation lifecycle.</p>
+<h3 id="the-compilation-and-hashing-lifecycle">The Compilation and
+Hashing Lifecycle</h3>
+<p>Webpack manages cryptographic integrity through a multi-step pipeline
+during compilation:</p>
+<ol type="1">
+<li><p><strong>Asset Finalization</strong>: Webpack compiles code,
+performs tree-shaking, bundles modules, and emits raw asset buffers into
+the compilation pipeline.</p></li>
+<li><p><strong>Hooking Compilation Assets</strong>: The integrity plugin
+taps into the <code>Compilation.hooks.processAssets</code> lifecycle
+hook. This ensures all minification and optimization steps are completed
+so the final file content is locked.</p></li>
+<li><p><strong>Cryptographic Hashing</strong>: Using Node.js's native
+<code>crypto</code> module, the plugin reads the emitted binary buffer
+of each file. It applies the designated hashing algorithm (such as
+<code>sha256</code>, <code>sha384</code>, or <code>sha512</code>):</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> crypto <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;crypto&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> hash <span class="op">=</span> crypto<span class="op">.</span><span class="fu">createHash</span>(<span class="st">&#39;sha384&#39;</span>)<span class="op">.</span><span class="fu">update</span>(assetSource)<span class="op">.</span><span class="fu">digest</span>(<span class="st">&#39;base64&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> integrity <span class="op">=</span> <span class="vs">`sha384-</span><span class="sc">${</span>hash<span class="sc">}</span><span class="vs">`</span><span class="op">;</span></span></code></pre></div></li>
+<li><p><strong>Metadata Storage</strong>: The resulting digests are
+stored in the compilation metadata mapped to their corresponding chunk
+and asset filenames.</p></li>
+</ol>
+<h3 id="injecting-integrity-attributes-into-static-html">Injecting
+Integrity Attributes into Static HTML</h3>
+<p>When paired with <code>html-webpack-plugin</code>, the integrity
+plugin taps into HTML generation hooks (such as
+<code>alterAssetTags</code>). During this phase:</p>
+<ul>
+<li>Webpack locates <code>&lt;script&gt;</code> and
+<code>&lt;link&gt;</code> elements destined for the entry point
+HTML.</li>
+<li>It matches the asset URL to the generated digests in memory.</li>
+<li>It attaches the computed <code>integrity</code> string and sets
+<code>crossorigin="anonymous"</code> to ensure proper CORS validation,
+which is required by browsers for SRI checks on external assets.</li>
+</ul>
+<h3 id="handling-dynamic-chunks-and-lazy-loading">Handling Dynamic
+Chunks and Lazy Loading</h3>
+<p>A significant challenge in modern applications is maintaining
+integrity across dynamically imported files (e.g.,
+<code>import('./module')</code>). Webpack solves this at the runtime
+level:</p>
+<ol type="1">
+<li><strong>Runtime Modification</strong>: The integrity plugin modifies
+Webpack's dynamic chunk-loading runtime code (traditionally
+<code>jsonpScript</code> or the chunk-loading template).</li>
+<li><strong>Manifest Generation</strong>: Webpack builds an in-memory
+map of chunk IDs to their cryptographic hashes.</li>
+<li><strong>Dynamic Script Creation</strong>: When a dynamic import
+triggers at runtime, Webpack’s internal <code>require.ensure</code> or
+<code>import()</code> function creates a new <code>&lt;script&gt;</code>
+tag. The runtime intercepts this creation, looks up the target chunk ID
+in the embedded manifest, and applies the <code>integrity</code> and
+<code>crossorigin</code> properties directly to the DOM element before
+appending it to the document head.</li>
+</ol>
+<h3 id="configuration-and-algorithm-selection">Configuration and
+Algorithm Selection</h3>
+<p>Developers configure algorithm preferences in their Webpack
+configuration via the plugin options:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { SubresourceIntegrityPlugin } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack-subresource-integrity&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> HtmlWebpackPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;html-webpack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">crossOriginLoading</span><span class="op">:</span> <span class="st">&#39;anonymous&#39;</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">HtmlWebpackPlugin</span>()<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">SubresourceIntegrityPlugin</span>({</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>      <span class="dt">hashFuncNames</span><span class="op">:</span> [<span class="st">&#39;sha384&#39;</span><span class="op">,</span> <span class="st">&#39;sha512&#39;</span>]<span class="op">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>      <span class="dt">enabled</span><span class="op">:</span> <span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">NODE_ENV</span> <span class="op">===</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Choosing stronger algorithms like SHA-384 or SHA-512 increases
+collision resistance with negligible performance overhead during build
+time. By pairing compilation hooks with runtime script overrides,
+Webpack ensures that both static entry files and lazy-loaded
+asynchronous bundles remain cryptographically verified from deployment
+through execution.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

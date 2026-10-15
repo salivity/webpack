@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Role of Less-Loader in Webpack - webpack</title>
+    <meta name="description" content="This article explains the function and significance of less-loader when bundling web applications with Webpack. By examining how it compiles Less into standard CSS, fits into Webpack&#39;s loader execution pipeline, and handles tasks like variable injection a">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/the-role-of-less-loader-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="The Role of Less-Loader in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/the-role-of-less-loader-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the function and significance of less-loader when bundling web applications with Webpack. By examining how it compiles Less into standard CSS, fits into Webpack&#39;s loader execution pipeline, and handles tasks like variable injection a" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="the-role-of-less-loader-in-webpack">The Role of Less-Loader in
+Webpack</h1>
+<p>This article explains the function and significance of
+<code>less-loader</code> when bundling web applications with Webpack. By
+examining how it compiles Less into standard CSS, fits into Webpack's
+loader execution pipeline, and handles tasks like variable injection and
+path resolution, you will understand how <code>less-loader</code>
+bridges the gap between dynamic stylesheets and modern build
+systems.</p>
+<h2 id="what-is-less-loader">What is Less-Loader?</h2>
+<p>Webpack natively understands only JavaScript and JSON files. To
+process other asset types, it relies on loaders. The primary role of
+<code>less-loader</code> is to act as an adapter between Webpack and the
+underlying Less compiler. When Webpack encounters a <code>.less</code>
+file, <code>less-loader</code> intercepts it, compiles the Less
+code—including variables, mixins, and nested rules—into plain CSS, and
+passes the result downstream.</p>
+<h2 id="position-in-the-loader-chain">Position in the Loader Chain</h2>
+<p>Loaders in Webpack execute from right to left (or bottom to top in
+configuration arrays). Because of this design, <code>less-loader</code>
+serves as the first step in a typical styling pipeline:</p>
+<ol type="1">
+<li><strong><code>less-loader</code></strong>: Compiles
+<code>.less</code> files into raw CSS strings.</li>
+<li><strong><code>css-loader</code></strong>: Interprets
+<code>@import</code> and <code>url()</code> statements inside the
+compiled CSS and converts the stylesheet into a JavaScript module.</li>
+<li><strong><code>style-loader</code> or
+<code>MiniCssExtractPlugin.loader</code></strong>: Injects the final CSS
+into the DOM inside <code>&lt;style&gt;</code> tags during development,
+or extracts it into separate static <code>.css</code> files for
+production builds.</li>
+</ol>
+<p>Without <code>less-loader</code> at the base of this sequence,
+downstream CSS loaders would encounter syntax errors when trying to
+interpret Less-specific syntax.</p>
+<h2 id="advanced-features-and-capabilities">Advanced Features and
+Capabilities</h2>
+<p>Beyond basic compilation, <code>less-loader</code> provides several
+essential features for complex projects:</p>
+<ul>
+<li><strong>Webpack Path Resolution</strong>: It integrates Less's
+<code>@import</code> statements with Webpack's module resolution system,
+allowing developers to import stylesheets directly from
+<code>node_modules</code> or use configured path aliases.</li>
+<li><strong>Variable Overriding</strong>: It exposes options to inject
+or modify Less variables dynamically at build time. This feature is
+commonly used to apply custom themes to UI libraries such as Ant
+Design.</li>
+<li><strong>Source Map Support</strong>: When enabled,
+<code>less-loader</code> generates source maps that map compiled CSS
+back to original <code>.less</code> files and line numbers, making
+browser debugging straightforward.</li>
+<li><strong>Plugin Integration</strong>: It allows configuration of Less
+plugins directly within <code>webpack.config.js</code>, enabling
+extended capabilities such as automatic clean CSS minification or custom
+functions.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

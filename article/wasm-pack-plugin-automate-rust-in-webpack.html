@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wasm-pack-plugin: Automate Rust in Webpack - webpack</title>
+    <meta name="description" content="This article explores wasm-pack-plugin, a Webpack plugin designed to integrate Rust code directly into modern JavaScript build pipelines. It explains the core purpose of the plugin, details the underlying mechanics of how it automates compiling Rust code">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/wasm-pack-plugin-automate-rust-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="wasm-pack-plugin: Automate Rust in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/wasm-pack-plugin-automate-rust-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores wasm-pack-plugin, a Webpack plugin designed to integrate Rust code directly into modern JavaScript build pipelines. It explains the core purpose of the plugin, details the underlying mechanics of how it automates compiling Rust code" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="wasm-pack-plugin-automate-rust-in-webpack">wasm-pack-plugin:
+Automate Rust in Webpack</h1>
+<p>This article explores <code>wasm-pack-plugin</code>, a Webpack plugin
+designed to integrate Rust code directly into modern JavaScript build
+pipelines. It explains the core purpose of the plugin, details the
+underlying mechanics of how it automates compiling Rust code into
+WebAssembly (Wasm) during the Webpack build lifecycle, and highlights
+the practical advantages of using it in frontend workflows.</p>
+<h3 id="what-is-wasm-pack-plugin">What is wasm-pack-plugin?</h3>
+<p><code>wasm-pack-plugin</code> is an npm package that bridges the
+Rust-generated WebAssembly toolchain with Webpack. Typically, compiling
+Rust code into WebAssembly requires running CLI tools like
+<code>wasm-pack</code> manually, which generates JavaScript bindings via
+<code>wasm-bindgen</code> along with the <code>.wasm</code> binary.
+<code>wasm-pack-plugin</code> eliminates this manual step by hooking
+into Webpack's build process, allowing developers to import Rust code as
+if it were any standard JavaScript or TypeScript module.</p>
+<h3 id="how-wasm-pack-plugin-automates-rust-compilation">How
+wasm-pack-plugin Automates Rust Compilation</h3>
+<p>The plugin automates the build pipeline through several
+interconnected steps within Webpack's compilation cycle:</p>
+<h4 id="1-lifecycle-hook-interception">1. Lifecycle Hook
+Interception</h4>
+<p>When Webpack initializes, <code>wasm-pack-plugin</code> taps into
+Webpack's compilation hooks (such as <code>run</code> and
+<code>watchRun</code>). Before Webpack processes standard JavaScript
+assets, the plugin ensures that the Rust crate is compiled and up to
+date.</p>
+<h4 id="2-triggering-wasm-pack">2. Triggering wasm-pack</h4>
+<p>The plugin invokes the <code>wasm-pack build</code> command under the
+hood. It targets the Rust crate specified in the plugin configuration,
+typically compiling the code with a target format suitable for bundlers
+(<code>--target bundler</code>). During this stage:</p>
+<ul>
+<li>Cargo compiles the Rust source code into a WebAssembly binary
+(<code>.wasm</code>).</li>
+<li><code>wasm-bindgen</code> creates the necessary JavaScript glue code
+and TypeScript type definitions (<code>.d.ts</code>), enabling seamless
+interop between the WebAssembly runtime and JavaScript execution
+context.</li>
+<li>The output files are placed into a specified output directory
+(commonly named <code>pkg</code>).</li>
+</ul>
+<h4 id="3-watching-for-file-changes">3. Watching for File Changes</h4>
+<p>During development mode (<code>webpack --watch</code> or
+<code>webpack-dev-server</code>), the plugin monitors the Rust crate
+directory for file modifications. When a <code>.rs</code> file or
+<code>Cargo.toml</code> is modified:</p>
+<ul>
+<li>The plugin detects the change and triggers an incremental
+recompilation using <code>wasm-pack</code>.</li>
+<li>Once compilation finishes, Webpack continues its standard bundling
+process.</li>
+<li>Changes propagate through Webpack's Hot Module Replacement (HMR) or
+trigger a browser reload.</li>
+</ul>
+<h4 id="4-module-resolution">4. Module Resolution</h4>
+<p>Because the generated <code>pkg</code> folder contains a standard
+<code>package.json</code> and ES module exports, Webpack can resolve it
+natively. Developers can import exported Rust functions directly into
+JavaScript:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="op">*</span> <span class="im">as</span> wasm <span class="im">from</span> <span class="st">&#39;../crate/pkg&#39;</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>wasm<span class="op">.</span><span class="fu">greet</span>()<span class="op">;</span></span></code></pre></div>
+<h3 id="basic-configuration">Basic Configuration</h3>
+<p>Integrating the plugin requires adding it to the <code>plugins</code>
+array in <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> WasmPackPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;@wasm-tool/wasm-pack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">WasmPackPlugin</span>({</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>      <span class="dt">crateDirectory</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;crate&#39;</span>)<span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>      <span class="dt">outDir</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;crate/pkg&#39;</span>)<span class="op">,</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  <span class="dt">experiments</span><span class="op">:</span> {</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="dt">asyncWebAssembly</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="key-advantages">Key Advantages</h3>
+<ul>
+<li><strong>Zero-Friction Development:</strong> Developers do not need
+to run separate terminal tabs for Rust compilation and Webpack
+bundling.</li>
+<li><strong>Unified Build Process:</strong> Continuous Integration (CI)
+systems can produce complete production bundles using a single
+<code>npm run build</code> or <code>webpack</code> command, provided
+Rust and <code>wasm-pack</code> are installed in the environment.</li>
+<li><strong>Type Safety:</strong> Automatically generated TypeScript
+declaration files provide immediate autocomplete and type checking
+across language boundaries.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

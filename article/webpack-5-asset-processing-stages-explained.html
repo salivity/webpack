@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack 5 Asset Processing Stages Explained - webpack</title>
+    <meta name="description" content="Webpack 5 introduced the processAssets hook on the Compilation object to unify and standardize how plugins emit, transform, and optimize output files. Instead of relying on multiple disjointed hooks from earlier versions, asset lifecycle modifications are">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-5-asset-processing-stages-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack 5 Asset Processing Stages Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-5-asset-processing-stages-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 introduced the processAssets hook on the Compilation object to unify and standardize how plugins emit, transform, and optimize output files. Instead of relying on multiple disjointed hooks from earlier versions, asset lifecycle modifications are" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-5-asset-processing-stages-explained">Webpack 5 Asset
+Processing Stages Explained</h1>
+<p>Webpack 5 introduced the <code>processAssets</code> hook on the
+<code>Compilation</code> object to unify and standardize how plugins
+emit, transform, and optimize output files. Instead of relying on
+multiple disjointed hooks from earlier versions, asset lifecycle
+modifications are now organized into distinct execution stages defined
+by constants on the <code>Compilation</code> class. This article details
+every asset processing stage available in Webpack 5 in their exact order
+of execution, detailing their specific purposes in the asset compilation
+pipeline.</p>
+<hr />
+<h3 id="the-processassets-hook">The <code>processAssets</code> Hook</h3>
+<p>Plugins tap into the <code>compilation.hooks.processAssets</code>
+hook by supplying an options object containing a <code>name</code> and a
+<code>stage</code>. Webpack sorts all registered callbacks by their
+stage value (from lowest to highest) and executes them sequentially.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>compilation<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">processAssets</span><span class="op">.</span><span class="fu">tap</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;MyPlugin&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">stage</span><span class="op">:</span> Compilation<span class="op">.</span><span class="at">PROCESS_ASSETS_STAGE_OPTIMIZE</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  (assets) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Modify or inspect compilation assets here</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<hr />
+<h3 id="webpack-5-asset-processing-stages-in-order-of-execution">Webpack
+5 Asset Processing Stages in Order of Execution</h3>
+<p>Below are the official
+<code>Compilation.PROCESS_ASSETS_STAGE_*</code> constants provided by
+Webpack 5:</p>
+<h4 id="1-process_assets_stage_additional-stage--2000">1.
+<code>PROCESS_ASSETS_STAGE_ADDITIONAL</code> (Stage:
+<code>-2000</code>)</h4>
+<p>Used to add extra assets to the compilation before any core
+processing begins. This is ideal for plugins that generate initial,
+standalone assets that should undergo the full compilation and
+optimization pipeline.</p>
+<h4 id="2-process_assets_stage_pre_process-stage--1000">2.
+<code>PROCESS_ASSETS_STAGE_PRE_PROCESS</code> (Stage:
+<code>-1000</code>)</h4>
+<p>Reserved for early transformations and basic preprocessing on
+existing assets before other plugins begin deriving or refining
+them.</p>
+<h4 id="3-process_assets_stage_derived-stage--500">3.
+<code>PROCESS_ASSETS_STAGE_DERIVED</code> (Stage:
+<code>-500</code>)</h4>
+<p>Used to derive new assets directly from existing ones. Examples
+include extracting source maps, generating compressed alternate
+versions, or creating secondary manifest data based on initial
+outputs.</p>
+<h4 id="4-process_assets_stage_paint-stage--250">4.
+<code>PROCESS_ASSETS_STAGE_PAINT</code> (Stage: <code>-250</code>)</h4>
+<p>Intended for non-destructive visual or superficial modifications to
+existing assets without altering their logical functionality or
+structural makeup.</p>
+<h4 id="5-process_assets_stage_additions-stage--100">5.
+<code>PROCESS_ASSETS_STAGE_ADDITIONS</code> (Stage:
+<code>-100</code>)</h4>
+<p>Used for adding secondary or supporting assets to the compilation
+after primary asset transformations have occurred, but before
+optimization begins.</p>
+<h4 id="6-process_assets_stage_none-stage-0">6.
+<code>PROCESS_ASSETS_STAGE_NONE</code> (Stage: <code>0</code>)</h4>
+<p>The default stage assigned when no specific stage is declared in the
+plugin configuration. It runs before active optimizations start.</p>
+<h4 id="7-process_assets_stage_optimize-stage-100">7.
+<code>PROCESS_ASSETS_STAGE_OPTIMIZE</code> (Stage:
+<code>100</code>)</h4>
+<p>The standard stage for general optimization of existing assets. This
+is commonly where code minification (such as Terser), tree-shaking
+adjustments, and dead-code removal on output strings take place.</p>
+<h4 id="8-process_assets_stage_optimize_count-stage-200">8.
+<code>PROCESS_ASSETS_STAGE_OPTIMIZE_COUNT</code> (Stage:
+<code>200</code>)</h4>
+<p>Designed specifically for reducing the total number of assets.
+Plugins that merge chunks, combine small assets, or bundle multiple
+styles/scripts together should hook into this stage.</p>
+<h4 id="9-process_assets_stage_optimize_compatibility-stage-300">9.
+<code>PROCESS_ASSETS_STAGE_OPTIMIZE_COMPATIBILITY</code> (Stage:
+<code>300</code>)</h4>
+<p>Used for compatibility-related transformations, such as injecting
+polyfills, applying vendor prefixes, or adjusting syntax for older
+browser support.</p>
+<h4 id="10-process_assets_stage_optimize_size-stage-400">10.
+<code>PROCESS_ASSETS_STAGE_OPTIMIZE_SIZE</code> (Stage:
+<code>400</code>)</h4>
+<p>Intended for size-reduction passes that do not alter code logic, such
+as stripping comments, aggressive whitespace reduction, or running gzip
+and Brotli pre-compression routines.</p>
+<h4 id="11-process_assets_stage_dev_tooling-stage-500">11.
+<code>PROCESS_ASSETS_STAGE_DEV_TOOLING</code> (Stage:
+<code>500</code>)</h4>
+<p>Used to attach developer tooling assets or augment existing ones,
+such as appending development source map comments or injecting debugging
+anchors.</p>
+<h4 id="12-process_assets_stage_optimize_inline-stage-700">12.
+<code>PROCESS_ASSETS_STAGE_OPTIMIZE_INLINE</code> (Stage:
+<code>700</code>)</h4>
+<p>Used to inline smaller assets directly into larger assets (for
+example, base64 data URIs for images or inlining critical CSS directly
+into HTML output).</p>
+<h4 id="13-process_assets_stage_summarize-stage-1000">13.
+<code>PROCESS_ASSETS_STAGE_SUMMARIZE</code> (Stage:
+<code>1000</code>)</h4>
+<p>Reserved for plugins that inspect the final list of assets to produce
+summaries, statistics, or inventory manifests (e.g.,
+<code>manifest.json</code> or <code>asset-manifest.json</code>).</p>
+<h4 id="14-process_assets_stage_optimize_hash-stage-2000">14.
+<code>PROCESS_ASSETS_STAGE_OPTIMIZE_HASH</code> (Stage:
+<code>2000</code>)</h4>
+<p>Used to optimize or recalculate hashes attached to asset filenames to
+ensure proper cache-busting behavior.</p>
+<h4 id="15-process_assets_stage_optimize_transfer-stage-3000">15.
+<code>PROCESS_ASSETS_STAGE_OPTIMIZE_TRANSFER</code> (Stage:
+<code>3000</code>)</h4>
+<p>Used for operations focused on asset delivery and HTTP transport,
+such as generating prefetch/preload link headers, Service Worker
+pre-cache manifests, or HTTP/2 push descriptors.</p>
+<h4 id="16-process_assets_stage_analyse-stage-4000">16.
+<code>PROCESS_ASSETS_STAGE_ANALYSE</code> (Stage:
+<code>4000</code>)</h4>
+<p>Dedicated to inspecting, measuring, and analyzing the finalized set
+of assets. Bundle visualizers, size checkers, and performance budget
+validators hook in here.</p>
+<h4 id="17-process_assets_stage_report-stage-10000">17.
+<code>PROCESS_ASSETS_STAGE_REPORT</code> (Stage:
+<code>10000</code>)</h4>
+<p>The final stage in the asset lifecycle. It is used exclusively to
+generate build reports, print completion summaries to the terminal, or
+send build metrics to remote monitoring services.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Deduplication in Nested Dynamic Imports - webpack</title>
+    <meta name="description" content="When modern web applications rely on deeply nested asynchronous dynamic imports (import()) for code splitting, bundling strategies risk duplicating shared dependencies across different output files. Webpack prevents this redundancy by traversing the entir">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-deduplication-in-nested-dynamic-imports">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Deduplication in Nested Dynamic Imports - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-deduplication-in-nested-dynamic-imports" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When modern web applications rely on deeply nested asynchronous dynamic imports (import()) for code splitting, bundling strategies risk duplicating shared dependencies across different output files. Webpack prevents this redundancy by traversing the entir" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-deduplication-in-nested-dynamic-imports">Webpack
+Deduplication in Nested Dynamic Imports</h1>
+<p>When modern web applications rely on deeply nested asynchronous
+dynamic imports (<code>import()</code>) for code splitting, bundling
+strategies risk duplicating shared dependencies across different output
+files. Webpack prevents this redundancy by traversing the entire module
+dependency graph, applying the heuristic-driven
+<code>SplitChunksPlugin</code>, and managing loaded modules through a
+centralized runtime registry. This article explains how Webpack's
+compilation phases and runtime mechanics work together to ensure that
+common code is extracted into reusable chunks and loaded only once,
+regardless of how deeply an import is nested.</p>
+<h3 id="dependency-graph-analysis-and-chunk-groups">Dependency Graph
+Analysis and Chunk Groups</h3>
+<p>Webpack does not treat dynamic <code>import()</code> calls as
+isolated silos. During compilation, the parser constructs a
+comprehensive Abstract Syntax Tree (AST) of the entire codebase. Every
+dynamic <code>import()</code> acts as a split point, creating a new
+<code>ChunkGroup</code>.</p>
+<p>When imports are deeply nested—such as Module A dynamically importing
+Module B, which dynamically imports Module C—Webpack constructs a
+parent-child relationship within the chunk graph. Instead of immediately
+writing discrete files for each branch, Webpack retains a holistic map
+of which modules are requested across every potential execution
+path.</p>
+<h3 id="the-role-of-splitchunksplugin">The Role of
+<code>SplitChunksPlugin</code></h3>
+<p>The primary engine behind deduplication is the built-in
+<code>SplitChunksPlugin</code>. Enabled by default in production mode,
+this plugin evaluates chunks against a set of heuristics to determine
+when code should be pulled into an independent, shared bundle.</p>
+<ol type="1">
+<li><strong>Module Usage Counting (<code>minChunks</code>):</strong> The
+plugin tracks the number of chunk groups referencing a specific module.
+By default, if a module is shared between two or more asynchronous
+chunks, it becomes a candidate for extraction.</li>
+<li><strong>Chunk Extraction:</strong> If a shared utility is required
+deep inside separate dynamic branches, Webpack extracts that utility
+from both branches and isolates it into a new, separate chunk.</li>
+<li><strong>Threshold Evaluation:</strong> Webpack checks constraints
+like minimum size (<code>minSize</code>), maximum parallel requests, and
+cache group rules before creating a chunk. If extracting a tiny module
+would create excessive HTTP overhead, Webpack may allow duplication;
+otherwise, it extracts the code into a shared asset.</li>
+</ol>
+<h3 id="chunk-graph-topological-resolution">Chunk Graph Topological
+Resolution</h3>
+<p>In deeply nested scenarios, dependencies can form complex
+asynchronous trees. Webpack's chunk graph algorithm determines the
+optimal placement for shared modules:</p>
+<ul>
+<li><strong>Common Ancestor Placement:</strong> If all branches that
+require a shared module originate from a common dynamic parent, Webpack
+can place that module into the parent chunk so it is pre-loaded before
+the nested imports execute.</li>
+<li><strong>Sibling Async Chunks:</strong> If the nested modules belong
+to completely independent branches (e.g., dynamic Route 1 importing deep
+module X, and dynamic Route 2 importing deep module X), Webpack
+generates a standalone chunk for module X. When either route loads, the
+Webpack runtime generates parallel requests for both the targeted route
+chunk and the shared dependency chunk.</li>
+</ul>
+<h3 id="runtime-module-registry-and-execution-caching">Runtime Module
+Registry and Execution Caching</h3>
+<p>Preventing duplicate code extends beyond file size optimization; it
+also prevents duplicate execution state in the browser.</p>
+<p>Webpack embeds a small runtime inside the initial entry bundle. This
+runtime includes:</p>
+<ul>
+<li><strong>The Module Registry:</strong> An internal object mapping
+module IDs to their compiled factory functions.</li>
+<li><strong>The Execution Cache:</strong> A hash map storing the exports
+of modules that have already been executed.</li>
+<li><strong>Chunk Loading Promises:</strong> An internal tracking
+mechanism (<code>installedChunks</code>) that monitors in-flight script
+requests.</li>
+</ul>
+<p>Even if an edge case causes a module to be included in multiple
+chunks, or if two nested dynamic imports request the same chunk
+simultaneously, Webpack checks its internal cache prior to execution. If
+a module has already been loaded and executed, Webpack returns the
+cached <code>module.exports</code> object immediately, ensuring state
+consistency and zero duplicate execution.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Invalidates Persistent Cache Entries - webpack</title>
+    <meta name="description" content="Webpack 5 introduced persistent filesystem caching to dramatically improve build performance across independent compilation runs. To ensure that cached assets never lead to stale or corrupted output, Webpack utilizes a multi-layered cache invalidation str">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-invalidates-persistent-cache-entries">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Invalidates Persistent Cache Entries - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-invalidates-persistent-cache-entries" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 introduced persistent filesystem caching to dramatically improve build performance across independent compilation runs. To ensure that cached assets never lead to stale or corrupted output, Webpack utilizes a multi-layered cache invalidation str" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-invalidates-persistent-cache-entries">How Webpack
+Invalidates Persistent Cache Entries</h1>
+<p>Webpack 5 introduced persistent filesystem caching to dramatically
+improve build performance across independent compilation runs. To ensure
+that cached assets never lead to stale or corrupted output, Webpack
+utilizes a multi-layered cache invalidation strategy governed by a
+snapshot system. This strategy relies on filesystem timestamps, content
+hashes, dependency graph propagation, and specialized handling of
+external packages to accurately detect changes and invalidate cache
+entries.</p>
+<h3 id="the-snapshot-system">The Snapshot System</h3>
+<p>At the core of Webpack's persistent cache invalidation is the
+snapshot mechanism. When Webpack builds an asset, it creates a snapshot
+recording the state of every dependency involved in the operation. These
+snapshots are categorized into different contexts:</p>
+<ul>
+<li><strong>Module Snapshots:</strong> Capture the state of source files
+and local project modules.</li>
+<li><strong>Resolve Snapshots:</strong> Capture the state of path
+resolutions, such as symlinks and module directories.</li>
+<li><strong>Build Dependency Snapshots:</strong> Capture dependencies
+critical to the build itself, such as configuration files and
+loaders.</li>
+</ul>
+<p>Each snapshot records metadata—primarily modification timestamps
+(<code>mtime</code>) and cryptographic content hashes—for the referenced
+files and directories.</p>
+<h3 id="timestamp-and-hash-comparison">Timestamp and Hash
+Comparison</h3>
+<p>When a new compilation begins, Webpack queries the filesystem to
+compare the current state of files against their stored snapshots. To
+maintain high performance, Webpack first evaluates modification
+timestamps:</p>
+<ol type="1">
+<li><strong>Timestamp Check:</strong> If the file's <code>mtime</code>
+matches the snapshot, Webpack assumes the file has not changed and
+retains the cached module.</li>
+<li><strong>Content Hash Check:</strong> If the timestamp has changed,
+Webpack reads the file and computes its content hash. If the hash
+matches the snapshot's recorded hash (for example, if a file was saved
+without changing its content), the cache remains valid, preventing
+unnecessary rebuilds. If the hash differs, the entry is
+invalidated.</li>
+</ol>
+<h3 id="graph-propagation-and-module-re-evaluation">Graph Propagation
+and Module Re-evaluation</h3>
+<p>Webpack's compilation model is built on an interconnected module
+graph. When a specific module's cache entry is invalidated due to a file
+change, Webpack does not discard the entire project cache. Instead, it
+invalidates only the changed module and traces its connections.</p>
+<p>The compiler re-executes the loaders and parsers for the modified
+module, detects any changes to exported or imported identifiers, and
+determines whether dependent modules or chunk assets need to be updated.
+If the module's interface remains compatible, the cache invalidation
+remains localized; if imports or exports change, dependent chunks and
+modules are marked dirty and recompiled.</p>
+<h3 id="managed-paths-for-external-dependencies">Managed Paths for
+External Dependencies</h3>
+<p>Hashing every file inside <code>node_modules</code> during each build
+would degrade performance. Webpack addresses this using
+<code>managedPaths</code> and <code>immutablePaths</code>.</p>
+<p>By default, Webpack treats paths containing <code>node_modules</code>
+as managed by package managers (such as npm, Yarn, or pnpm). Instead of
+monitoring individual files within installed packages, Webpack tracks
+package metadata—primarily <code>package.json</code> versions and
+lockfiles. Webpack assumes that package contents remain static unless
+the package version changes or a package is added or removed. When a
+change in <code>package.json</code> or a lockfile is detected, the cache
+entries corresponding to the affected packages are invalidated.</p>
+<h3 id="build-dependencies-and-global-cache-invalidation">Build
+Dependencies and Global Cache Invalidation</h3>
+<p>Dependency changes can occur outside the source code itself, such as
+updates to build tools, plugins, or configurations. Webpack handles this
+through <code>cache.buildDependencies</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">cache</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;filesystem&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">buildDependencies</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">config</span><span class="op">:</span> [<span class="bu">__filename</span>]<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When files listed in <code>buildDependencies</code> (such as
+<code>webpack.config.js</code> or custom build scripts) are modified,
+Webpack treats the entire cache configuration as altered and invalidates
+the entire cache store. Additionally, developers can supply a
+<code>cache.version</code> string, which acts as a manual invalidation
+trigger to purge all persistent cache entries across the project.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Using Polyfill.io in a Webpack Application Workflow - webpack</title>
+    <meta name="description" content="Integrating Polyfill.io or its trusted alternative, Polyfill-Fastly, into a Webpack workflow allows modern web applications to dynamically serve browser-specific polyfills at runtime based on the client&#39;s User-Agent header. By shifting polyfill delivery f">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/using-polyfill-io-in-a-webpack-application-workflow">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Using Polyfill.io in a Webpack Application Workflow - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/using-polyfill-io-in-a-webpack-application-workflow" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Integrating Polyfill.io or its trusted alternative, Polyfill-Fastly, into a Webpack workflow allows modern web applications to dynamically serve browser-specific polyfills at runtime based on the client&#39;s User-Agent header. By shifting polyfill delivery f" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="using-polyfillio-in-a-webpack-application-workflow">Using
+Polyfill.io in a Webpack Application Workflow</h1>
+<p>Integrating Polyfill.io or its trusted alternative, Polyfill-Fastly,
+into a Webpack workflow allows modern web applications to dynamically
+serve browser-specific polyfills at runtime based on the client's
+<code>User-Agent</code> header. By shifting polyfill delivery from
+static Webpack build bundles to an external edge-computed CDN,
+developers can significantly reduce JavaScript bundle sizes for modern
+browsers while ensuring backward compatibility for older clients.</p>
+<h3 id="understanding-polyfillio-and-polyfill-fastly">Understanding
+Polyfill.io and Polyfill-Fastly</h3>
+<p>Polyfill.io is an automated service designed to inspect the incoming
+browser's <code>User-Agent</code> string and return only the polyfills
+required by that specific browser. When a modern browser like Chrome
+requests the script, it receives nearly an empty file. When an older
+browser like Internet Explorer or an outdated Safari version requests
+it, the service compiles and returns the exact ECMAScript and Web API
+polyfills missing from that engine.</p>
+<p>Due to the malicious supply chain takeover of the original
+<code>polyfill.io</code> domain in 2024, Fastly and Cloudflare created
+secure, drop-in replacement mirrors. The <code>polyfill-fastly</code>
+service (hosted by Fastly) provides the same dynamic compilation
+capabilities over a secure infrastructure, allowing teams to use dynamic
+polyfills without exposing users to compromised endpoints.</p>
+<h3 id="how-dynamic-polyfilling-changes-the-webpack-workflow">How
+Dynamic Polyfilling Changes the Webpack Workflow</h3>
+<p>In a traditional Webpack setup, polyfills are typically bundled
+statically using Babel and <code>core-js</code>:</p>
+<ol type="1">
+<li><code>@babel/preset-env</code> targets a set of browsers defined in
+a <code>.browserslistrc</code> file.</li>
+<li>Webpack analyzes imports and inlines the necessary
+<code>core-js</code> modules directly into the generated bundles.</li>
+<li>Every user downloads these polyfills, even if their browser already
+supports the features natively.</li>
+</ol>
+<p>When adopting Polyfill-Fastly, this static bundling is bypassed.
+Webpack is configured to compile code targeting modern ES specifications
+without inlining polyfills, and polyfilling responsibility is delegated
+to the CDN layer prior to the execution of your Webpack bundles.</p>
+<h3 id="implementing-polyfill-fastly-in-webpack">Implementing
+Polyfill-Fastly in Webpack</h3>
+<h4 id="1-adjusting-babel-configuration">1. Adjusting Babel
+Configuration</h4>
+<p>To prevent Webpack and Babel from bundling duplicate polyfills,
+disable static polyfill injection in your Babel configuration:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;presets&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="ot">[</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;@babel/preset-env&quot;</span><span class="ot">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;useBuiltIns&quot;</span><span class="fu">:</span> <span class="kw">false</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Setting <code>useBuiltIns: false</code> instructs Babel to transpile
+modern syntax (such as arrow functions or optional chaining) while
+leaving built-in global objects (such as <code>Promise</code>,
+<code>fetch</code>, or <code>Array.prototype.flat</code>) untouched for
+the CDN to polyfill.</p>
+<h4 id="2-injecting-the-script-via-htmlwebpackplugin">2. Injecting the
+Script via HtmlWebpackPlugin</h4>
+<p>The external polyfill script must execute before your main Webpack
+bundle runs. The most straightforward approach is injecting the script
+into your HTML template using <code>html-webpack-plugin</code>.</p>
+<p>In your <code>index.html</code> template:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode html"><code class="sourceCode html"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;!DOCTYPE</span> html<span class="dt">&gt;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">html</span><span class="ot"> lang</span><span class="op">=</span><span class="st">&quot;en&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">head</span><span class="dt">&gt;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">meta</span><span class="ot"> charset</span><span class="op">=</span><span class="st">&quot;UTF-8&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">title</span><span class="dt">&gt;</span>Application<span class="dt">&lt;/</span><span class="kw">title</span><span class="dt">&gt;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">&lt;!-- Polyfill-Fastly must load before the application bundle --&gt;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">script</span><span class="ot"> src</span><span class="op">=</span><span class="st">&quot;https://polyfill-fastly.io/v3/polyfill.min.js?features=default,fetch,Promise&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">script</span><span class="dt">&gt;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">head</span><span class="dt">&gt;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">body</span><span class="dt">&gt;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> id</span><span class="op">=</span><span class="st">&quot;root&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">body</span><span class="dt">&gt;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">html</span><span class="dt">&gt;</span></span></code></pre></div>
+<p>Alternatively, configure the URL via the
+<code>templateParameters</code> option in your
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> HtmlWebpackPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;html-webpack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">HtmlWebpackPlugin</span>({</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">template</span><span class="op">:</span> <span class="st">&#39;public/index.html&#39;</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">polyfillUrl</span><span class="op">:</span> <span class="st">&#39;https://polyfill-fastly.io/v3/polyfill.min.js?features=default,fetch&#39;</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="benefits-and-operational-considerations">Benefits and
+Operational Considerations</h3>
+<ul>
+<li><strong>Reduced Bundle Overhead:</strong> Eliminating static
+<code>core-js</code> imports typically shaves 30KB to 90KB of minified,
+gzipped JavaScript from entry point bundles.</li>
+<li><strong>Faster Parse Times:</strong> Modern browsers do not have to
+parse or compile polyfills they do not need, improving Time to
+Interactive (TTI).</li>
+<li><strong>Render-Blocking Dependency:</strong> Loading the script
+synchronously blocks page execution until the CDN responds. To mitigate
+latency risks, ensure HTTP/2 or HTTP/3 is enabled, use a reliable
+provider like Fastly, and configure appropriate <code>connect-src</code>
+and <code>script-src</code> policies in your Content Security Policy
+(CSP).</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Supports Top-Level Await - webpack</title>
+    <meta name="description" content="This article provides an overview of how Webpack implements Top-Level Await through its experimental configuration flag. It covers how Webpack classifies modules with top-level await expressions, transforms synchronous dependency graphs into asynchronous">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-supports-top-level-await">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Supports Top-Level Await - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-supports-top-level-await" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an overview of how Webpack implements Top-Level Await through its experimental configuration flag. It covers how Webpack classifies modules with top-level await expressions, transforms synchronous dependency graphs into asynchronous" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-supports-top-level-await">How Webpack Supports
+Top-Level Await</h1>
+<p>This article provides an overview of how Webpack implements Top-Level
+Await through its experimental configuration flag. It covers how Webpack
+classifies modules with top-level <code>await</code> expressions,
+transforms synchronous dependency graphs into asynchronous execution
+chains, and manages runtime Promise orchestration across output
+bundles.</p>
+<h2 id="enabling-top-level-await">Enabling Top-Level Await</h2>
+<p>Top-Level Await allows developers to use the <code>await</code>
+keyword outside of <code>async</code> functions at the root level of a
+module. In Webpack 5, this capability is activated via the
+<code>experiments</code> configuration option:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">experiments</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">topLevelAwait</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>While enabled by default in recent Webpack 5 minor releases when
+targeting modern environments, setting this flag explicitly instructs
+the Webpack parser and compiler to treat top-level <code>await</code>
+statements as valid syntax rather than throwing a build-time parsing
+error.</p>
+<h2 id="asynchronous-module-classification">Asynchronous Module
+Classification</h2>
+<p>When Webpack parses an ECMAScript module (ESM) and encounters a
+root-level <code>await</code>, it automatically marks that module as an
+<strong>Async Module</strong>.</p>
+<p>In standard Webpack bundling, modules execute synchronously during
+the initial evaluation phase. When a module is classified as
+asynchronous, Webpack fundamentally changes how that module's code is
+wrapped inside the bundle:</p>
+<ol type="1">
+<li><strong>Promise Wrapping:</strong> The module’s execution body is
+wrapped in an internal runtime structure that returns a Promise.</li>
+<li><strong>Export Deferral:</strong> Exports from the module are not
+immediately available until the returned Promise resolves.</li>
+</ol>
+<h2 id="dependency-graph-propagation">Dependency Graph Propagation</h2>
+<p>Top-Level Await is "contagious" across the dependency graph. When
+Module A imports Module B, and Module B contains a top-level
+<code>await</code>, Module A also becomes an asynchronous module by
+extension.</p>
+<p>Webpack handles this propagation during the compilation phase:</p>
+<ul>
+<li><strong>Graph Analysis:</strong> Webpack traces all static imports
+back to the module containing the <code>await</code>.</li>
+<li><strong>Execution Ordering:</strong> Webpack builds a topological
+execution order ensuring that child dependencies start evaluating and
+resolving their top-level Promises before parent modules attempt to
+access their exports.</li>
+<li><strong>Sibling Parallelism:</strong> Independent async modules are
+executed concurrently using standard JavaScript microtask queues,
+preventing unnecessary blocking of unrelated code paths.</li>
+</ul>
+<h2 id="runtime-orchestration">Runtime Orchestration</h2>
+<p>To support this behavior in environments that do not natively execute
+ESM, Webpack injects specialized runtime helpers.</p>
+<p>Instead of calling the standard synchronous execution function, the
+runtime uses a helper (commonly referenced internally as
+<code>__webpack_require__.a</code>). This helper:</p>
+<ul>
+<li>Collects the promises returned by all asynchronous dependencies of a
+module.</li>
+<li>Uses <code>Promise.all</code> internally to wait for those
+dependencies to resolve.</li>
+<li>Catches errors in asynchronous modules and forwards them down the
+execution chain, rejecting the parent module's promise
+appropriately.</li>
+</ul>
+<h2 id="target-output-and-module-formats">Target Output and Module
+Formats</h2>
+<p>Webpack's handling of Top-Level Await varies depending on the
+<code>target</code> and <code>output.module</code> settings:</p>
+<ul>
+<li><strong>ESM Output (<code>output.module: true</code>):</strong>
+Webpack emits modern ES modules where the browser or runtime engine
+handles the top-level await natively.</li>
+<li><strong>Non-ESM Targets (CommonJS, traditional Webpack
+bundles):</strong> Webpack converts the entire chunk into a
+Promise-based initialization process. In these environments, you cannot
+statically <code>require()</code> an async module; it must instead be
+loaded dynamically using <code>import()</code>.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

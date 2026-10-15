@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack url-loader limit: Base64 vs File Emission - webpack</title>
+    <meta name="description" content="This article explains the function of the limit configuration in Webpack&#39;s url-loader and how it dictates asset handling. It details how the loader evaluates asset size against a byte threshold to automatically choose between inlining resources as base64-">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-url-loader-limit-base-64-vs-file-emission">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack url-loader limit: Base64 vs File Emission - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-url-loader-limit-base-64-vs-file-emission" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the function of the limit configuration in Webpack&#39;s url-loader and how it dictates asset handling. It details how the loader evaluates asset size against a byte threshold to automatically choose between inlining resources as base64-" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-url-loader-limit-base64-vs-file-emission">Webpack
+url-loader limit: Base64 vs File Emission</h1>
+<p>This article explains the function of the <code>limit</code>
+configuration in Webpack's <code>url-loader</code> and how it dictates
+asset handling. It details how the loader evaluates asset size against a
+byte threshold to automatically choose between inlining resources as
+base64-encoded Data URLs or emitting them as separate files. By
+understanding this mechanism, you can optimize network performance,
+reduce HTTP requests, and prevent excessive JavaScript bundle
+growth.</p>
+<h2 id="what-is-the-limit-option">What Is the <code>limit</code>
+Option?</h2>
+<p>In Webpack, <code>url-loader</code> is used to load files, such as
+images and fonts, by transforming them into base64-encoded Data URLs.
+The <code>limit</code> option sets a size threshold measured in bytes.
+This threshold functions as a conditional branch for asset
+processing:</p>
+<ul>
+<li><strong>File size is less than or equal to
+<code>limit</code>:</strong> The asset is converted into an inline
+base64 Data URL and embedded directly into the compiled bundle.</li>
+<li><strong>File size exceeds <code>limit</code>:</strong> The asset
+bypasses base64 conversion and is handed off to a fallback loader (by
+default, <code>file-loader</code>), which emits the file to the output
+directory and returns its public path.</li>
+</ul>
+<h2 id="how-the-threshold-decision-works">How the Threshold Decision
+Works</h2>
+<h3 id="1-inlining-as-base64-asset-size--limit">1. Inlining as Base64
+(Asset Size ≤ Limit)</h3>
+<p>When an asset's byte size is smaller than or equal to the configured
+<code>limit</code>, <code>url-loader</code> encodes the file content
+using standard base64 encoding.</p>
+<ul>
+<li><strong>Mechanism:</strong> The file content becomes a Data URL (for
+example, <code>data:image/png;base64,iVBORw0KGgo...</code>) placed
+directly in your JavaScript or CSS bundle.</li>
+<li><strong>Benefit:</strong> It eliminates an additional HTTP request
+because the browser downloads the asset simultaneously with the script
+or stylesheet.</li>
+<li><strong>Downside:</strong> Base64 encoding adds an overhead of
+approximately 33% to the original binary file size.</li>
+</ul>
+<h3 id="2-emitting-as-an-external-file-asset-size--limit">2. Emitting as
+an External File (Asset Size &gt; Limit)</h3>
+<p>When an asset is larger than the specified <code>limit</code>,
+inlining becomes inefficient due to the 33% size penalty, which can
+significantly bloat the bundle and degrade initial load times.</p>
+<ul>
+<li><strong>Mechanism:</strong> <code>url-loader</code> delegates the
+processing to <code>file-loader</code> (or a custom loader defined via
+the <code>fallback</code> option).</li>
+<li><strong>Outcome:</strong> The asset is written directly to the
+target build directory as an individual file with a hashed filename for
+caching purposes, and the import resolves to the public URL path
+pointing to that file.</li>
+<li><strong>Benefit:</strong> The browser can download the file
+asynchronously on demand and leverage standard browser caching
+mechanisms.</li>
+</ul>
+<h2 id="example-configuration">Example Configuration</h2>
+<p>In a typical Webpack configuration, the <code>limit</code> is defined
+inside the loader options:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">png</span><span class="sc">|</span><span class="ss">jpg</span><span class="sc">|</span><span class="ss">gif</span><span class="sc">|</span><span class="ss">svg</span><span class="sc">)$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> [</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>          {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>            <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;url-loader&#39;</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>            <span class="dt">options</span><span class="op">:</span> {</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>              <span class="co">// 8192 bytes = 8 KB</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>              <span class="dt">limit</span><span class="op">:</span> <span class="dv">8192</span><span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>              <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;images/[name].[hash:8].[ext]&#39;</span><span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>            }<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        ]<span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>In this setup, any image smaller than 8 KB is inlined directly as
+base64, while any image 8 KB or larger is copied to the
+<code>images/</code> directory.</p>
+<h2 id="selecting-the-right-limit">Selecting the Right Limit</h2>
+<p>A common default range for the <code>limit</code> parameter is
+between 4 KB (4096 bytes) and 10 KB (10240 bytes).</p>
+<ul>
+<li><strong>Set a higher limit</strong> if your application relies on
+HTTP/1.1 where round-trip request overhead is significant and you have
+many small UI icons.</li>
+<li><strong>Set a lower limit (or zero)</strong> if your site serves
+content over HTTP/2 or HTTP/3, where multiplexing makes separate network
+requests substantially cheaper, or if minimizing bundle parse and
+execution time is the priority.</li>
+</ul>
+<p><em>(Note: In Webpack 5, <code>url-loader</code> is deprecated in
+favor of built-in Asset Modules using <code>type: 'asset'</code> and
+configuring the <code>parser.dataUrl.condition.maxSize</code> property,
+which serves the exact same threshold-based function.)</em></p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

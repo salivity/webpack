@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack vs Vite Dev Server Architecture - webpack</title>
+    <meta name="description" content="This article examines the core architectural differences between Webpack and Vite during local development. While Webpack relies on a traditional bundle-based development server that compiles code upfront, Vite utilizes native browser ES modules (ESM) pai">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-vs-vite-dev-server-architecture">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack vs Vite Dev Server Architecture - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-vs-vite-dev-server-architecture" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article examines the core architectural differences between Webpack and Vite during local development. While Webpack relies on a traditional bundle-based development server that compiles code upfront, Vite utilizes native browser ES modules (ESM) pai" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-vs-vite-dev-server-architecture">Webpack vs Vite Dev
+Server Architecture</h1>
+<p>This article examines the core architectural differences between
+Webpack and Vite during local development. While Webpack relies on a
+traditional bundle-based development server that compiles code upfront,
+Vite utilizes native browser ES modules (ESM) paired with an on-demand
+transformation pipeline. Understanding how both tools handle server
+initialization, module requests, and hot module replacement reveals why
+their development performance diverges significantly.</p>
+<h3 id="bundle-based-vs-native-esm-architecture">Bundle-Based vs. Native
+ESM Architecture</h3>
+<p>The primary difference lies in how each tool prepares your
+application for the browser.</p>
+<p>Webpack operates on a bundle-first paradigm. Before the development
+server can serve a page, it must crawl your entire dependency graph,
+process every file through configured loaders, and generate an in-memory
+JavaScript bundle using <code>webpack-dev-server</code>. Even though
+this bundle resides in memory rather than on disk, the computational
+overhead required to assemble it occurs entirely upfront.</p>
+<p>Vite operates on an unbundled, native ESM architecture. Instead of
+packaging your source files into a single bundle before starting, Vite
+assumes modern browsers natively support ES modules
+(<code>import</code>/<code>export</code>). The development server starts
+immediately, leaving module resolution and execution to the browser
+until a specific file is actually requested.</p>
+<h3 id="dependency-handling-and-cold-starts">Dependency Handling and
+Cold Starts</h3>
+<p>Server startup time highlights the architectural divide:</p>
+<ul>
+<li><strong>Webpack:</strong> Cold start times scale proportionally with
+the size of your application. As your codebase grows to hundreds or
+thousands of modules, Webpack must parse and build the entire dependency
+tree before the local port becomes responsive.</li>
+<li><strong>Vite:</strong> Divides application code into two categories:
+dependencies and source code. Dependencies (node_modules that rarely
+change) are pre-bundled once using <strong>esbuild</strong>, a Go-based
+bundler that runs 10 to 100 times faster than JavaScript-based tools.
+Source code is not compiled upfront, allowing the server to launch
+almost instantly regardless of application size.</li>
+</ul>
+<h3 id="request-handling-and-on-demand-compilation">Request Handling and
+On-Demand Compilation</h3>
+<p>Once the development server is running, the two tools handle browser
+requests through opposite workflows:</p>
+<ul>
+<li><strong>Webpack:</strong> Serves already-compiled code from memory.
+When the browser navigates to a route, the server simply returns the
+pre-built bundle. Any runtime compilation happened before the server was
+ready.</li>
+<li><strong>Vite:</strong> Employs on-demand compilation. When the
+browser encounters an <code>import</code> statement, it makes an HTTP
+request to the Vite dev server. Vite intercepts this request, transforms
+that specific file (such as compiling TypeScript to JavaScript or
+processing Vue/React components), and delivers it back to the browser.
+Routes and components that are never visited during a session are never
+compiled.</li>
+</ul>
+<h3 id="hot-module-replacement-hmr-performance">Hot Module Replacement
+(HMR) Performance</h3>
+<p>Both servers support Hot Module Replacement (HMR) to update running
+code without a full page refresh, but their mechanics differ:</p>
+<ul>
+<li><strong>Webpack HMR:</strong> When a file is modified, Webpack
+reconstructs the affected chunk of the dependency graph and re-packages
+the bundle in memory. While Webpack optimizes this with caching, HMR
+response times gradually degrade as project complexity and dependency
+chains increase.</li>
+<li><strong>Vite HMR:</strong> Because modules are native ESM, Vite only
+needs to invalidate the link between the edited module and its closest
+boundary. It sends a lightweight WebSocket update telling the browser to
+re-import the single modified file. The cost of an HMR update in Vite
+remains constant and is completely decoupled from the total number of
+modules in the application.</li>
+</ul>
+<h3 id="summary-of-architectural-trade-offs">Summary of Architectural
+Trade-offs</h3>
+<p>Webpack’s bundled architecture offers extreme flexibility, mature
+plugin support, and complete parity between development and production
+builds, but it suffers from slower start times and resource-heavy
+rebuilds at scale. Vite’s architecture prioritizes developer speed by
+delegating bundling during development to the browser's native
+capabilities, resulting in near-instant server boots and fast HMR,
+though it relies on Rollup for production builds rather than running an
+identical pipeline in both environments.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Handle Polyfills in Webpack 5 - webpack</title>
+    <meta name="description" content="This article provides a comprehensive guide on how Webpack handles polyfills following the major architectural changes introduced in Webpack 5. Prior to version 5, Webpack automatically bundled polyfills for Node.js core modules into client-side code, oft">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-to-handle-polyfills-in-webpack-5">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Handle Polyfills in Webpack 5 - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-to-handle-polyfills-in-webpack-5" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides a comprehensive guide on how Webpack handles polyfills following the major architectural changes introduced in Webpack 5. Prior to version 5, Webpack automatically bundled polyfills for Node.js core modules into client-side code, oft" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-handle-polyfills-in-webpack-5">How to Handle Polyfills in
+Webpack 5</h1>
+<p>This article provides a comprehensive guide on how Webpack handles
+polyfills following the major architectural changes introduced in
+Webpack 5. Prior to version 5, Webpack automatically bundled polyfills
+for Node.js core modules into client-side code, often causing
+unnecessary bundle bloat. Webpack 5 completely removed these automatic
+polyfills, requiring developers to manually configure module fallbacks
+or handle browser-level polyfills via specialized compilation tools like
+Babel and Core-js. Below is a breakdown of why this shift occurred, how
+to resolve Node.js core module errors, and how to manage modern
+JavaScript polyfills properly.</p>
+<hr />
+<h3 id="the-webpack-5-paradigm-shift">The Webpack 5 Paradigm Shift</h3>
+<p>In Webpack 4 and earlier versions, when client-side code (or an
+imported npm package) referenced built-in Node.js modules such as
+<code>crypto</code>, <code>path</code>, <code>fs</code>,
+<code>buffer</code>, or <code>stream</code>, Webpack automatically
+included mock implementations or polyfills.</p>
+<p>Webpack 5 ceased this behavior by default to achieve smaller bundles
+and faster build times. When Webpack 5 encounters a reference to a
+Node.js module that is not explicitly handled, the build fails with an
+error similar to:</p>
+<pre class="text"><code>BREAKING CHANGE: webpack &lt; 5 used to include polyfills for node.js core modules by default.
+This is no longer the case. Verify if you need this module and configure a polyfill for it.</code></pre>
+<hr />
+<h3 id="handling-nodejs-polyfills-manually">Handling Node.js Polyfills
+Manually</h3>
+<p>To resolve missing Node.js modules in Webpack 5, you must manually
+define how each module should be resolved using the
+<code>resolve.fallback</code> configuration option.</p>
+<h4 id="1-installing-polyfill-packages">1. Installing Polyfill
+Packages</h4>
+<p>First, install the community-maintained browser equivalents of the
+Node.js modules your application requires. For example:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">--save-dev</span> crypto-browserify stream-browserify buffer process</span></code></pre></div>
+<h4 id="2-configuring-resolvefallback">2. Configuring
+<code>resolve.fallback</code></h4>
+<p>In your <code>webpack.config.js</code>, specify the fallback paths
+for the modules required by your code or dependencies:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other configurations</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">fallback</span><span class="op">:</span> {</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">crypto</span><span class="op">:</span> require<span class="op">.</span><span class="fu">resolve</span>(<span class="st">&#39;crypto-browserify&#39;</span>)<span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">stream</span><span class="op">:</span> require<span class="op">.</span><span class="fu">resolve</span>(<span class="st">&#39;stream-browserify&#39;</span>)<span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">buffer</span><span class="op">:</span> require<span class="op">.</span><span class="fu">resolve</span>(<span class="st">&#39;buffer/&#39;</span>)<span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Set to false if the module is referenced but not actually needed in the browser</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">fs</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>      <span class="dt">net</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>      <span class="dt">tls</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>If an external library imports a module like <code>fs</code> that
+cannot function in a browser environment and is not critical to
+execution, mapping it to <code>false</code> instructs Webpack to replace
+it with an empty module rather than throwing a build error.</p>
+<h4 id="3-injecting-global-variables">3. Injecting Global Variables</h4>
+<p>Certain Node.js modules depend on global objects such as
+<code>process</code> or <code>Buffer</code>. Even with
+<code>resolve.fallback</code> defined, references to these globals will
+fail unless provided explicitly.</p>
+<p>You can use <code>webpack.ProvidePlugin</code> to expose these
+globals globally across your application:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpack <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> webpack<span class="op">.</span><span class="fu">ProvidePlugin</span>({</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">process</span><span class="op">:</span> <span class="st">&#39;process/browser&#39;</span><span class="op">,</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Buffer</span><span class="op">:</span> [<span class="st">&#39;buffer&#39;</span><span class="op">,</span> <span class="st">&#39;Buffer&#39;</span>]<span class="op">,</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<hr />
+<h3 id="automated-alternative-node-polyfill-plugin">Automated
+Alternative: Node Polyfill Plugin</h3>
+<p>If your project depends on numerous legacy packages and manually
+defining dozens of fallbacks is impractical, you can automate Node.js
+polyfilling using <code>node-polyfill-webpack-plugin</code>.</p>
+<ol type="1">
+<li><p>Install the plugin:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">--save-dev</span> node-polyfill-webpack-plugin</span></code></pre></div></li>
+<li><p>Add it to your <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> NodePolyfillPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;node-polyfill-webpack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">NodePolyfillPlugin</span>()<span class="op">,</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div></li>
+</ol>
+<p>While convenient, this plugin re-enables the behavior of Webpack 4
+and may significantly increase bundle size by polyfilling modules that
+might not be needed.</p>
+<hr />
+<h3 id="handling-standard-javascript-ecmascript-polyfills">Handling
+Standard JavaScript (ECMAScript) Polyfills</h3>
+<p>Webpack is a module bundler, not a transpiler or language polyfill
+engine. It does not natively polyfill modern JavaScript features (such
+as <code>Promise</code>, <code>Array.prototype.flat</code>, or
+<code>Object.assign</code>) for older browsers.</p>
+<p>Standard JavaScript polyfills must be handled alongside Webpack using
+<strong>Babel</strong> and <strong>core-js</strong>:</p>
+<ol type="1">
+<li><p>Install required packages:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">--save</span> core-js</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">--save-dev</span> @babel/core @babel/preset-env babel-loader</span></code></pre></div></li>
+<li><p>Configure <code>babel.config.json</code> (or
+<code>.babelrc</code>) using <code>useBuiltIns</code>:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;presets&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    <span class="ot">[</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;@babel/preset-env&quot;</span><span class="ot">,</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;useBuiltIns&quot;</span><span class="fu">:</span> <span class="st">&quot;usage&quot;</span><span class="fu">,</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;corejs&quot;</span><span class="fu">:</span> <span class="dv">3</span><span class="fu">,</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">&quot;targets&quot;</span><span class="fu">:</span> <span class="st">&quot;&gt; 0.25%, not dead&quot;</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div></li>
+</ol>
+<p>Setting <code>useBuiltIns: "usage"</code> instructs Babel to inspect
+your code and automatically insert imports for the exact
+<code>core-js</code> polyfills required based on your target browser
+matrix. Webpack then bundles only the necessary polyfill modules,
+ensuring compatibility without unnecessary overhead.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

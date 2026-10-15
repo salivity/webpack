@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babel Transforms for Webpack ES3 Compatibility - webpack</title>
+    <meta name="description" content="Targeting ancient JavaScript engines like ECMAScript 3 (ES3)—commonly found in legacy browsers such as Internet Explorer 8—requires a combination of Webpack runtime configuration and specialized Babel transformation plugins. Because ES3 engines lack suppo">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/babel-transforms-for-webpack-es-3-compatibility">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Babel Transforms for Webpack ES3 Compatibility - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/babel-transforms-for-webpack-es-3-compatibility" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Targeting ancient JavaScript engines like ECMAScript 3 (ES3)—commonly found in legacy browsers such as Internet Explorer 8—requires a combination of Webpack runtime configuration and specialized Babel transformation plugins. Because ES3 engines lack suppo" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="babel-transforms-for-webpack-es3-compatibility">Babel Transforms
+for Webpack ES3 Compatibility</h1>
+<p>Targeting ancient JavaScript engines like ECMAScript 3 (ES3)—commonly
+found in legacy browsers such as Internet Explorer 8—requires a
+combination of Webpack runtime configuration and specialized Babel
+transformation plugins. Because ES3 engines lack support for standard
+ES5+ semantics, modern JavaScript code and Webpack's default runtime
+boilerplate will produce immediate syntax and runtime errors unless
+reserved identifiers, literal properties, and runtime wrappers are
+strictly transformed.</p>
+<h3 id="core-babel-plugins-for-es3-syntax">Core Babel Plugins for ES3
+Syntax</h3>
+<p>Standard compilation via <code>@babel/preset-env</code> targets ES5
+by default, which is insufficient for ES3 environments. To bridge the
+gap, the following Babel plugins must be explicitly added to your Babel
+configuration:</p>
+<ul>
+<li><strong><code>@babel/plugin-transform-member-expression-literals</code></strong>:
+ES3 engines break when reserved words (such as <code>default</code>,
+<code>class</code>, or <code>catch</code>) are accessed using dot
+notation. This plugin converts member expressions like
+<code>foo.default</code> or <code>promise.catch()</code> into bracket
+notation with string literals, such as <code>foo["default"]</code> and
+<code>promise["catch"]()</code>.</li>
+<li><strong><code>@babel/plugin-transform-property-literals</code></strong>:
+In ES3, object literals cannot use reserved keywords as unquoted keys.
+This plugin ensures that keys matching reserved words in object
+declarations—such as <code>{ default: "value" }</code>—are wrapped in
+quotes: <code>{ "default": "value" }</code>.</li>
+<li><strong><code>@babel/plugin-transform-reserved-words</code></strong>:
+This plugin ensures that any variable declarations, parameters, or
+internal references do not use ES3-reserved identifiers, preventing
+syntax errors during script parsing.</li>
+</ul>
+<h3 id="webpack-runtime-adjustments">Webpack Runtime Adjustments</h3>
+<p>Babel only transforms the code passed through its loader; it does not
+automatically modify Webpack's internal runtime code. To maintain ES3
+compatibility across the entire bundle, Webpack must be configured
+accordingly:</p>
+<ol type="1">
+<li><p><strong>Configure Output Environment (Webpack 5)</strong>:
+Webpack 5 outputs modern JavaScript in its runtime wrapper by default.
+You must explicitly disable these features in your
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">environment</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">arrowFunction</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">bigIntLiteral</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">destructuring</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">dynamicImport</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">forOf</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">module</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div></li>
+<li><p><strong>Eliminate <code>Object.defineProperty</code>
+Calls</strong>: Webpack's module system frequently uses
+<code>Object.defineProperty</code> to export getters, which ES3 engines
+do not support (IE8 only supports it on DOM elements, not ordinary
+objects). To resolve this, run an additional post-processing pass using
+tools such as <code>es3ify-loader</code> or
+<code>es3ify-webpack-plugin</code>, or configure module export handling
+via Babel to bypass ES module getters.</p></li>
+</ol>
+<h3 id="essential-polyfills">Essential Polyfills</h3>
+<p>Syntax transformation does not provide missing ES5 standard library
+methods. Ancient engines require polyfills for fundamental methods
+including:</p>
+<ul>
+<li><code>Array.prototype.indexOf</code>, <code>forEach</code>,
+<code>map</code>, <code>filter</code>, and <code>reduce</code></li>
+<li><code>Object.keys</code></li>
+<li><code>String.prototype.trim</code></li>
+<li><code>Function.prototype.bind</code></li>
+</ul>
+<p>For ES3 targets, <code>core-js@2</code> or a standalone ES5 shim
+(such as <code>es5-shim</code> and <code>es5-sham</code>) must be loaded
+before the Webpack bundle executes. Note that full polyfills for
+property accessors (getters and setters) cannot be emulated on ES3 and
+must be avoided entirely in application logic.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

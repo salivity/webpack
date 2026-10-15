@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Module Resolution with Yarn Workspaces and Nx - webpack</title>
+    <meta name="description" content="This article explains how monorepo management tools, specifically Yarn Workspaces and Nx, integrate with Webpack’s module resolution algorithm. You will learn how package hoisting, symlinks, TypeScript path mappings, and dedicated plugins alter the way We">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-module-resolution-with-yarn-workspaces-and-nx">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Module Resolution with Yarn Workspaces and Nx - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-module-resolution-with-yarn-workspaces-and-nx" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how monorepo management tools, specifically Yarn Workspaces and Nx, integrate with Webpack’s module resolution algorithm. You will learn how package hoisting, symlinks, TypeScript path mappings, and dedicated plugins alter the way We" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-module-resolution-with-yarn-workspaces-and-nx">Webpack
+Module Resolution with Yarn Workspaces and Nx</h1>
+<p>This article explains how monorepo management tools, specifically
+Yarn Workspaces and Nx, integrate with Webpack’s module resolution
+algorithm. You will learn how package hoisting, symlinks, TypeScript
+path mappings, and dedicated plugins alter the way Webpack locates and
+compiles internal packages and shared external dependencies across a
+monorepo codebase.</p>
+<h2 id="the-standard-webpack-resolution-process">The Standard Webpack
+Resolution Process</h2>
+<p>By default, Webpack uses the <code>enhanced-resolve</code> package to
+implement the standard Node.js module resolution algorithm with added
+capabilities. When encountering an import like
+<code>import foo from 'bar'</code>, Webpack looks inside a local
+<code>node_modules</code> folder. If the module is not found, it
+traverses upward through parent directories until it reaches the
+filesystem root.</p>
+<p>Webpack's behavior is primarily governed by the <code>resolve</code>
+configuration object, which controls module directories
+(<code>resolve.modules</code>), file extensions
+(<code>resolve.extensions</code>), aliases (<code>resolve.alias</code>),
+and symlink behavior (<code>resolve.symlinks</code>). Monorepo tools
+alter these core behaviors to seamlessly share code across different
+projects.</p>
+<h2 id="how-yarn-workspaces-interacts-with-webpack">How Yarn Workspaces
+Interacts with Webpack</h2>
+<p>Yarn Workspaces manages code sharing via dependency hoisting and
+symlinking.</p>
+<h3 id="dependency-hoisting-and-resolvemodules">Dependency Hoisting and
+<code>resolve.modules</code></h3>
+<p>Yarn hoists shared third-party dependencies from individual workspace
+folders to the root <code>node_modules</code> directory to avoid
+duplicate downloads and ensure consistent versioning. Because Webpack
+naturally walks up the directory tree to find <code>node_modules</code>,
+it resolves hoisted dependencies automatically without special
+configuration. However, if two workspaces require conflicting versions
+of a dependency, Yarn leaves one version nested inside the workspace’s
+local <code>node_modules</code>, which Webpack still correctly
+prioritizes due to directory proximity.</p>
+<h3 id="symlinks-and-resolvesymlinks">Symlinks and
+<code>resolve.symlinks</code></h3>
+<p>Internal packages are linked using symlinks placed inside the root or
+local <code>node_modules</code>. Webpack’s <code>resolve.symlinks</code>
+setting defaults to <code>true</code>. This causes Webpack to resolve
+symlinks to their real physical disk paths before applying loaders and
+plugins.</p>
+<p>While this ensures that files are loaded accurately, it introduces
+two critical side effects:</p>
+<ol type="1">
+<li><p><strong>Loader Inclusion/Exclusion:</strong> If a Webpack loader
+excludes <code>node_modules</code> via regular expression (e.g.,
+<code>exclude: /node_modules/</code>), a symlinked workspace residing
+outside of <code>node_modules</code> on the disk might unexpectedly get
+processed, or vice versa. Build configurations must explicitly include
+the real paths of workspace packages within loader rules.</p></li>
+<li><p><strong>Duplicate Singletons:</strong> Libraries requiring single
+instances (such as React) can break if resolved from multiple physical
+locations. To fix this, you often need to set Webpack's
+<code>resolve.alias</code> to point to a single installation in the root
+<code>node_modules</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>resolve<span class="op">:</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">alias</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">react</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;node_modules/react&#39;</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div></li>
+</ol>
+<h2 id="how-nx-interacts-with-webpack">How Nx Interacts with
+Webpack</h2>
+<p>Nx approaches monorepos with an emphasis on project-level boundaries,
+computation caching, and TypeScript-first configurations, relying less
+on symlinks for internal dependencies.</p>
+<h3 id="typescript-paths-and-resolvealias">TypeScript Paths and
+<code>resolve.alias</code></h3>
+<p>In an Nx monorepo, internal libraries are typically referenced
+through path mappings in <code>tsconfig.base.json</code> rather than
+symlinked packages in <code>node_modules</code>. When project
+<code>app</code> imports <code>@my-org/ui</code>, Webpack does not
+natively read <code>tsconfig.json</code> path mappings.</p>
+<p>Nx bridges this gap through its Webpack plugins (such as
+<code>@nx/webpack</code>). Under the hood, Nx integrates tools like
+<code>tsconfig-paths-webpack-plugin</code> or dynamically populates
+Webpack’s <code>resolve.alias</code> with the paths defined in the
+TypeScript configuration. This maps package names directly to their raw
+source files (e.g., <code>libs/ui/src/index.ts</code>).</p>
+<h3 id="just-in-time-compilation">Just-in-Time Compilation</h3>
+<p>Because Nx directs Webpack directly to raw TypeScript source files
+rather than pre-compiled JavaScript bundles in
+<code>node_modules</code>, Webpack handles the compilation of both apps
+and internal libraries simultaneously. Nx automatically updates the
+Webpack loader configurations so that loaders like
+<code>ts-loader</code>, <code>babel-loader</code>, or
+<code>swc-loader</code> properly target the source directories of all
+dependent workspace libraries.</p>
+<h3 id="module-boundaries-and-dependency-graph">Module Boundaries and
+Dependency Graph</h3>
+<p>Nx constructs an internal project graph. When running builds, Nx
+tracks whether a target application relies on buildable libraries or
+direct source imports. If you use buildable libraries, Nx coordinates
+the build sequence and can configure Webpack to point to the output
+directory (<code>dist/libs/...</code>) instead of the source, balancing
+build speed against caching efficiency.</p>
+<h2 id="key-differences-summary">Key Differences Summary</h2>
+<ul>
+<li><strong>Yarn Workspaces</strong> relies on standard Node package
+structures using symlinks and directory traversal, requiring developers
+to configure Webpack to respect symlink targets and avoid loader
+conflicts.</li>
+<li><strong>Nx</strong> uses a centralized TypeScript path mapping
+system and automated Webpack plugins, bypassing
+<code>node_modules</code> symlinks for internal libraries to compile raw
+source files directly as part of a single graph.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

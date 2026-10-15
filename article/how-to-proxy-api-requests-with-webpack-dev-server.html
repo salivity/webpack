@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Proxy API Requests with Webpack Dev Server - webpack</title>
+    <meta name="description" content="When developing single-page applications, frontend and backend code often run on different local ports, resulting in Cross-Origin Resource Sharing (CORS) errors during API requests. Webpack Dev Server solves this issue through its built-in proxy feature,">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-to-proxy-api-requests-with-webpack-dev-server">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Proxy API Requests with Webpack Dev Server - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-to-proxy-api-requests-with-webpack-dev-server" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When developing single-page applications, frontend and backend code often run on different local ports, resulting in Cross-Origin Resource Sharing (CORS) errors during API requests. Webpack Dev Server solves this issue through its built-in proxy feature," />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-proxy-api-requests-with-webpack-dev-server">How to Proxy
+API Requests with Webpack Dev Server</h1>
+<p>When developing single-page applications, frontend and backend code
+often run on different local ports, resulting in Cross-Origin Resource
+Sharing (CORS) errors during API requests. Webpack Dev Server solves
+this issue through its built-in proxy feature, powered by
+<code>http-proxy-middleware</code>. This guide covers how to configure
+the <code>devServer.proxy</code> property in your Webpack configuration
+to seamlessly forward frontend requests to a local or remote backend
+server.</p>
+<h3 id="basic-proxy-configuration">Basic Proxy Configuration</h3>
+<p>To forward API requests, open your <code>webpack.config.js</code>
+file and locate the <code>devServer</code> configuration object. Define
+the <code>proxy</code> property to map a request URL pattern to your
+target server:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other webpack settings</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devServer</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">port</span><span class="op">:</span> <span class="dv">3000</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">proxy</span><span class="op">:</span> [</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">context</span><span class="op">:</span> [<span class="st">&#39;/api&#39;</span>]<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;http://localhost:5000&#39;</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">changeOrigin</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>In this setup, any request initiated by the frontend matching
+<code>/api</code> (for example, <code>/api/users</code>) will be
+intercepted by Webpack Dev Server and forwarded to
+<code>http://localhost:5000/api/users</code>.</p>
+<h3 id="common-configuration-options">Common Configuration Options</h3>
+<p>Depending on your backend architecture, you may need additional
+settings within the proxy entry:</p>
+<ul>
+<li><strong><code>changeOrigin</code></strong>: Set to <code>true</code>
+if your backend relies on the incoming <code>Host</code> header matching
+its own domain. This is essential when proxying to name-based virtual
+hosts or remote cloud environments.</li>
+<li><strong><code>pathRewrite</code></strong>: Use this to rewrite the
+request path before it hits the backend. For instance, if your frontend
+requests <code>/api/users</code> but your backend endpoint is simply
+<code>/users</code>, strip the prefix using a regular expression:</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>proxy<span class="op">:</span> [</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">context</span><span class="op">:</span> [<span class="st">&#39;/api&#39;</span>]<span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;http://localhost:5000&#39;</span><span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">pathRewrite</span><span class="op">:</span> { <span class="st">&#39;^/api&#39;</span><span class="op">:</span> <span class="st">&#39;&#39;</span> }<span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">changeOrigin</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div>
+<ul>
+<li><strong><code>secure</code></strong>: By default, the proxy rejects
+backend targets using invalid or self-signed SSL certificates. If your
+backend uses HTTPS locally with a self-signed certificate, set
+<code>secure: false</code>:</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>proxy<span class="op">:</span> [</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">context</span><span class="op">:</span> [<span class="st">&#39;/api&#39;</span>]<span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;https://localhost:5001&#39;</span><span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">secure</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">changeOrigin</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div>
+<h3 id="proxying-multiple-specific-paths">Proxying Multiple Specific
+Paths</h3>
+<p>If you need to route multiple distinct paths to the same destination
+without catching all traffic, pass an array to the <code>context</code>
+option:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>proxy<span class="op">:</span> [</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">context</span><span class="op">:</span> [<span class="st">&#39;/auth&#39;</span><span class="op">,</span> <span class="st">&#39;/api&#39;</span><span class="op">,</span> <span class="st">&#39;/media&#39;</span>]<span class="op">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;http://localhost:8080&#39;</span><span class="op">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">changeOrigin</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div>
+<h3 id="bypassing-the-proxy">Bypassing the Proxy</h3>
+<p>You can conditionally bypass the proxy based on the incoming request
+using the <code>bypass</code> function. This is useful for serving mock
+files or allowing browser navigation to proceed normally:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>proxy<span class="op">:</span> [</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">context</span><span class="op">:</span> [<span class="st">&#39;/api&#39;</span>]<span class="op">,</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;http://localhost:5000&#39;</span><span class="op">,</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">bypass</span><span class="op">:</span> <span class="kw">function</span> (req<span class="op">,</span> res<span class="op">,</span> proxyOptions) {</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (req<span class="op">.</span><span class="at">headers</span><span class="op">.</span><span class="at">accept</span><span class="op">.</span><span class="fu">indexOf</span>(<span class="st">&#39;html&#39;</span>) <span class="op">!==</span> <span class="op">-</span><span class="dv">1</span>) {</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">&#39;/index.html&#39;</span><span class="op">;</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div>
+<p>Once configured, restart your Webpack development server. Requests
+sent to paths matching your proxy rules will automatically route through
+the dev server to your specified backend without encountering CORS
+restrictions.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

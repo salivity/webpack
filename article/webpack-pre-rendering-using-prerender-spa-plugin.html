@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Pre-Rendering Using prerender-spa-plugin - webpack</title>
+    <meta name="description" content="This article explains how Webpack utilizes the prerender-spa-plugin to generate static HTML pages for single-page applications (SPAs). You will learn the core mechanism behind build-time pre-rendering, how the plugin integrates into the Webpack compilatio">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-pre-rendering-using-prerender-spa-plugin">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Pre-Rendering Using prerender-spa-plugin - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-pre-rendering-using-prerender-spa-plugin" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how Webpack utilizes the prerender-spa-plugin to generate static HTML pages for single-page applications (SPAs). You will learn the core mechanism behind build-time pre-rendering, how the plugin integrates into the Webpack compilatio" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-pre-rendering-using-prerender-spa-plugin">Webpack
+Pre-Rendering Using prerender-spa-plugin</h1>
+<p>This article explains how Webpack utilizes the
+<code>prerender-spa-plugin</code> to generate static HTML pages for
+single-page applications (SPAs). You will learn the core mechanism
+behind build-time pre-rendering, how the plugin integrates into the
+Webpack compilation pipeline, and the step-by-step process of converting
+client-side routes into crawlable, high-performance static files.</p>
+<h3 id="the-purpose-of-pre-rendering-in-spas">The Purpose of
+Pre-Rendering in SPAs</h3>
+<p>Single-page applications built with frameworks like Vue, React, or
+Angular typically serve a minimal HTML shell (<code>index.html</code>)
+alongside bundled JavaScript. The client's browser downloads and
+executes the JavaScript to populate the DOM. While effective for user
+interactivity, this approach can delay First Contentful Paint (FCP) and
+hinder search engine crawlers that do not reliably execute
+JavaScript.</p>
+<p>The <code>prerender-spa-plugin</code> solves this problem at build
+time. It intercepts Webpack's output, launches a headless browser,
+renders each specified route, and captures the fully rendered DOM as
+static HTML files.</p>
+<h3 id="how-prerender-spa-plugin-operates">How prerender-spa-plugin
+Operates</h3>
+<p>The plugin executes after Webpack compiles the project assets. Its
+internal workflow follows five distinct phases:</p>
+<ol type="1">
+<li><strong>Compilation Interception:</strong> Webpack emits the
+production bundles (HTML, CSS, JS) to the output directory.</li>
+<li><strong>Local Server Initialization:</strong> The plugin spins up an
+ephemeral, lightweight Express or static web server serving the newly
+compiled assets.</li>
+<li><strong>Headless Browser Launch:</strong> It launches an instance of
+Puppeteer (Headless Chrome) to navigate to the routes defined in the
+plugin configuration.</li>
+<li><strong>DOM Snapshotting:</strong> The headless browser executes the
+client-side JavaScript for each route, waiting for network idle events,
+specific DOM selectors, or custom events before capturing the final
+HTML.</li>
+<li><strong>Static File Output:</strong> The generated DOM tree is
+written to individual HTML files structured according to the route paths
+(for example, <code>/about</code> becomes
+<code>/about/index.html</code>).</li>
+</ol>
+<h3 id="basic-webpack-configuration">Basic Webpack Configuration</h3>
+<p>To integrate the plugin, import it into
+<code>webpack.config.js</code> and add it to the <code>plugins</code>
+array:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> PrerenderSPAPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;prerender-spa-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> Renderer <span class="op">=</span> PrerenderSPAPlugin<span class="op">.</span><span class="at">PuppeteerRenderer</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Standard Webpack configuration...</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">PrerenderSPAPlugin</span>({</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Path to the compiled assets</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">staticDir</span><span class="op">:</span> path<span class="op">.</span><span class="fu">join</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>      <span class="co">// List of routes to pre-render</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      <span class="dt">routes</span><span class="op">:</span> [<span class="st">&#39;/&#39;</span><span class="op">,</span> <span class="st">&#39;/about&#39;</span><span class="op">,</span> <span class="st">&#39;/pricing&#39;</span><span class="op">,</span> <span class="st">&#39;/contact&#39;</span>]<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Configuration for the headless browser renderer</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>      <span class="dt">renderer</span><span class="op">:</span> <span class="kw">new</span> <span class="fu">Renderer</span>({</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="dt">headless</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>        <span class="dt">renderAfterDocumentEvent</span><span class="op">:</span> <span class="st">&#39;custom-post-render-event&#39;</span><span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>        <span class="dt">skipThirdPartyRequests</span><span class="op">:</span> <span class="kw">true</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>      })</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="key-configuration-elements">Key Configuration Elements</h3>
+<ul>
+<li><strong>staticDir:</strong> Specifies the directory where Webpack
+outputs your assets. The plugin serves files from this directory to
+Puppeteer.</li>
+<li><strong>routes:</strong> An array of URL paths. Each path will
+result in a corresponding folder and <code>index.html</code> file in
+your distribution folder.</li>
+<li><strong>renderer:</strong> Controls the headless browser behavior.
+Using <code>renderAfterDocumentEvent</code> ensures the snapshot is
+taken only after asynchronous data fetching completes. In your
+application code, dispatch this event once the view is fully
+mounted:</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">document</span><span class="op">.</span><span class="fu">dispatchEvent</span>(<span class="kw">new</span> <span class="bu">Event</span>(<span class="st">&#39;custom-post-render-event&#39;</span>))<span class="op">;</span></span></code></pre></div>
+<h3 id="client-side-hydration">Client-Side Hydration</h3>
+<p>When a user visits a pre-rendered route, the web server immediately
+returns the static HTML, rendering content instantly. Once the
+client-side JavaScript bundles finish downloading, the SPA framework
+attaches its event listeners to the existing DOM nodes through a process
+called hydration. This retains the speed of static websites while
+maintaining full SPA functionality.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

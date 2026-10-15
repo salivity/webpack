@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bundling Hoisted Peer Dependencies with Webpack - webpack</title>
+    <meta name="description" content="This article explains how Webpack resolves and bundles hoisted peer dependencies in a monorepo architecture. In multi-package repositories managed by tools like npm, Yarn, or pnpm, peer dependencies are typically installed once at the root level rather th">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/bundling-hoisted-peer-dependencies-with-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bundling Hoisted Peer Dependencies with Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/bundling-hoisted-peer-dependencies-with-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how Webpack resolves and bundles hoisted peer dependencies in a monorepo architecture. In multi-package repositories managed by tools like npm, Yarn, or pnpm, peer dependencies are typically installed once at the root level rather th" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="bundling-hoisted-peer-dependencies-with-webpack">Bundling
+Hoisted Peer Dependencies with Webpack</h1>
+<p>This article explains how Webpack resolves and bundles hoisted peer
+dependencies in a monorepo architecture. In multi-package repositories
+managed by tools like npm, Yarn, or pnpm, peer dependencies are
+typically installed once at the root level rather than duplicated across
+individual packages. Webpack relies on its internal module resolution
+engine, specific path-traversal algorithms, and configuration flags like
+aliases and symlink handlers to locate these root-level dependencies and
+bundle them without runtime duplication.</p>
+<h3 id="the-resolution-mechanism">The Resolution Mechanism</h3>
+<p>Webpack utilizes <code>enhanced-resolve</code>, a dedicated resolver
+engine that mimics the standard Node.js module resolution algorithm
+while adding extensive customization. When a sub-package inside a
+monorepo (e.g., <code>packages/ui-components</code>) requires a peer
+dependency like <code>react</code>, the resolution process follows a
+specific order:</p>
+<ol type="1">
+<li><strong>Local Lookup:</strong> Webpack checks for a
+<code>node_modules</code> directory inside
+<code>packages/ui-components</code>. Because the dependency is marked as
+a peer dependency, it is absent from this local directory.</li>
+<li><strong>Directory Traversal:</strong> Webpack navigates up the
+directory hierarchy to the parent directories.</li>
+<li><strong>Root Resolution:</strong> Once the resolver reaches the
+repository root, it identifies the hoisted dependency in the root
+<code>node_modules</code> directory and binds the import to that file
+path.</li>
+</ol>
+<h3 id="the-symlink-challenge">The Symlink Challenge</h3>
+<p>Monorepo workspace managers typically link internal packages together
+via symlinks. By default, Webpack enables
+<code>resolve.symlinks: true</code>. This setting causes Webpack to
+resolve the real, physical path of files rather than their symlinked
+paths inside the consumer's <code>node_modules</code>.</p>
+<p>When Webpack resolves the real path of an internal package, it
+searches for peer dependencies starting from that package’s physical
+directory upwards. If the package structure or package manager
+configuration does not properly expose the hoisted packages along that
+physical path, Webpack may fail to resolve the module, or worse, resolve
+multiple distinct instances of the same library from different
+locations.</p>
+<h3 id="preventing-duplication-with-aliases">Preventing Duplication with
+Aliases</h3>
+<p>To guarantee that a single instance of a hoisted peer dependency is
+included in the final bundle, Webpack configurations frequently use
+explicit path aliases. This is especially critical for libraries that
+rely on singleton states, such as React or GraphQL.</p>
+<p>Configuring <code>resolve.alias</code> directs Webpack to map any
+import of the peer dependency directly to the hoisted version at the
+root:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">alias</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">react</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;node_modules/react&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="st">&#39;react-dom&#39;</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;node_modules/react-dom&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When Webpack encounters <code>import React from 'react'</code> inside
+any internal package, it bypasses standard relative directory traversal
+and maps the module to the specified absolute path.</p>
+<h3 id="guiding-traversal-with-resolvemodules">Guiding Traversal with
+<code>resolve.modules</code></h3>
+<p>Another technique Webpack uses to handle hoisted packages is
+configuring <code>resolve.modules</code>. By defining absolute search
+locations, Webpack prioritizes specific directories when searching for
+un-namespaced modules:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">modules</span><span class="op">:</span> [</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>      path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;node_modules&#39;</span>)<span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      <span class="st">&#39;node_modules&#39;</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This tells Webpack to check the root <code>node_modules</code> before
+executing fallback traversals, ensuring that hoisted dependencies are
+discovered predictably regardless of which package initiated the
+import.</p>
+<h3 id="final-bundle-deduplication">Final Bundle Deduplication</h3>
+<p>During the compilation phase, Webpack tracks modules using unique
+identifiers based on their resolved absolute paths. Because the resolver
+maps every package’s request for a hoisted peer dependency to the same
+file path in the root <code>node_modules</code>, Webpack assigns that
+dependency a single module ID. At runtime, the bundled module is
+executed only once, and all dependent monorepo packages receive a
+reference to the same shared export.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

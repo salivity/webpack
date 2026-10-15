@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack hidden-source-map for Error Logging - webpack</title>
+    <meta name="description" content="This article explains how the hidden-source-map configuration works in Webpack to enable secure error monitoring in production. You will learn the difference between standard source maps and hidden source maps, why omitting the mapping comment protects yo">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-hidden-source-map-for-error-logging">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack hidden-source-map for Error Logging - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-hidden-source-map-for-error-logging" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how the hidden-source-map configuration works in Webpack to enable secure error monitoring in production. You will learn the difference between standard source maps and hidden source maps, why omitting the mapping comment protects yo" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-hidden-source-map-for-error-logging">Webpack
+hidden-source-map for Error Logging</h1>
+<p>This article explains how the <code>hidden-source-map</code>
+configuration works in Webpack to enable secure error monitoring in
+production. You will learn the difference between standard source maps
+and hidden source maps, why omitting the mapping comment protects your
+proprietary code, and the step-by-step workflow required to upload these
+files to private logging platforms like Sentry, Datadog, or Bugsnag to
+reconstruct readable stack traces.</p>
+<h3 id="what-is-hidden-source-map">What is
+<code>hidden-source-map</code>?</h3>
+<p>In Webpack, setting <code>devtool: 'hidden-source-map'</code>
+instructs the compiler to generate complete, production-grade source map
+files (<code>.map</code>) alongside your minified JavaScript bundles,
+but with one critical distinction: it strips out the
+<code>//# sourceMappingURL=...</code> comment from the bottom of the
+generated JavaScript files.</p>
+<p>Under standard source mapping configurations (such as
+<code>source-map</code>), Webpack appends this comment:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// At the bottom of bundle.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">//# sourceMappingURL=bundle.js.map</span></span></code></pre></div>
+<p>When a browser encounters that directive, developer tools
+automatically download the <code>.map</code> file and reconstruct the
+original, unminified source code directly in the user's browser. With
+<code>hidden-source-map</code>, that reference comment is completely
+absent.</p>
+<h3 id="why-use-hidden-source-map">Why Use
+<code>hidden-source-map</code>?</h3>
+<p>Standard source maps present a security and intellectual property
+risk when exposed publicly. Anyone opening the browser console can
+inspect your original source code, internal APIs, and comments.</p>
+<p>However, running production applications completely without source
+maps makes debugging runtime errors difficult, as error reports will
+only provide minified traces (such as
+<code>TypeError at a.b (app.min.js:1:3421)</code>).</p>
+<p><code>hidden-source-map</code> solves this problem by decoupling the
+generation of source maps from public browser access.</p>
+<h3 id="how-the-error-logging-workflow-works">How the Error Logging
+Workflow Works</h3>
+<p>Integrating <code>hidden-source-map</code> into an automated pipeline
+follows a four-step process:</p>
+<h4 id="1-configure-webpack">1. Configure Webpack</h4>
+<p>Set your production configuration to generate hidden maps:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devtool</span><span class="op">:</span> <span class="st">&#39;hidden-source-map&#39;</span><span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].js&#39;</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">sourceMapFilename</span><span class="op">:</span> <span class="st">&#39;[file].map&#39;</span><span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Webpack emits both <code>app.[contenthash].js</code> and
+<code>app.[contenthash].js.map</code> in your output directory.</p>
+<h4 id="2-upload-maps-to-the-monitoring-service-via-cicd">2. Upload Maps
+to the Monitoring Service via CI/CD</h4>
+<p>During your deployment pipeline, your CI/CD runner captures the
+<code>.map</code> files and uploads them directly to your private error
+logging provider's API. Most services provide dedicated CLI tools or
+Webpack plugins to handle this, tagging the upload with a specific
+release version or commit hash.</p>
+<h4 id="3-exclude-source-maps-from-public-hosting">3. Exclude Source
+Maps from Public Hosting</h4>
+<p>After the source maps are uploaded to your error monitoring service,
+your build script must delete or exclude the <code>.map</code> files
+before the static assets are deployed to your web server, S3 bucket, or
+CDN. Because the <code>.js</code> files contain no reference to the
+maps, and the <code>.map</code> files are not publicly accessible, users
+and search engines cannot access your original source code.</p>
+<h4 id="4-stack-trace-symbolication-at-runtime">4. Stack Trace
+Symbolication at Runtime</h4>
+<p>When an exception occurs in an end-user's browser:</p>
+<ol type="1">
+<li>The client-side monitoring SDK catches the unhandled error.</li>
+<li>The browser sends the minified stack trace (e.g., file name, line 1,
+column 4520) along with the release identifier to your error logging
+service.</li>
+<li>The logging service receives the payload, looks up the corresponding
+private <code>.map</code> file stored during step 2, and performs
+symbolication.</li>
+<li>The error platform displays the reconstructed error with the exact
+TypeScript or JavaScript source file, component name, and line number
+where the issue occurred.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Dev Server vs Webpack Dev Middleware - webpack</title>
+    <meta name="description" content="This article compares webpack-dev-server and webpack-dev-middleware, two essential tools for running Webpack in a local development environment. While both tools compile your assets in-memory for speed, webpack-dev-server is an all-in-one standalone devel">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-dev-server-vs-webpack-dev-middleware">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Dev Server vs Webpack Dev Middleware - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-dev-server-vs-webpack-dev-middleware" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article compares webpack-dev-server and webpack-dev-middleware, two essential tools for running Webpack in a local development environment. While both tools compile your assets in-memory for speed, webpack-dev-server is an all-in-one standalone devel" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-dev-server-vs-webpack-dev-middleware">Webpack Dev Server
+vs Webpack Dev Middleware</h1>
+<p>This article compares <code>webpack-dev-server</code> and
+<code>webpack-dev-middleware</code>, two essential tools for running
+Webpack in a local development environment. While both tools compile
+your assets in-memory for speed, <code>webpack-dev-server</code> is an
+all-in-one standalone development server, whereas
+<code>webpack-dev-middleware</code> is a low-level middleware package
+designed to integrate Webpack compilation into an existing custom
+Node.js server.</p>
+<h2 id="what-is-webpack-dev-middleware">What is Webpack Dev
+Middleware?</h2>
+<p><code>webpack-dev-middleware</code> is a middleware container that
+takes the files emitted by Webpack and serves them from memory. It does
+not run on its own; instead, it must be mounted inside a Node.js server
+framework such as Express, Koa, or Connect.</p>
+<p>Key characteristics:</p>
+<ul>
+<li><strong>No Standalone Server:</strong> It requires an existing
+custom backend server to function.</li>
+<li><strong>In-Memory Compilation:</strong> Files are compiled and kept
+in memory rather than written to the hard drive, resulting in faster
+builds and less disk I/O.</li>
+<li><strong>Granular Control:</strong> You control routes,
+authentication, API mocking, and request handling directly in your
+custom server code.</li>
+<li><strong>No Built-in Live Reloading:</strong> By default, it does not
+include client-side features like Hot Module Replacement (HMR) or
+automatic page reloading. You must pair it with tools like
+<code>webpack-hot-middleware</code> to achieve HMR.</li>
+</ul>
+<h2 id="what-is-webpack-dev-server">What is Webpack Dev Server?</h2>
+<p><code>webpack-dev-server</code> is a complete, ready-to-use
+development server built by the Webpack team. Under the hood, it
+actually uses <code>webpack-dev-middleware</code> along with an Express
+server and a WebSocket client to deliver a fully functional local
+development environment with minimal configuration.</p>
+<p>Key characteristics:</p>
+<ul>
+<li><strong>Zero-Setup Server:</strong> Runs directly from the command
+line (<code>npx webpack serve</code>) without requiring any custom
+Node.js code.</li>
+<li><strong>Built-in HMR and Live Reload:</strong> Comes pre-configured
+with WebSockets to automatically refresh the browser or hot-swap modules
+when code changes.</li>
+<li><strong>Static File Serving:</strong> Provides built-in options to
+serve public static assets and mock API proxies out of the box.</li>
+<li><strong>Opinionated:</strong> Ideal for standard setups, but harder
+to customize if you need advanced backend logic.</li>
+</ul>
+<h2 id="key-differences">Key Differences</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Webpack Dev Server</th>
+<th style="text-align: left;">Webpack Dev Middleware</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Type</strong></td>
+<td style="text-align: left;">Standalone web server</td>
+<td style="text-align: left;">Server middleware</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Execution</strong></td>
+<td style="text-align: left;">Command line
+(<code>webpack serve</code>)</td>
+<td style="text-align: left;">Imported in Node.js scripts</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Server Requirements</strong></td>
+<td style="text-align: left;">None (Express is built-in)</td>
+<td style="text-align: left;">Requires Express, Koa, or Connect</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Live Reload / HMR</strong></td>
+<td style="text-align: left;">Built-in out of the box</td>
+<td style="text-align: left;">Requires additional configuration</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Custom Backend
+Control</strong></td>
+<td style="text-align: left;">Limited to proxying requests</td>
+<td style="text-align: left;">Full control over server logic and
+APIs</td>
+</tr>
+</tbody>
+</table>
+<h2 id="when-to-choose-which">When to Choose Which</h2>
+<p>Choose <strong><code>webpack-dev-server</code></strong> if you are
+building a client-side Single Page Application (SPA), static website, or
+if your backend runs on a separate service. It provides the fastest path
+to a productive workflow with live reloading and HMR enabled
+automatically.</p>
+<p>Choose <strong><code>webpack-dev-middleware</code></strong> if you
+already have an existing Node.js or Express backend and want your
+application logic and asset compilation served from the exact same
+server instance. It is the best choice when you need custom server-side
+routing, specific middleware chains, or server-side rendering (SSR)
+pipelines during development.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

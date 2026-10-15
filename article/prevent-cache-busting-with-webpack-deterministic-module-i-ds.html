@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prevent Cache Busting with Webpack Deterministic Module IDs - webpack</title>
+    <meta name="description" content="Long-term asset caching relies on predictable file names, but Webpack&#39;s default module assignment can inadvertently change chunk hashes even when the underlying code has not changed. This article explains how Webpack assigns module identifiers, why natura">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/prevent-cache-busting-with-webpack-deterministic-module-i-ds">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Prevent Cache Busting with Webpack Deterministic Module IDs - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/prevent-cache-busting-with-webpack-deterministic-module-i-ds" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Long-term asset caching relies on predictable file names, but Webpack&#39;s default module assignment can inadvertently change chunk hashes even when the underlying code has not changed. This article explains how Webpack assigns module identifiers, why natura" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="prevent-cache-busting-with-webpack-deterministic-module-ids">Prevent
+Cache Busting with Webpack Deterministic Module IDs</h1>
+<p>Long-term asset caching relies on predictable file names, but
+Webpack's default module assignment can inadvertently change chunk
+hashes even when the underlying code has not changed. This article
+explains how Webpack assigns module identifiers, why natural or
+sequential numbering causes unnecessary cache invalidation across vendor
+chunks, and how configuring
+<code>optimization.moduleIds = 'deterministic'</code> solves this
+problem by generating consistent, short numeric hashes based on module
+file paths.</p>
+<h3 id="the-problem-order-dependent-module-ids">The Problem:
+Order-Dependent Module IDs</h3>
+<p>In Webpack, every file in your dependency graph is treated as a
+module and assigned an internal module identifier
+(<code>moduleId</code>). Historically, Webpack assigned these IDs using
+incremental counters (such as <code>0</code>, <code>1</code>,
+<code>2</code>, and so on) based on the order in which modules were
+resolved.</p>
+<p>When you add, delete, or rename an import anywhere in your source
+code, the resolution order of the entire dependency graph shifts. As a
+result:</p>
+<ol type="1">
+<li>A newly inserted module takes an existing ID, shifting the numeric
+IDs of subsequent modules.</li>
+<li>Even if a vendor bundle (like a third-party library chunk) contains
+no actual source changes, the internal ID references compiled into that
+bundle change.</li>
+<li>Because the compiled output changes, Webpack generates a completely
+new <code>[contenthash]</code> for that chunk file.</li>
+<li>Clients are forced to re-download the entire vendor bundle,
+defeating browser-side long-term caching.</li>
+</ol>
+<h3 id="how-optimizationmoduleids--deterministic-works">How
+<code>optimization.moduleIds = 'deterministic'</code> Works</h3>
+<p>Setting <code>optimization.moduleIds = 'deterministic'</code> tells
+Webpack to generate module IDs using a deterministic hashing algorithm
+rather than sequential numbering or build-order indexes.</p>
+<p>Instead of assigning IDs based on when a file is discovered during
+the compilation pass, Webpack creates a short numeric hash derived from
+the module's resolved file path.</p>
+<p>This approach ensures:</p>
+<ul>
+<li><strong>Isolated Changes:</strong> If you add a new module
+<code>feature.js</code>, only <code>feature.js</code> receives a new ID.
+Unchanged modules retain the exact same IDs they had in previous builds
+because their file paths did not change.</li>
+<li><strong>Stable Content Hashes:</strong> Because module IDs inside
+vendor chunks remain identical across builds, the compiled JavaScript
+output of those chunks does not change. Consequently, the
+<code>[contenthash]</code> remains identical, allowing browsers to
+safely serve the cached asset.</li>
+<li><strong>Minimal Bundle Size Overhead:</strong> While
+<code>optimization.moduleIds = 'named'</code> also avoids
+order-dependent shifts by using file path strings (e.g.,
+<code>./node_modules/lodash/lodash.js</code>), it significantly
+increases bundle sizes. The <code>deterministic</code> setting condenses
+these paths into short numeric values (typically 3 to 4 digits),
+offering cache stability without bloating the bundle.</li>
+</ul>
+<h3 id="webpack-configuration">Webpack Configuration</h3>
+<p>In Webpack 5, <code>deterministic</code> is the default behavior when
+<code>mode</code> is set to <code>'production'</code>. However, if you
+are explicitly customizing optimization rules, you can define it
+directly in your <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">moduleIds</span><span class="op">:</span> <span class="st">&#39;deterministic&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunkIds</span><span class="op">:</span> <span class="st">&#39;deterministic&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Pairing <code>moduleIds: 'deterministic'</code> with
+<code>chunkIds: 'deterministic'</code> guarantees that both internal
+modules and the resulting chunk bundles maintain persistent identifiers
+across independent production builds, preserving long-term browser cache
+validity.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

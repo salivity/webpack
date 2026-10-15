@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React 18 Streaming SSR and Webpack Bundle Hydration - webpack</title>
+    <meta name="description" content="React 18 transforms server-side rendering (SSR) by replacing monolithic page rendering with streaming architecture powered by modern Suspense boundaries. Instead of waiting for the entire page&#39;s data and HTML to generate before sending it over the network">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/react-18-streaming-ssr-and-webpack-bundle-hydration">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="React 18 Streaming SSR and Webpack Bundle Hydration - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/react-18-streaming-ssr-and-webpack-bundle-hydration" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="React 18 transforms server-side rendering (SSR) by replacing monolithic page rendering with streaming architecture powered by modern Suspense boundaries. Instead of waiting for the entire page&#39;s data and HTML to generate before sending it over the network" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="react-18-streaming-ssr-and-webpack-bundle-hydration">React 18
+Streaming SSR and Webpack Bundle Hydration</h1>
+<p>React 18 transforms server-side rendering (SSR) by replacing
+monolithic page rendering with streaming architecture powered by modern
+Suspense boundaries. Instead of waiting for the entire page's data and
+HTML to generate before sending it over the network—and subsequently
+blocking client interactivity until the entire JavaScript bundle
+downloads and parses—React 18 enables progressive HTML streaming and
+selective hydration. When paired with Webpack, this architecture
+coordinates chunk loading, asset emission, and runtime execution so that
+individual components become interactive as soon as their respective
+code chunks and HTML fragments arrive.</p>
+<h3 id="the-shift-from-monolithic-to-streaming-ssr">The Shift from
+Monolithic to Streaming SSR</h3>
+<p>In previous versions of React, SSR operated through
+<code>renderToString</code>. This approach suffered from four sequential
+bottlenecks:</p>
+<ol type="1">
+<li>The server had to fetch all required data before rendering any
+HTML.</li>
+<li>The server had to render the entire component tree to an HTML string
+before sending it to the client.</li>
+<li>The client had to download JavaScript bundles for the entire
+application before initiating hydration.</li>
+<li>React had to hydrate the complete DOM tree in a single pass before
+any part of the UI became interactive.</li>
+</ol>
+<p>React 18 resolves this with the <code>renderToPipeableStream</code>
+(for Node.js) and <code>renderToReadableStream</code> (for Web Streams)
+APIs. The server immediately sends an initial HTML "shell" containing
+fallbacks for components wrapped in <code>&lt;Suspense&gt;</code>. As
+asynchronous data resolves on the server, React renders the remaining
+components and streams them down the same HTTP connection alongside
+minimal inline <code>&lt;script&gt;</code> tags that replace the
+fallback markup with actual content directly in the DOM.</p>
+<h3 id="webpack-code-splitting-and-chunk-mapping">Webpack Code Splitting
+and Chunk Mapping</h3>
+<p>For streaming SSR to work with Webpack, the client-side build must be
+split into asynchronous chunks via dynamic imports
+(<code>import()</code>). Webpack creates isolated bundle files for these
+lazy-loaded modules and manages their retrieval using its internal
+runtime mechanics (such as <code>__webpack_require__.e</code>).</p>
+<p>In a standard client-rendered application, Webpack requests chunks
+dynamically on demand. In streaming SSR, however, the server must
+determine which Webpack chunks correspond to the components being
+streamed. Tools and frameworks typically solve this using a Webpack
+compilation manifest:</p>
+<ol type="1">
+<li><strong>Manifest Generation:</strong> During the build step, a
+Webpack plugin (such as the manifest plugin or module federation hooks)
+records module IDs and maps them to their respective output chunks
+(<code>chunk.js</code>, <code>vendor.js</code>).</li>
+<li><strong>Server-Side Module Tracking:</strong> While rendering the
+component tree on the server, the streaming renderer tracks which
+code-split components are encountered within each
+<code>&lt;Suspense&gt;</code> boundary.</li>
+<li><strong>Asset Tag Injection:</strong> As each
+<code>&lt;Suspense&gt;</code> boundary finishes rendering on the server,
+the server injects <code>&lt;script&gt;</code> tags for that boundary’s
+corresponding Webpack chunk into the streaming response before emitting
+the component's HTML.</li>
+</ol>
+<p>This prevents the "waterfall" effect: the client receives the markup
+and begins downloading the required Webpack chunk nearly
+simultaneously.</p>
+<h3 id="selective-hydration">Selective Hydration</h3>
+<p>Once the HTML and corresponding Webpack bundles arrive in the
+browser, React 18 utilizes Selective Hydration via
+<code>hydrateRoot</code>. Hydration is no longer an all-or-nothing
+operation.</p>
+<p>Because code is split using <code>React.lazy</code>, React waits to
+hydrate a given boundary until its associated Webpack bundle has been
+downloaded and executed. If Webpack is still downloading the chunk for
+Component B, React does not block Component A from hydrating. As soon as
+Component A's JavaScript is evaluated by Webpack's runtime, React
+hydrates Component A and attaches event listeners, making it fully
+interactive.</p>
+<h3 id="interaction-prioritization">Interaction Prioritization</h3>
+<p>A critical touchpoint between React 18 and Webpack's runtime is
+interaction-driven hydration order. If multiple components are awaiting
+hydration while their Webpack chunks load in the background, React
+monitors user events (such as clicks, taps, or focus changes).</p>
+<p>If a user clicks inside an unhydrated <code>&lt;Suspense&gt;</code>
+boundary:</p>
+<ol type="1">
+<li>React intercepts and records the interaction event.</li>
+<li>React bumps the priority of that specific boundary above
+others.</li>
+<li>Webpack executes the corresponding module code as a priority.</li>
+<li>React synchronously hydrates that subtree and replays the user's
+recorded event against the newly interactive component.</li>
+</ol>
+<h3 id="webpack-runtime-integration-requirements">Webpack Runtime
+Integration Requirements</h3>
+<p>To facilitate this architecture in custom SSR setups without an
+opinionated framework, the Webpack runtime must be present in the
+initial HTML shell. By ensuring the Webpack runtime and critical
+manifest data are loaded up front, any dynamically streamed
+<code>&lt;script&gt;</code> tag emitted later in the stream can
+immediately register its exported modules into
+<code>window.webpackChunk</code> without race conditions or undefined
+references. React can then successfully match the streamed DOM nodes to
+the client-side component definitions.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

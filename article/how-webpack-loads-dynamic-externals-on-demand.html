@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Loads Dynamic Externals on Demand - webpack</title>
+    <meta name="description" content="Dynamic externals in Webpack allow applications to decouple dependencies from the main bundle and fetch them from external locations, such as a Content Delivery Network (CDN), only when requested at runtime. Rather than hardcoding third-party libraries in">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-loads-dynamic-externals-on-demand">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Loads Dynamic Externals on Demand - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-loads-dynamic-externals-on-demand" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Dynamic externals in Webpack allow applications to decouple dependencies from the main bundle and fetch them from external locations, such as a Content Delivery Network (CDN), only when requested at runtime. Rather than hardcoding third-party libraries in" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-loads-dynamic-externals-on-demand">How Webpack Loads
+Dynamic Externals on Demand</h1>
+<p>Dynamic externals in Webpack allow applications to decouple
+dependencies from the main bundle and fetch them from external
+locations, such as a Content Delivery Network (CDN), only when requested
+at runtime. Rather than hardcoding third-party libraries into static
+HTML <code>&lt;script&gt;</code> tags or bundling them directly, Webpack
+resolves dynamic imports into runtime instructions that dynamically
+inject script tags into the Document Object Model (DOM). This article
+explains the internal mechanics behind how Webpack handles dynamic
+externals, how the runtime orchestrates on-demand script loading, and
+how the external library binds back into the module system.</p>
+<h3 id="static-vs-dynamic-externals">Static vs. Dynamic Externals</h3>
+<p>Standard Webpack externals require dependencies to exist globally
+(for example, on the <code>window</code> object) before the bundle
+executes. If the application bundles an external without loading it
+first, runtime errors occur immediately.</p>
+<p>Dynamic externals resolve this limitation. By pairing Webpack's
+<code>externalsType: 'script'</code> with dynamic <code>import()</code>
+statements, Webpack postpones fetching the dependency until the code
+branch executing the <code>import()</code> is reached.</p>
+<h3 id="configuration-setup">Configuration Setup</h3>
+<p>To enable on-demand loading of external scripts, Webpack relies on
+the <code>script</code> external type. This can be configured in
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">externalsType</span><span class="op">:</span> <span class="st">&#39;script&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">externals</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">lodash</span><span class="op">:</span> [<span class="st">&#39;https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js&#39;</span><span class="op">,</span> <span class="st">&#39;_&#39;</span>]<span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>In this configuration, the key (<code>lodash</code>) represents the
+imported module specifier, the first array element defines the remote
+URL, and the second element defines the global variable exposed by the
+external script on <code>window</code>.</p>
+<h3 id="the-under-the-hood-loading-mechanism">The Under-the-Hood Loading
+Mechanism</h3>
+<p>When your application code triggers a dynamic import such as
+<code>const _ = await import('lodash')</code>, Webpack executes a
+distinct multi-step process at runtime:</p>
+<h4 id="1-runtime-detection-and-promise-creation">1. Runtime Detection
+and Promise Creation</h4>
+<p>Webpack compiles the dynamic <code>import()</code> call into an
+internal runtime call, typically <code>__webpack_require__.e</code>.
+This runtime function is responsible for ensuring the specified chunk or
+external script is fetched and ready. It initializes a JavaScript
+<code>Promise</code> to track the loading state.</p>
+<h4 id="2-dom-injection-via-__webpack_require__l">2. DOM Injection via
+<code>__webpack_require__.l</code></h4>
+<p>Webpack contains an internal runtime utility (historically
+represented as <code>__webpack_require__.l</code>) specifically designed
+for DOM script injection. When the external is requested:</p>
+<ul>
+<li>Webpack checks if a <code>&lt;script&gt;</code> tag with the target
+URL already exists to prevent duplicate downloads.</li>
+<li>If it does not exist, Webpack creates a standard HTML element:
+<code>document.createElement('script')</code>.</li>
+<li>It configures attributes such as <code>script.src = url</code>,
+<code>script.async = true</code>, and attaches tracking handlers for
+<code>onload</code> and <code>onerror</code>.</li>
+<li>The element is appended to <code>document.head</code>.</li>
+</ul>
+<h4 id="3-execution-and-global-namespace-binding">3. Execution and
+Global Namespace Binding</h4>
+<p>The browser downloads the script asynchronously and executes it.
+Standard UMD or IIFE-based external scripts automatically attach their
+exports to the global object (<code>window</code>).</p>
+<h4 id="4-promise-resolution-and-module-synthesis">4. Promise Resolution
+and Module Synthesis</h4>
+<p>Once the browser fires the <code>onload</code> event:</p>
+<ul>
+<li>Webpack’s script loader handler fires, marking the network request
+as complete.</li>
+<li>Webpack accesses the global variable configured in the externals
+definition (for example, <code>window._</code>).</li>
+<li>The runtime packages this global variable into a synthetic ES module
+structure, complete with default and named exports.</li>
+<li>The initial <code>Promise</code> returned by <code>import()</code>
+resolves, allowing execution to proceed with the fetched library.</li>
+</ul>
+<h3 id="error-handling-and-fallbacks">Error Handling and Fallbacks</h3>
+<p>If the network request fails or the script times out, the
+<code>onerror</code> event triggers. Webpack rejects the internal
+promise, converting the failure into a catchable JavaScript error:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">try</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> { <span class="cf">default</span><span class="op">:</span> remoteModule } <span class="op">=</span> <span class="cf">await</span> <span class="im">import</span>(<span class="st">&#39;remote-lib&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>} <span class="cf">catch</span> (error) {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="bu">console</span><span class="op">.</span><span class="fu">error</span>(<span class="st">&#39;Failed to load the external script:&#39;</span><span class="op">,</span> error)<span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>This dynamic approach eliminates the need to load large dependencies
+during the initial page paint, ensuring third-party vendor code is
+downloaded strictly when the user needs it.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

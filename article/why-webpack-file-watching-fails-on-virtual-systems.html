@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Webpack File Watching Fails on Virtual Systems - webpack</title>
+    <meta name="description" content="Webpack file watching frequently fails in environments utilizing virtualized containers, virtual machines, or networked drives because these setups disrupt native operating system file notification events. This article explains the technical reasons why W">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/why-webpack-file-watching-fails-on-virtual-systems">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Webpack File Watching Fails on Virtual Systems - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/why-webpack-file-watching-fails-on-virtual-systems" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack file watching frequently fails in environments utilizing virtualized containers, virtual machines, or networked drives because these setups disrupt native operating system file notification events. This article explains the technical reasons why W" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-webpack-file-watching-fails-on-virtual-systems">Why Webpack
+File Watching Fails on Virtual Systems</h1>
+<p>Webpack file watching frequently fails in environments utilizing
+virtualized containers, virtual machines, or networked drives because
+these setups disrupt native operating system file notification events.
+This article explains the technical reasons why Webpack's watcher loses
+track of file modifications across system boundaries and provides the
+primary configuration changes and architectural adjustments required to
+restore reliable change detection.</p>
+<h3 id="the-mechanism-behind-webpack-file-watching">The Mechanism Behind
+Webpack File Watching</h3>
+<p>Under the hood, Webpack relies on file-watching libraries—primarily
+Chokidar—to monitor project files for modifications. In native,
+localized environments, these libraries do not continuously scan every
+file on disk. Instead, they register interest with the host operating
+system's native event-driven APIs, such as:</p>
+<ul>
+<li><strong>inotify</strong> on Linux</li>
+<li><strong>FSEvents</strong> on macOS</li>
+<li><strong>ReadDirectoryChangesW</strong> on Windows</li>
+</ul>
+<p>When an application modifies, saves, or deletes a file, the host
+kernel automatically generates a notification event. Webpack receives
+this notification almost instantaneously and initiates an incremental
+rebuild.</p>
+<h3 id="why-events-break-on-virtual-and-networked-file-systems">Why
+Events Break on Virtual and Networked File Systems</h3>
+<p>File watching breaks down when a storage layer separates the
+environment executing the change from the environment running the
+Webpack process. This issue typically manifests in setups like Docker
+bind mounts, Vagrant/VirtualBox shared folders, Windows Subsystem for
+Linux (WSL), and network-attached storage (NFS or SMB).</p>
+<h4 id="1-inability-to-propagate-host-os-notifications-to-the-guest">1.
+Inability to Propagate Host OS Notifications to the Guest</h4>
+<p>When you edit a file on a host operating system (such as macOS or
+Windows) that is mapped into a guest virtual machine or container (such
+as a Linux-based Docker container), the change occurs in the host's
+filesystem. While the host kernel triggers a native event (like
+<code>FSEvents</code>), that notification is not inherently bridged
+across the virtualization layer into the guest kernel's
+<code>inotify</code> subsystem. Consequently, the guest kernel never
+informs Webpack that a file has changed.</p>
+<h4 id="2-network-file-protocol-limitations">2. Network File Protocol
+Limitations</h4>
+<p>Network file-sharing protocols like NFS, CIFS, and SMB are designed
+around remote read/write semantics rather than synchronized kernel-level
+event streaming. When a client modifies a file over a network mount, the
+remote storage server often does not broadcast standard filesystem
+events back to the client system running Webpack. Even when protocols
+offer change notifications, latency or implementation differences often
+prevent Webpack from capturing them accurately.</p>
+<h4 id="3-virtualbox-and-hypervisor-shared-folder-quirks">3. VirtualBox
+and Hypervisor Shared Folder Quirks</h4>
+<p>Shared folder drivers, such as the VirtualBox Guest Additions
+filesystem (<code>vboxsf</code>), implement a simplified filesystem
+driver inside the guest. Historically, these drivers completely omit the
+hooks necessary to trigger <code>inotify</code> events within the guest
+kernel, rendering event-based file watchers inoperative by default.</p>
+<h3 id="resolving-the-problem">Resolving the Problem</h3>
+<p>To restore file watching on unsupported filesystems, developers must
+switch from event-driven detection to proactive polling or reorganize
+how files are stored.</p>
+<h4 id="solution-1-enable-polling-in-webpack">Solution 1: Enable Polling
+in Webpack</h4>
+<p>When native events fail, Webpack can periodically query files for
+timestamp and size changes using polling. You can enable this behavior
+in your <code>webpack.config.js</code> via the <code>watchOptions</code>
+property:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">watchOptions</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">poll</span><span class="op">:</span> <span class="dv">1000</span><span class="op">,</span> <span class="co">// Check for changes every 1000 milliseconds (1 second)</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">aggregateTimeout</span><span class="op">:</span> <span class="dv">300</span><span class="op">,</span> <span class="co">// Delay rebuild after first change for batching</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">ignored</span><span class="op">:</span> <span class="ss">/node_modules/</span><span class="op">,</span> <span class="co">// Exclude heavy directories to save CPU</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p><em>Note: Polling circumvents the missing kernel events, but it can
+lead to increased CPU and battery utilization on large projects. Always
+explicitly ignore large directories like
+<code>node_modules</code>.</em></p>
+<h4
+id="solution-2-store-files-natively-within-the-virtualized-layer">Solution
+2: Store Files Natively Within the Virtualized Layer</h4>
+<p>A more efficient alternative to polling is keeping the source code
+entirely inside the guest environment rather than across a mount:</p>
+<ul>
+<li><strong>In WSL2:</strong> Store project files in the Linux
+filesystem (e.g., <code>~/projects/</code>) instead of mounting from the
+Windows drive (<code>/mnt/c/</code>).</li>
+<li><strong>In Docker:</strong> Use dedicated Docker named volumes
+rather than direct bind mounts for active file watching, or use
+synchronization utilities such as Mutagen to bridge changes between host
+and container.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

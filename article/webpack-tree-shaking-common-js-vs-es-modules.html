@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Tree Shaking: CommonJS vs ES Modules - webpack</title>
+    <meta name="description" content="Tree shaking is Webpack&#39;s process of eliminating dead code to produce leaner production bundles. While the mechanism functions seamlessly with the static structure of ECMAScript Modules (ESM), handling CommonJS (CJS) modules introduces distinct challenges">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-tree-shaking-common-js-vs-es-modules">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Tree Shaking: CommonJS vs ES Modules - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-tree-shaking-common-js-vs-es-modules" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Tree shaking is Webpack&#39;s process of eliminating dead code to produce leaner production bundles. While the mechanism functions seamlessly with the static structure of ECMAScript Modules (ESM), handling CommonJS (CJS) modules introduces distinct challenges" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-tree-shaking-commonjs-vs-es-modules">Webpack Tree
+Shaking: CommonJS vs ES Modules</h1>
+<p>Tree shaking is Webpack's process of eliminating dead code to produce
+leaner production bundles. While the mechanism functions seamlessly with
+the static structure of ECMAScript Modules (ESM), handling CommonJS
+(CJS) modules introduces distinct challenges due to their dynamic
+runtime execution. This article examines how Webpack processes both
+formats, detailing why ESM is natively optimized for tree shaking, how
+Webpack 5 attempts to handle CommonJS, and the architectural differences
+between them.</p>
+<h2 id="tree-shaking-in-es-modules-esm">Tree Shaking in ES Modules
+(ESM)</h2>
+<p>ES Modules are static by design. Statements using <code>import</code>
+and <code>export</code> must appear at the top level of a file and
+cannot be conditioned inside <code>if</code> blocks or functions.
+Because the imports and exports cannot change at runtime, Webpack can
+reliably analyze the entire dependency tree at compile time.</p>
+<p>During the build process in <code>production</code> mode, Webpack
+evaluates ES Modules using a multi-step pipeline:</p>
+<ol type="1">
+<li><strong>Static Analysis:</strong> Webpack parses the abstract syntax
+tree (AST) of each module and tracks every exported and imported
+identifier.</li>
+<li><strong>Flagging Unused Exports:</strong> Using the
+<code>optimization.usedExports</code> configuration (enabled by default
+in production), Webpack determines which exports are never referenced by
+an <code>import</code> statement anywhere in the dependency graph.</li>
+<li><strong>Dead-Code Annotation:</strong> Webpack wraps the bundle
+output with annotations (e.g.,
+<code>/* unused harmony export */</code>), leaving the declaration
+intact but stripping references to it.</li>
+<li><strong>Minification:</strong> A minifier, such as Terser or SWC,
+runs on the final bundle and safely drops the annotated, unreferenced
+variables and functions.</li>
+</ol>
+<p>Furthermore, ESM allows the use of the
+<code>"sideEffects": false</code> property in <code>package.json</code>.
+This signals to Webpack that entire files can be dropped completely if
+none of their exports are consumed, even if the file contains top-level
+executions.</p>
+<h2 id="tree-shaking-in-commonjs-cjs">Tree Shaking in CommonJS
+(CJS)</h2>
+<p>CommonJS modules rely on <code>require()</code> and
+<code>module.exports</code>. Unlike ESM, CommonJS is dynamic:</p>
+<ul>
+<li><code>require()</code> calls can be executed conditionally inside
+functions or control blocks.</li>
+<li><code>module.exports</code> is a plain JavaScript object that can be
+mutated at runtime, assigned dynamically via loops
+(<code>exports[key] = val</code>), or overwritten entirely at any point
+during code execution.</li>
+</ul>
+<p>Because a compiler cannot definitively predict runtime object
+mutations without executing the code, Webpack historically treated all
+CommonJS modules as dynamic black boxes, preserving the entire module in
+the final bundle.</p>
+<h3 id="webpack-5-commonjs-analysis">Webpack 5 CommonJS Analysis</h3>
+<p>Starting with Webpack 5, the bundler incorporates static analysis
+heuristics to perform limited tree shaking on CommonJS modules. Webpack
+inspects common CJS patterns, such as:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>exports<span class="op">.</span><span class="at">foo</span> <span class="op">=</span> <span class="kw">function</span> () { <span class="co">/* ... */</span> }<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>exports<span class="op">.</span><span class="at">bar</span> <span class="op">=</span> <span class="kw">function</span> () { <span class="co">/* ... */</span> }<span class="op">;</span></span></code></pre></div>
+<p>Or:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">foo</span><span class="op">:</span> <span class="kw">function</span> () { <span class="co">/* ... */</span> }<span class="op">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">bar</span><span class="op">:</span> <span class="kw">function</span> () { <span class="co">/* ... */</span> }</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>If an importer references a specific property using destructuring or
+direct property access:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { foo } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;./math&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co">// or</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> foo <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;./math&#39;</span>)<span class="op">.</span><span class="at">foo</span><span class="op">;</span></span></code></pre></div>
+<p>Webpack 5 tracks that <code>bar</code> was not referenced and flags
+it as unused, allowing the minifier to drop it.</p>
+<h3 id="bailout-scenarios-in-commonjs">Bailout Scenarios in
+CommonJS</h3>
+<p>CommonJS tree shaking is fragile. Webpack immediately bails out of
+optimization if it encounters dynamic patterns, including:</p>
+<ul>
+<li><strong>Computed Property Names:</strong>
+<code>exports[dynamicKey] = value;</code></li>
+<li><strong>Whole-Object Reassignment:</strong> Reassigning
+<code>module.exports</code> after defining properties.</li>
+<li><strong>Passing Module References:</strong> Passing
+<code>module.exports</code> or <code>exports</code> as an argument to
+another function.</li>
+<li><strong>Dynamic Access:</strong> Using
+<code>const math = require('./math'); math[dynamicMethod]();</code></li>
+</ul>
+<p>When a bailout occurs, Webpack assumes the entire module is used and
+bundles all exported properties to prevent breaking runtime
+behavior.</p>
+<h2 id="key-differences">Key Differences</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">ES Modules (ESM)</th>
+<th style="text-align: left;">CommonJS (CJS)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Analysis Timing</strong></td>
+<td style="text-align: left;">Static (Compile-time)</td>
+<td style="text-align: left;">Dynamic (Inferred via compile-time
+heuristics)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Reliability</strong></td>
+<td style="text-align: left;">Deterministic and guaranteed</td>
+<td style="text-align: left;">Best-effort; prone to bailouts</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Import Semantics</strong></td>
+<td style="text-align: left;">Static bindings via
+<code>import</code></td>
+<td style="text-align: left;">Runtime evaluation via
+<code>require()</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Unused File
+Elimination</strong></td>
+<td style="text-align: left;">Supported via <code>sideEffects</code>
+flag</td>
+<td style="text-align: left;">Not reliably supported</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Export Modification</strong></td>
+<td style="text-align: left;">Immutable exports</td>
+<td style="text-align: left;">Mutable <code>module.exports</code>
+object</td>
+</tr>
+</tbody>
+</table>
+<h2 id="practical-implications">Practical Implications</h2>
+<p>To achieve maximum tree shaking efficiency in Webpack, source code
+and third-party dependencies should use ES Modules syntax. While Webpack
+5 provides fallback analysis for CommonJS, it only succeeds with strict,
+static coding patterns. Relying on CommonJS for dead-code elimination
+introduces bundle-size unpredictability due to the ease with which
+runtime patterns bypass static inspection.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

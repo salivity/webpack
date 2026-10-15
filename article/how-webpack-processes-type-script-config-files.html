@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Processes TypeScript Config Files - webpack</title>
+    <meta name="description" content="Using a webpack.config.ts file allows developers to write type-safe Webpack configurations with autocompletion and compile-time error checking. Webpack processes these native TypeScript configuration files by relying on dynamic module interception, utiliz">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-processes-type-script-config-files">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Processes TypeScript Config Files - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-processes-type-script-config-files" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Using a webpack.config.ts file allows developers to write type-safe Webpack configurations with autocompletion and compile-time error checking. Webpack processes these native TypeScript configuration files by relying on dynamic module interception, utiliz" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-processes-typescript-config-files">How Webpack
+Processes TypeScript Config Files</h1>
+<p>Using a <code>webpack.config.ts</code> file allows developers to
+write type-safe Webpack configurations with autocompletion and
+compile-time error checking. Webpack processes these native TypeScript
+configuration files by relying on dynamic module interception, utilizing
+libraries like <code>interpret</code> and runtime transpilers such as
+<code>ts-node</code> to compile the configuration into standard
+JavaScript in-memory before executing the build pipeline.</p>
+<h3 id="extension-detection-via-interpret">Extension Detection via
+<code>interpret</code></h3>
+<p>Webpack does not natively parse TypeScript syntax out of the box.
+Instead, the Webpack Command Line Interface (CLI) uses an internal
+library called <code>interpret</code>.</p>
+<p>When you execute <code>webpack</code>, the CLI scans the project root
+for configuration files matching various extensions (such as
+<code>.js</code>, <code>.mjs</code>, <code>.ts</code>, and
+<code>.cts</code>). When it identifies <code>webpack.config.ts</code>,
+<code>interpret</code> maps the <code>.ts</code> extension to a list of
+compatible runtime compilers registered in the Node.js ecosystem,
+prioritizing <code>ts-node</code>.</p>
+<h3 id="just-in-time-transpilation">Just-in-Time Transpilation</h3>
+<p>Once <code>webpack.config.ts</code> is detected, Webpack attempts to
+dynamically require a supported transpiler. By default, it looks for
+<code>ts-node</code>:</p>
+<ol type="1">
+<li><strong>Transpiler Registration:</strong> Webpack automatically
+executes <code>ts-node/register</code> behind the scenes.</li>
+<li><strong>Hooking into Node.js Module Resolution:</strong> The
+transpiler hooks into Node’s <code>require</code> mechanism
+(traditionally via <code>require.extensions</code>).</li>
+<li><strong>In-Memory Compilation:</strong> When Node attempts to load
+<code>webpack.config.ts</code>, the transpiler intercepts the call,
+strips the TypeScript type definitions, transpiles modern syntax into
+the version of ECMAScript supported by your running Node.js process, and
+returns executable JavaScript directly in memory without writing
+compiled files to disk.</li>
+</ol>
+<p>Alternative transpilers such as <code>esbuild-register</code>,
+<code>@swc/register</code>, or <code>sucrase</code> can also be
+configured to speed up this registration step.</p>
+<h3 id="configuration-extraction-and-execution">Configuration Extraction
+and Execution</h3>
+<p>After transpilation, Webpack executes the configuration script just
+like a standard CommonJS or ES Module:</p>
+<ul>
+<li><strong>Object Export:</strong> If the file exports a plain
+configuration object (<code>export default { ... }</code>), Webpack
+reads it directly.</li>
+<li><strong>Function Export:</strong> If the file exports a function
+that accepts <code>env</code> and <code>argv</code>, Webpack invokes the
+function with the relevant CLI arguments.</li>
+<li><strong>Promise Export:</strong> If an asynchronous function or
+Promise is exported, Webpack waits for the Promise to resolve before
+initializing the compiler.</li>
+</ul>
+<p>Once the configuration object is obtained, Webpack validates the
+schema using <code>schema-utils</code> and begins the compilation
+lifecycle.</p>
+<h3 id="prerequisites-for-typescript-configurations">Prerequisites for
+TypeScript Configurations</h3>
+<p>For Webpack to process <code>webpack.config.ts</code> properly,
+specific development dependencies must be installed in the project:</p>
+<ul>
+<li><strong><code>typescript</code>:</strong> The core compiler
+engine.</li>
+<li><strong><code>ts-node</code>:</strong> The default execution engine
+that Webpack looks for to compile TypeScript on the fly.</li>
+<li><strong><code>@types/node</code> and
+<code>@types/webpack</code>:</strong> Type declarations ensuring that
+configuration objects adhere strictly to Webpack’s internal
+interfaces.</li>
+</ul>
+<p>If <code>ts-node</code> is missing, Webpack fails immediately with an
+error stating that it cannot parse the TypeScript configuration
+file.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack 5 Inner Graph Analysis for Chained Functions - webpack</title>
+    <meta name="description" content="Webpack 5 introduced inner graph analysis to trace variable and function usage across internal scopes, drastically improving the bundler&#39;s ability to perform tree shaking on chained functions and deeply nested dependencies. While earlier bundlers only eva">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-5-inner-graph-analysis-for-chained-functions">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack 5 Inner Graph Analysis for Chained Functions - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-5-inner-graph-analysis-for-chained-functions" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 introduced inner graph analysis to trace variable and function usage across internal scopes, drastically improving the bundler&#39;s ability to perform tree shaking on chained functions and deeply nested dependencies. While earlier bundlers only eva" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-5-inner-graph-analysis-for-chained-functions">Webpack 5
+Inner Graph Analysis for Chained Functions</h1>
+<p>Webpack 5 introduced inner graph analysis to trace variable and
+function usage across internal scopes, drastically improving the
+bundler's ability to perform tree shaking on chained functions and
+deeply nested dependencies. While earlier bundlers only evaluated
+dependencies at the top level of a module, inner graph analysis inspects
+the flow of code execution inside functions and closures. This ensures
+that uncalled functions in a chain, along with their associated imports,
+are safely stripped from the final bundle.</p>
+<p>Prior to Webpack 5, the static analysis engine could not reliably
+determine whether an exported function’s internal dependencies were
+executed if that function was imported elsewhere. If function
+<code>a</code> called function <code>b</code>, and <code>b</code> called
+an external library or secondary helper <code>c</code>, the bundler
+often bundled all three functions along with their dependencies
+regardless of whether the initial entry function was actually invoked.
+This limitation was particularly noticeable in functional programming
+patterns, method chaining, and utility libraries, where modules
+frequently export complex pipelines of interdependent functions.</p>
+<p>Inner graph analysis solves this by generating a detailed dependency
+graph of the Abstract Syntax Tree (AST) within each module. Webpack
+tracks symbols, argument passing, and references across scopes to
+identify exactly which internal expressions depend on which exported
+members.</p>
+<p>When applied to chained functions, the analysis operates in the
+following ways:</p>
+<ul>
+<li><strong>Execution Tracking in Function Chains:</strong> If function
+<code>fetchData()</code> pipes data into <code>formatData()</code>,
+which then calls <code>displayData()</code>, Webpack constructs a graph
+representing the execution order. If the application only imports the
+module to use a completely unrelated helper, Webpack determines that
+<code>fetchData</code> is unused. Because it knows
+<code>formatData</code> and <code>displayData</code> are only referenced
+within that unused chain, the entire chain is marked as dead code.</li>
+<li><strong>Conditional and Deferred Execution:</strong> In chained
+function patterns—such as builder patterns or compose utilities—Webpack
+evaluates whether the terminal method or intermediate steps trigger side
+effects. If an intermediate function references another heavy module but
+the chain itself is never evaluated, the inner graph confirms that the
+external reference is never triggered.</li>
+<li><strong>Cross-Module Dependency Pruning:</strong> When chained
+functions rely on imports from external files, inner graph analysis
+propagates the usage state backward. If the root function of a local
+chain is omitted, the bundler marks the imported functions required
+further down the chain as unused exports in their respective origin
+files, allowing them to be eliminated as well.</li>
+</ul>
+<p>By tracing internal references rather than relying purely on
+top-level module statements, Webpack 5 removes the need for developers
+to manually split chained logic into separate, isolated files to achieve
+optimal bundle sizes. The result is pure, automated dead-code
+elimination for modern, composable JavaScript applications.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

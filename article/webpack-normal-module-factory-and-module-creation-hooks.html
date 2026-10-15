@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack NormalModuleFactory and Module Creation Hooks - webpack</title>
+    <meta name="description" content="Webpack&#39;s NormalModuleFactory is the core engine component responsible for turning raw dependency requests into fully realized module instances. This article covers the role of NormalModuleFactory within the Webpack compilation lifecycle, breaks down its">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-normal-module-factory-and-module-creation-hooks">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack NormalModuleFactory and Module Creation Hooks - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-normal-module-factory-and-module-creation-hooks" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack&#39;s NormalModuleFactory is the core engine component responsible for turning raw dependency requests into fully realized module instances. This article covers the role of NormalModuleFactory within the Webpack compilation lifecycle, breaks down its" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-normalmodulefactory-and-module-creation-hooks">Webpack
+NormalModuleFactory and Module Creation Hooks</h1>
+<p>Webpack's <code>NormalModuleFactory</code> is the core engine
+component responsible for turning raw dependency requests into fully
+realized module instances. This article covers the role of
+<code>NormalModuleFactory</code> within the Webpack compilation
+lifecycle, breaks down its key execution stages, and demonstrates how
+custom plugins can tap into its Tapable hooks to intercept, modify, or
+halt module generation.</p>
+<hr />
+<h3 id="what-is-normalmodulefactory">What is NormalModuleFactory?</h3>
+<p>In Webpack, every <code>import</code> or <code>require</code>
+statement represents a dependency. The compiler does not handle the
+translation of these file paths into module objects directly; instead,
+it delegates this task to module factories. For standard application
+code—such as JavaScript, TypeScript, CSS, and asset files—Webpack uses
+<code>NormalModuleFactory</code>.</p>
+<p>The primary responsibility of <code>NormalModuleFactory</code> is
+to:</p>
+<ol type="1">
+<li>Accept raw dependency data (path, context, import type).</li>
+<li>Resolve the request against file system rules and configured
+aliases.</li>
+<li>Determine and apply applicable loaders.</li>
+<li>Instantiate a <code>NormalModule</code> object that contains the
+resolved resource path, associated loaders, and parser
+configurations.</li>
+</ol>
+<h3 id="the-module-creation-lifecycle">The Module Creation
+Lifecycle</h3>
+<p>The module creation process in <code>NormalModuleFactory</code>
+follows a sequential pipeline governed by Tapable hooks:</p>
+<ol type="1">
+<li><strong><code>factorize</code></strong>: The starting point of
+module creation. It receives the dependency request parameters and
+initiates the resolution chain.</li>
+<li><strong><code>resolve</code></strong>: Webpack looks up the module
+using the enhanced resolver. It determines the absolute file path and
+identifies any loaders that must run against the file.</li>
+<li><strong><code>afterResolve</code></strong>: Triggered immediately
+after the file path and loaders are established, but before the module
+is constructed. This hook contains the final module creation data.</li>
+<li><strong><code>createModule</code></strong>: The factory creates the
+actual <code>NormalModule</code> instance using the resolved data.</li>
+<li><strong><code>module</code></strong>: The module object is created
+and ready to be processed by Webpack's parser and dependency graph
+builder.</li>
+</ol>
+<hr />
+<h3 id="accessing-normalmodulefactory-in-plugins">Accessing
+NormalModuleFactory in Plugins</h3>
+<p>To interact with <code>NormalModuleFactory</code>, a plugin must
+first intercept the Webpack <code>Compiler</code> or
+<code>Compilation</code> object. Webpack provides a dedicated compiler
+hook named <code>normalModuleFactory</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ModuleModifierPlugin {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(compiler) {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">normalModuleFactory</span><span class="op">.</span><span class="fu">tap</span>(</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      <span class="st">&#39;ModuleModifierPlugin&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      (normalModuleFactory) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Tap into NormalModuleFactory hooks here</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> ModuleModifierPlugin<span class="op">;</span></span></code></pre></div>
+<hr />
+<h3 id="key-hooks-for-intercepting-module-creation">Key Hooks for
+Intercepting Module Creation</h3>
+<h4 id="1-beforeresolve">1. <code>beforeResolve</code></h4>
+<p>Runs before the resolver starts searching the filesystem. Plugins use
+this hook to rewrite request strings, modify query parameters, or ignore
+certain paths.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>normalModuleFactory<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">beforeResolve</span><span class="op">.</span><span class="fu">tap</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;ModuleModifierPlugin&#39;</span><span class="op">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  (resolveData) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Redirect an import to a different path</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (resolveData<span class="op">.</span><span class="at">request</span> <span class="op">===</span> <span class="st">&#39;./legacy-code&#39;</span>) {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>      resolveData<span class="op">.</span><span class="at">request</span> <span class="op">=</span> <span class="st">&#39;./modern-code&#39;</span><span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<h4 id="2-afterresolve">2. <code>afterResolve</code></h4>
+<p>Fires after Webpack identifies the exact file location and matches
+all loaders from <code>module.rules</code>. It is ideal for inspecting
+matched loaders or injecting custom loaders dynamically.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>normalModuleFactory<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">afterResolve</span><span class="op">.</span><span class="fu">tap</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;ModuleModifierPlugin&#39;</span><span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  (resolveData) <span class="kw">=&gt;</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> resource <span class="op">=</span> resolveData<span class="op">.</span><span class="at">createData</span><span class="op">.</span><span class="at">resource</span><span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Dynamically inject a loader for specific files</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (resource<span class="op">.</span><span class="fu">endsWith</span>(<span class="st">&#39;.special.js&#39;</span>)) {</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      resolveData<span class="op">.</span><span class="at">createData</span><span class="op">.</span><span class="at">loaders</span><span class="op">.</span><span class="fu">push</span>({</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">loader</span><span class="op">:</span> require<span class="op">.</span><span class="fu">resolve</span>(<span class="st">&#39;special-loader&#39;</span>)<span class="op">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">options</span><span class="op">:</span> {}<span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>      })<span class="op">;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<h4 id="3-createmodule">3. <code>createModule</code></h4>
+<p>Executes when Webpack is about to instantiate the
+<code>NormalModule</code>. Tapping here allows developers to substitute
+the default module constructor with a custom module subclass.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>normalModuleFactory<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">createModule</span><span class="op">.</span><span class="fu">tap</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;ModuleModifierPlugin&#39;</span><span class="op">,</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  (createData<span class="op">,</span> resolveData) <span class="kw">=&gt;</span> {</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Modify createData attributes directly before instantiation</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    createData<span class="op">.</span><span class="at">userRequest</span> <span class="op">=</span> createData<span class="op">.</span><span class="at">userRequest</span> <span class="op">+</span> <span class="st">&#39;?customFlag=true&#39;</span><span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<h4 id="4-module">4. <code>module</code></h4>
+<p>Invoked immediately after the <code>NormalModule</code> instance is
+created. This allows direct modification of the module instance
+properties, such as setting build metadata or adjusting build
+criteria.</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>normalModuleFactory<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">module</span><span class="op">.</span><span class="fu">tap</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;ModuleModifierPlugin&#39;</span><span class="op">,</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  (module<span class="op">,</span> createData<span class="op">,</span> resolveData) <span class="kw">=&gt;</span> {</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Access and manipulate the created NormalModule instance</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    module<span class="op">.</span><span class="at">buildInfo</span><span class="op">.</span><span class="at">customProperty</span> <span class="op">=</span> <span class="st">&#39;injected-value&#39;</span><span class="op">;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<hr />
+<h3 id="summary">Summary</h3>
+<p><code>NormalModuleFactory</code> translates module requests into
+compiled AST-ready modules. By tapping into
+<code>compiler.hooks.normalModuleFactory</code>, plugins gain
+fine-grained control over resolution behavior, loader matching, and the
+instantiation of <code>NormalModule</code> instances within the build
+pipeline.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

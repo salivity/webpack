@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How lodash-webpack-plugin Reduces Lodash Bundle Size - webpack</title>
+    <meta name="description" content="The lodash-webpack-plugin reduces JavaScript bundle sizes by systematically replacing Lodash’s robust, edge-case-heavy internal functions with lightweight, minimal shims. By default, even basic Lodash utilities import a massive web of internal helpers to">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-lodash-webpack-plugin-reduces-lodash-bundle-size">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How lodash-webpack-plugin Reduces Lodash Bundle Size - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-lodash-webpack-plugin-reduces-lodash-bundle-size" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The lodash-webpack-plugin reduces JavaScript bundle sizes by systematically replacing Lodash’s robust, edge-case-heavy internal functions with lightweight, minimal shims. By default, even basic Lodash utilities import a massive web of internal helpers to" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-lodash-webpack-plugin-reduces-lodash-bundle-size">How
+lodash-webpack-plugin Reduces Lodash Bundle Size</h1>
+<p>The <code>lodash-webpack-plugin</code> reduces JavaScript bundle
+sizes by systematically replacing Lodash’s robust, edge-case-heavy
+internal functions with lightweight, minimal shims. By default, even
+basic Lodash utilities import a massive web of internal helpers to
+support polymorphic arguments, advanced type checking, chaining, and
+deep property paths. This plugin intercepts Webpack's module resolution,
+stripping out these non-essential internal features and leaving only the
+bare-minimum logic required for standard operations.</p>
+<h3 id="replacing-internal-implementations-with-shims">Replacing
+Internal Implementations with Shims</h3>
+<p>Lodash functions are designed to be extremely resilient. For example,
+calling <code>_.map</code> can accept arrays, objects, strings, or
+custom iterators, and its iteratee argument can be a function, a
+property path string, or a deep match object. To support this
+versatility, a single Lodash function often imports dozens of internal
+utility modules.</p>
+<p><code>lodash-webpack-plugin</code> alters how Webpack resolves these
+internal dependencies. Instead of bundling the full, edge-case-resilient
+internal helpers, it substitutes them with simplified "noop"
+(no-operation) or bare-bones implementations. This significantly
+truncates the dependency tree of every imported Lodash method.</p>
+<h3 id="disabling-advanced-features-via-feature-sets">Disabling Advanced
+Features via Feature Sets</h3>
+<p>The plugin operates around configurable feature toggles that are
+disabled by default. When a feature set is disabled, the corresponding
+internal logic is stripped from the bundle:</p>
+<ul>
+<li><strong>Iteratee Shorthands (<code>shorthands</code>):</strong>
+Disables support for passing strings or objects as iteratees (e.g.,
+<code>_.map(users, 'name')</code>). Disabling this forces functions to
+only accept standard callback functions, removing large parsing
+modules.</li>
+<li><strong>Deep Property Paths (<code>paths</code>):</strong> Strips
+the parsing logic that resolves nested path strings like
+<code>'a.b[0].c'</code> in functions like <code>_.get</code> or
+<code>_.set</code>, replacing it with shallow, direct-access logic.</li>
+<li><strong>Chaining (<code>chaining</code>):</strong> Removes implicit
+and explicit <code>_.chain()</code> capabilities and sequence wrappers,
+eliminating the entire sequence-handling architecture.</li>
+<li><strong>Cloning and Deep Equality (<code>cloning</code>,
+<code>coercions</code>):</strong> Replaces comprehensive recursive
+cloning and strict type coercion suites with primitive, shallow
+equivalents.</li>
+<li><strong>Currying and Placeholders (<code>currying</code>):</strong>
+Removes support for partially applied functions and argument
+placeholders.</li>
+<li><strong>Collection Support for Objects
+(<code>collections</code>):</strong> Drops the polymorphic code that
+allows array methods to seamlessly iterate over plain objects.</li>
+</ul>
+<h3 id="synergy-with-babel-plugin-lodash">Synergy with
+<code>babel-plugin-lodash</code></h3>
+<p><code>lodash-webpack-plugin</code> is designed to be used alongside
+<code>babel-plugin-lodash</code>. While the Babel plugin rewrites
+generic imports (such as <code>import { map } from 'lodash'</code>) into
+cherry-picked direct imports
+(<code>import map from 'lodash/map'</code>), the Webpack plugin operates
+one layer deeper. It strips out the underlying, secondary dependencies
+that <code>lodash/map</code> itself pulls in from the Lodash internal
+library.</p>
+<h3 id="development-considerations">Development Considerations</h3>
+<p>Because <code>lodash-webpack-plugin</code> removes fallback logic and
+edge-case handling, developers must ensure their codebase does not rely
+on omitted behaviors. If an application requires specific features—such
+as deep path lookup in <code>_.get</code>—the corresponding feature flag
+(e.g., <code>{ paths: true }</code>) must be explicitly enabled in the
+Webpack plugin configuration, trading a small amount of bundle size for
+the required functionality.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

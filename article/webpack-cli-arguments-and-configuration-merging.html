@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack CLI Arguments and Configuration Merging - webpack</title>
+    <meta name="description" content="This article explains how command-line arguments passed to webpack-cli are parsed, passed, and merged into a Webpack configuration. You will learn how CLI flags interact with static and functional configuration files, the role of the env and argv paramete">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-cli-arguments-and-configuration-merging">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack CLI Arguments and Configuration Merging - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-cli-arguments-and-configuration-merging" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how command-line arguments passed to webpack-cli are parsed, passed, and merged into a Webpack configuration. You will learn how CLI flags interact with static and functional configuration files, the role of the env and argv paramete" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-cli-arguments-and-configuration-merging">Webpack CLI
+Arguments and Configuration Merging</h1>
+<p>This article explains how command-line arguments passed to
+<code>webpack-cli</code> are parsed, passed, and merged into a Webpack
+configuration. You will learn how CLI flags interact with static and
+functional configuration files, the role of the <code>env</code> and
+<code>argv</code> parameters, and the priority rules governing which
+settings take precedence when building your bundle.</p>
+<h3 id="static-configurations-vs-function-configurations">Static
+Configurations vs. Function Configurations</h3>
+<p>The way command-line arguments interact with your Webpack
+configuration depends primarily on how your configuration is exported in
+<code>webpack.config.js</code>: as a static object or as a function.</p>
+<h4 id="1-configuration-exported-as-a-function">1. Configuration
+Exported as a Function</h4>
+<p>To dynamically access command-line arguments before the configuration
+is resolved, Webpack supports exporting a function rather than an
+object:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> (env<span class="op">,</span> argv) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">mode</span><span class="op">:</span> argv<span class="op">.</span><span class="at">mode</span> <span class="op">||</span> <span class="st">&#39;development&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// ... other configurations</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When <code>webpack-cli</code> detects that the exported configuration
+is a function, it invokes that function and passes two primary
+arguments:</p>
+<ul>
+<li><strong><code>env</code></strong>: An object containing variables
+set using the <code>--env</code> flag (for example,
+<code>--env production --env platform=web</code> resolves to
+<code>{ production: true, platform: 'web' }</code>).</li>
+<li><strong><code>argv</code></strong>: An object containing all parsed
+command-line arguments passed to <code>webpack-cli</code>, including
+flags like <code>--mode</code>, <code>--entry</code>,
+<code>--output-path</code>, and custom flags.</li>
+</ul>
+<p>This mechanism allows you to manually inspect arguments and
+programmatically merge them, generate conditional plugins, or switch
+entry points before returning the final configuration object.</p>
+<h4 id="2-configuration-exported-as-an-object">2. Configuration Exported
+as an Object</h4>
+<p>If your configuration exports a static object, you do not receive
+direct access to <code>argv</code> inside the configuration file.
+Instead, <code>webpack-cli</code> handles the merging process
+automatically after importing the file.</p>
+<h3 id="the-internal-merging-process">The Internal Merging Process</h3>
+<p>When command-line flags are executed, <code>webpack-cli</code>
+follows a defined lifecycle to resolve the final configuration passed to
+the core Webpack compiler:</p>
+<ol type="1">
+<li><strong>Argument Parsing</strong>: <code>webpack-cli</code> parses
+the raw terminal input using internal argument mapping definitions.
+Known Webpack options (such as <code>--entry</code>,
+<code>--output-path</code>, <code>--target</code>, or
+<code>--mode</code>) are validated against Webpack's schema.</li>
+<li><strong>Loading the Configuration File</strong>: The CLI identifies
+and imports the configuration file specified by default or via the
+<code>--config</code> flag.</li>
+<li><strong>Executing Functional Configs</strong>: If the imported
+module is a function or returns a Promise, <code>webpack-cli</code>
+executes it with <code>(env, argv)</code> and awaits the resolved
+configuration object.</li>
+<li><strong>Applying CLI Overrides</strong>: Once the base configuration
+object is acquired, <code>webpack-cli</code> applies command-line
+arguments on top of it. CLI arguments strictly take precedence over
+values defined in the configuration file.</li>
+</ol>
+<h3 id="precedence-rules-and-conflict-resolution">Precedence Rules and
+Conflict Resolution</h3>
+<p>Command-line arguments are designed to override static configurations
+to facilitate on-the-fly environment changes (such as overriding target
+modes in CI/CD pipelines).</p>
+<ul>
+<li><strong>Direct Overwrites (Primitives)</strong>: Options that take
+single values, such as <code>--mode production</code> or
+<code>--target node</code>, will unconditionally overwrite any
+<code>mode</code> or <code>target</code> properties defined inside the
+returned configuration object.</li>
+<li><strong>Complex Properties</strong>: Flags like <code>--entry</code>
+or <code>--output-path</code> override their respective paths in the
+configuration. If an argument specifies a collection or complex type,
+<code>webpack-cli</code> maps the argument directly to the corresponding
+schema location within the Webpack configuration tree rather than
+shallowly merging it.</li>
+<li><strong>Multi-Configuration Builds</strong>: If your configuration
+exports an array of configurations, CLI flags are applied across all
+individual configurations in the array unless conditionally scoped
+inside a configuration function.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

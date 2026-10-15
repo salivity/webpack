@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Handles Vue and Svelte Files - webpack</title>
+    <meta name="description" content="Webpack natively only understands JavaScript and JSON files, meaning it cannot parse custom component formats like .vue or .svelte out of the box. To process these non-standard extensions, Webpack relies on a pipeline of module loaders, dedicated compiler">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-handles-vue-and-svelte-files">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Handles Vue and Svelte Files - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-handles-vue-and-svelte-files" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack natively only understands JavaScript and JSON files, meaning it cannot parse custom component formats like .vue or .svelte out of the box. To process these non-standard extensions, Webpack relies on a pipeline of module loaders, dedicated compiler" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-handles-vue-and-svelte-files">How Webpack Handles
+Vue and Svelte Files</h1>
+<p>Webpack natively only understands JavaScript and JSON files, meaning
+it cannot parse custom component formats like <code>.vue</code> or
+<code>.svelte</code> out of the box. To process these non-standard
+extensions, Webpack relies on a pipeline of module loaders, dedicated
+compiler plugins, and path resolution rules. This article explains how
+Webpack identifies these custom file types, routes them through
+framework-specific compilers, and converts them into standard JavaScript
+and CSS that browsers can execute.</p>
+<h2 id="the-role-of-webpack-loaders">The Role of Webpack Loaders</h2>
+<p>Webpack treats every file imported into a project as a module. When
+it encounters a file with an unfamiliar extension, it checks its
+configuration object—specifically the <code>module.rules</code>
+array—for a matching pattern. Loaders act as preprocessors or
+transformation functions, taking the raw source code of non-standard
+files and transforming it into valid JavaScript, CSS, or static assets
+before Webpack finishes the dependency graph.</p>
+<h2 id="file-extension-resolution">File Extension Resolution</h2>
+<p>By default, Webpack only resolves <code>.js</code>,
+<code>.json</code>, and <code>.wasm</code> extensions automatically in
+<code>import</code> statements. To allow developers to import
+<code>.vue</code> or <code>.svelte</code> files without explicitly
+writing the file extension every time, Webpack requires updating the
+<code>resolve.extensions</code> array in
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">extensions</span><span class="op">:</span> [<span class="st">&#39;.js&#39;</span><span class="op">,</span> <span class="st">&#39;.vue&#39;</span><span class="op">,</span> <span class="st">&#39;.svelte&#39;</span>]</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This configuration tells the Webpack resolver to search for
+<code>.vue</code> and <code>.svelte</code> files when an extension is
+omitted in an import statement.</p>
+<h2 id="handling-vue-files-with-vue-loader">Handling <code>.vue</code>
+Files with Vue Loader</h2>
+<p>Vue Single File Components (SFCs) are unique because a single file
+contains three distinct blocks: <code>&lt;template&gt;</code>,
+<code>&lt;script&gt;</code>, and <code>&lt;style&gt;</code>. Webpack
+processes this structure through <code>vue-loader</code> and its
+accompanying plugin:</p>
+<ol type="1">
+<li><strong>Rule Definition:</strong> The Webpack configuration matches
+<code>.vue</code> files using a regular expression
+(<code>test: /\.vue$/</code>) and passes them to
+<code>vue-loader</code>.</li>
+<li><strong>Deconstruction:</strong> <code>vue-loader</code> analyzes
+the file and breaks down the component into its constituent blocks. It
+generates virtual requests for each block with specific query parameters
+(e.g., <code>App.vue?vue&amp;type=template</code>).</li>
+<li><strong>Pipeline Routing with VueLoaderPlugin:</strong> The required
+<code>VueLoaderPlugin</code> duplicates and applies existing Webpack
+rules to these virtual requests. For example, the
+<code>&lt;style&gt;</code> block is dynamically redirected to standard
+style loaders like <code>css-loader</code> and
+<code>style-loader</code>, while the <code>&lt;script&gt;</code> block
+is routed to <code>babel-loader</code> or <code>ts-loader</code>.</li>
+<li><strong>Assembly:</strong> Webpack bundles the resulting JavaScript
+module, which exports an object representing the compiled Vue
+component.</li>
+</ol>
+<h2 id="handling-svelte-files-with-svelte-loader">Handling
+<code>.svelte</code> Files with Svelte Loader</h2>
+<p>Svelte handles compilation differently than Vue. Instead of relying
+on a virtual DOM at runtime, Svelte compiles components into highly
+optimized, imperative vanilla JavaScript at build time. Webpack manages
+<code>.svelte</code> files through <code>svelte-loader</code>:</p>
+<ol type="1">
+<li><strong>Rule Definition:</strong> The configuration targets
+<code>.svelte</code> files using <code>test: /\.(svelte)$/</code> and
+assigns <code>svelte-loader</code>.</li>
+<li><strong>Direct Compilation:</strong> <code>svelte-loader</code>
+invokes the internal Svelte compiler (<code>svelte/compiler</code>)
+directly on the file contents.</li>
+<li><strong>Separation of Concerns:</strong> The compiler outputs pure
+JavaScript along with any associated CSS. Depending on the loader
+options, the generated CSS can either be emitted directly to Webpack's
+CSS pipeline for extraction into a separate file or injected directly
+into the document via JavaScript.</li>
+<li><strong>Bundle Generation:</strong> Webpack incorporates the
+resulting pure JavaScript into the bundle without needing a dedicated
+framework runtime.</li>
+</ol>
+<p>Through loaders and the resolution configuration, Webpack intercepts
+non-standard extensions, delegates compilation to the appropriate
+framework tools, and seamlessly integrates the final standard web assets
+into its dependency graph.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

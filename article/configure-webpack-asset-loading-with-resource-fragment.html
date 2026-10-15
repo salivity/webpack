@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configure Webpack Asset Loading with resourceFragment - webpack</title>
+    <meta name="description" content="Webpack’s resourceFragment property allows developers to match and route assets based on the URL fragment (the #hash identifier) provided in an import or require statement. By filtering through resourceFragment, Webpack can apply distinct loader pipelines">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/configure-webpack-asset-loading-with-resource-fragment">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Configure Webpack Asset Loading with resourceFragment - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/configure-webpack-asset-loading-with-resource-fragment" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack’s resourceFragment property allows developers to match and route assets based on the URL fragment (the #hash identifier) provided in an import or require statement. By filtering through resourceFragment, Webpack can apply distinct loader pipelines" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="configure-webpack-asset-loading-with-resourcefragment">Configure
+Webpack Asset Loading with resourceFragment</h1>
+<p>Webpack’s <code>resourceFragment</code> property allows developers to
+match and route assets based on the URL fragment (the <code>#hash</code>
+identifier) provided in an import or require statement. By filtering
+through <code>resourceFragment</code>, Webpack can apply distinct loader
+pipelines or <code>asset/*</code> module types to the exact same file
+depending on how it is requested. This overview explains how
+<code>resourceFragment</code> works, how to configure it in
+<code>webpack.config.js</code>, and the common scenarios where
+fragment-based asset routing is most effective.</p>
+<h2 id="understanding-resourcefragment">Understanding
+resourceFragment</h2>
+<p>In JavaScript module systems, an import path can include URL
+fragments:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> iconInline <span class="im">from</span> <span class="st">&#39;./icon.svg#inline&#39;</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> iconUrl <span class="im">from</span> <span class="st">&#39;./icon.svg#url&#39;</span><span class="op">;</span></span></code></pre></div>
+<p>While Webpack matches the file path (<code>./icon.svg</code>) against
+the standard <code>test</code> or <code>resource</code> regex, it strips
+the <code>#</code> fragment from the resolved file system path. Instead,
+Webpack assigns the fragment (including or excluding the <code>#</code>,
+matching via regex or string) to <code>resourceFragment</code>.</p>
+<p>This mechanism is distinct from <code>resourceQuery</code>, which
+targets query parameters (<code>?param=value</code>). Using fragments is
+particularly natural for media and SVGs, where hashes often align with
+browser-native SVG fragment identifiers or styling contexts.</p>
+<h2 id="basic-configuration">Basic Configuration</h2>
+<p>You configure <code>resourceFragment</code> inside the
+<code>module.rules</code> array of your Webpack configuration. It
+accepts a <code>RegExp</code>, a <code>string</code>, or an
+array/logical condition object.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">svg</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">resourceFragment</span><span class="op">:</span> <span class="ss">/inline/</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/inline&#39;</span><span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">svg</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        <span class="dt">resourceFragment</span><span class="op">:</span> <span class="ss">/external/</span><span class="op">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/resource&#39;</span><span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">svg</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        <span class="dt">resourceFragment</span><span class="op">:</span> { <span class="dt">not</span><span class="op">:</span> [<span class="ss">/inline/</span><span class="op">,</span> <span class="ss">/external/</span>] }<span class="op">,</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset&#39;</span><span class="op">,</span> <span class="co">// Default fallback behavior</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>In this setup:</p>
+<ul>
+<li>Importing <code>./icon.svg#inline</code> converts the SVG to a
+base64-encoded data URI.</li>
+<li>Importing <code>./icon.svg#external</code> emits the SVG as a
+separate static file and returns its public URL.</li>
+<li>Importing <code>./icon.svg</code> without a fragment falls back to
+Webpack's automatic asset size threshold.</li>
+</ul>
+<h2 id="common-use-cases">Common Use Cases</h2>
+<h3 id="1-dual-mode-svg-handling">1. Dual-Mode SVG Handling</h3>
+<p>A standard application often requires SVGs to act both as React
+components (for dynamic styling) and as standard image URLs (for
+<code>&lt;img&gt;</code> tags or CSS backgrounds).
+<code>resourceFragment</code> enables this cleanly:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">svg</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">resourceFragment</span><span class="op">:</span> <span class="ss">/react/</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> [<span class="st">&#39;@svgr/webpack&#39;</span>]<span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">svg</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        <span class="dt">resourceFragment</span><span class="op">:</span> { <span class="dt">not</span><span class="op">:</span> [<span class="ss">/react/</span>] }<span class="op">,</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/resource&#39;</span><span class="op">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Usage:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> LogoComponent <span class="im">from</span> <span class="st">&#39;./logo.svg#react&#39;</span><span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> logoUrl <span class="im">from</span> <span class="st">&#39;./logo.svg&#39;</span><span class="op">;</span></span></code></pre></div>
+<h3 id="2-svg-sprite-stacks">2. SVG Sprite Stacks</h3>
+<p>Native SVG specifications allow referencing specific sub-elements
+using fragment identifiers, such as <code>icon.svg#search-view</code>.
+Using <code>resourceFragment</code>, you can intercept specific sprite
+identifiers with custom loaders while letting native fragment references
+pass through unmodified to the output URL.</p>
+<h3 id="3-granular-css-module-control">3. Granular CSS Module
+Control</h3>
+<p>You can toggle between raw CSS, CSS Modules, or Shadow DOM inject
+methods for the same stylesheet:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">css</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resourceFragment</span><span class="op">:</span> <span class="ss">/raw/</span><span class="op">,</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/source&#39;</span><span class="op">,</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h2 id="resourcefragment-vs-resourcequery">resourceFragment vs.
+resourceQuery</h2>
+<ul>
+<li><strong><code>resourceQuery</code></strong> checks values after a
+question mark (<code>./image.png?as=webp</code>).</li>
+<li><strong><code>resourceFragment</code></strong> checks values after a
+hash (<code>./image.png#inline</code>).</li>
+</ul>
+<p>Both offer conditional loader mapping without altering the underlying
+file on disk. However, <code>resourceFragment</code> is ideal when
+adhering to standard URL semantics where the hash represents a specific
+state, view, or fragment of an asset rather than a parameterized build
+query.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

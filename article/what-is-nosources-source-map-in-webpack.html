@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What is nosources-source-map in Webpack? - webpack</title>
+    <meta name="description" content="In modern web development, balancing production debugging capabilities with source code privacy is a frequent challenge. This article explains what the nosources-source-map option is in Webpack, how it functions within your build pipeline, and precisely w">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/what-is-nosources-source-map-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="What is nosources-source-map in Webpack? - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/what-is-nosources-source-map-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In modern web development, balancing production debugging capabilities with source code privacy is a frequent challenge. This article explains what the nosources-source-map option is in Webpack, how it functions within your build pipeline, and precisely w" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="what-is-nosources-source-map-in-webpack">What is
+nosources-source-map in Webpack?</h1>
+<p>In modern web development, balancing production debugging
+capabilities with source code privacy is a frequent challenge. This
+article explains what the <code>nosources-source-map</code> option is in
+Webpack, how it functions within your build pipeline, and precisely what
+level of detail it omits to protect proprietary code while preserving
+actionable error tracking.</p>
+<h2 id="understanding-nosources-source-map">Understanding
+nosources-source-map</h2>
+<p>In Webpack, the <code>devtool</code> configuration property controls
+how source maps are generated. The <code>nosources-source-map</code>
+value instructs Webpack to create a separate, external source map file
+(typically ending in <code>.map</code>) that maps compiled, minified
+output back to original file names, line numbers, and column numbers,
+but without bundling the underlying source code itself.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devtool</span><span class="op">:</span> <span class="st">&#39;nosources-source-map&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other configurations</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When an error occurs in the browser, the runtime references this
+source map to translate the minified stack trace into human-readable
+locations matching the original project structure.</p>
+<h2 id="what-level-of-detail-does-it-omit">What Level of Detail Does It
+Omit?</h2>
+<p>Standard source maps generated by settings like
+<code>source-map</code> contain a key within the JSON payload called
+<code>sourcesContent</code>. This field embeds the exact, raw text of
+every original source file directly into the map file.</p>
+<p>The <code>nosources-source-map</code> option omits the following:</p>
+<ul>
+<li><strong>The <code>sourcesContent</code> array entirely:</strong> It
+excludes the actual source code, functions, variables, comments, and
+logic of your application files.</li>
+<li><strong>In-browser code inspection:</strong> If a user opens the
+developer tools and navigates to the Sources or Debugger panel, they
+will see the file tree and file names, but clicking on a file will
+display an empty document or an error stating the content cannot be
+loaded.</li>
+</ul>
+<h2 id="what-remains-intact">What Remains Intact</h2>
+<p>Despite excluding the code content, <code>nosources-source-map</code>
+preserves the structural skeleton required for debugging:</p>
+<ul>
+<li><strong>File paths and file names:</strong> The mapping retains the
+relative paths to your original source files.</li>
+<li><strong>Line and column mappings:</strong> The mappings array maps
+transformed coordinates directly to the original line and column
+positions.</li>
+<li><strong>Stack traces:</strong> Production error monitoring services
+(such as Sentry, Datadog, or Bugsnag) and native browser consoles can
+still reconstruct clean, readable stack traces that show the exact file
+and line where an exception was thrown.</li>
+</ul>
+<h2 id="primary-use-case">Primary Use Case</h2>
+<p>The primary reason to use <code>nosources-source-map</code> is
+production security and privacy. Shipping standard source maps to a
+public environment exposes internal business logic, proprietary
+algorithms, and internal documentation to anyone inspecting network
+traffic.</p>
+<p>By omitting <code>sourcesContent</code>,
+<code>nosources-source-map</code> allows developers and error monitoring
+platforms to pinpoint production bugs to specific lines of code without
+exposing the underlying implementation to end users.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

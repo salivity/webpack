@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create React App Webpack Configuration Explained - webpack</title>
+    <meta name="description" content="Create React App (CRA) relies on Webpack as its underlying module bundler to compile, bundle, and optimize modern React applications. While CRA provides a zero-configuration environment by completely abstracting build tooling away from the developer, Webp">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/create-react-app-webpack-configuration-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Create React App Webpack Configuration Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/create-react-app-webpack-configuration-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Create React App (CRA) relies on Webpack as its underlying module bundler to compile, bundle, and optimize modern React applications. While CRA provides a zero-configuration environment by completely abstracting build tooling away from the developer, Webp" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="create-react-app-webpack-configuration-explained">Create React
+App Webpack Configuration Explained</h1>
+<p>Create React App (CRA) relies on Webpack as its underlying module
+bundler to compile, bundle, and optimize modern React applications.
+While CRA provides a zero-configuration environment by completely
+abstracting build tooling away from the developer, Webpack remains the
+primary engine driving its development server and production builds.
+This article breaks down how CRA encapsulates Webpack, how the hidden
+configuration operates, and the options developers have for inspecting
+or modifying that configuration.</p>
+<h3 id="the-abstraction-react-scripts">The Abstraction:
+react-scripts</h3>
+<p>When you generate a project using Create React App, Webpack does not
+appear in your project's root <code>package.json</code> dependencies,
+nor is there a <code>webpack.config.js</code> file. Instead, CRA
+delegates all build setup to a single dependency named
+<code>react-scripts</code>.</p>
+<p><code>react-scripts</code> contains the pre-configured Webpack
+configurations, along with Babel, ESLint, PostCSS, and other build
+utilities. When you execute commands like <code>npm start</code> or
+<code>npm run build</code>, you are running scripts inside
+<code>react-scripts</code> that invoke Webpack under the hood.</p>
+<h3 id="pre-configured-webpack-responsibilities-in-cra">Pre-Configured
+Webpack Responsibilities in CRA</h3>
+<p>The Webpack configuration inside CRA is pre-tuned for typical
+single-page React applications. Key responsibilities include:</p>
+<ul>
+<li><strong>Transpilation:</strong> Routing modern JavaScript and JSX
+through <code>babel-loader</code>.</li>
+<li><strong>Asset Management:</strong> Utilizing loaders to handle CSS,
+Sass, CSS Modules, images, SVGs, and fonts out of the box.</li>
+<li><strong>Hot Module Replacement (HMR):</strong> Managing the
+<code>webpack-dev-server</code> to provide fast, state-preserving
+updates during local development.</li>
+<li><strong>Production Optimization:</strong> Minifying JavaScript with
+Terser, extracting CSS into separate files using
+<code>MiniCssExtractPlugin</code>, hashing asset filenames for cache
+busting, and performing code splitting.</li>
+</ul>
+<h3 id="modifying-the-underlying-webpack-configuration">Modifying the
+Underlying Webpack Configuration</h3>
+<p>Because CRA enforces a managed environment, developers cannot
+natively edit the Webpack configuration directly. To customize it, three
+primary paths exist:</p>
+<h4 id="1-ejecting">1. Ejecting</h4>
+<p>Running <code>npm run eject</code> removes the single-dependency
+abstraction provided by <code>react-scripts</code>. It copies all hidden
+configuration files—including <code>config/webpack.config.js</code> and
+build scripts—directly into your project root.</p>
+<ul>
+<li><strong>Advantage:</strong> Grants 100% control over the Webpack
+configuration.</li>
+<li><strong>Drawback:</strong> The process is irreversible, and the
+project can no longer receive official CRA updates or improvements.</li>
+</ul>
+<h4 id="2-third-party-overrides-craco">2. Third-Party Overrides
+(CRACO)</h4>
+<p>Tools like CRACO (Create React App Configuration Override) allow
+developers to customize the internal Webpack configuration without
+running <code>eject</code>. CRACO intercepts the build process and
+merges custom configurations (such as custom Webpack plugins or path
+aliases) defined in a <code>craco.config.js</code> file.</p>
+<h4 id="3-migrating-to-modern-bundlers">3. Migrating to Modern
+Bundlers</h4>
+<p>As the React ecosystem has shifted, the React documentation no longer
+recommends CRA for new projects. Modern alternatives such as Vite,
+Next.js, and Remix either use alternative bundlers (like Rollup and
+esbuild in Vite) or offer direct, well-documented access to their
+bundler settings without requiring complete project decoupling.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

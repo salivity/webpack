@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Module Maps in React Server Components - webpack</title>
+    <meta name="description" content="React Server Components (RSC) introduce a dual-environment architecture where components render on either the server or the client, requiring a bridge to connect the two execution contexts. Webpack handles this boundary by generating and consuming a modul">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-module-maps-in-react-server-components">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Module Maps in React Server Components - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-module-maps-in-react-server-components" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="React Server Components (RSC) introduce a dual-environment architecture where components render on either the server or the client, requiring a bridge to connect the two execution contexts. Webpack handles this boundary by generating and consuming a modul" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-module-maps-in-react-server-components">Webpack Module
+Maps in React Server Components</h1>
+<p>React Server Components (RSC) introduce a dual-environment
+architecture where components render on either the server or the client,
+requiring a bridge to connect the two execution contexts. Webpack
+handles this boundary by generating and consuming a module map—a
+serialized manifest that maps abstract client references emitted by the
+server compiler to the actual compiled browser-side chunks. This article
+explains how Webpack identifies client boundaries, generates module maps
+during the build phase, and leverages them at runtime to resolve and
+hydrate client components.</p>
+<h2 id="identifying-the-component-boundaries">Identifying the Component
+Boundaries</h2>
+<p>Webpack identifies client components through the
+<code>"use client"</code> directive placed at the top of a file. When
+compiling for the server, Webpack uses specialized plugins and
+loaders—primarily provided by <code>react-server-dom-webpack</code>—to
+intercept these directives.</p>
+<p>Instead of bundling the client component's full implementation into
+the server bundle, Webpack treats the module as a proxy. The loader
+strips the component logic from the server runtime and replaces it with
+a lightweight "client reference" object. This reference contains
+metadata about the module, including a unique module identifier, the
+export name, and instructions on how to locate the real code on the
+client.</p>
+<h2 id="the-dual-compilation-process">The Dual-Compilation Process</h2>
+<p>Webpack relies on two concurrent or sequential compilation passes to
+construct the RSC environment:</p>
+<ol type="1">
+<li><strong>The Client Build:</strong> Webpack compiles all
+browser-facing assets as it normally would. It traces the application's
+entry points along with all files marked with <code>"use client"</code>,
+assigns chunk IDs, applies code-splitting rules, and outputs physical
+JavaScript bundles.</li>
+<li><strong>The Server Build:</strong> Webpack compiles the server logic
+(the React Server Components). During this pass, client modules are not
+compiled into server code; instead, the compiler registers their export
+identities.</li>
+</ol>
+<p>The <code>react-server-dom-webpack/plugin</code> hooks into Webpack’s
+compilation lifecycle (specifically the <code>emit</code> or
+<code>processAssets</code> tapable hooks). It extracts the output chunk
+data from the client compilation and aligns it with the module
+identifiers generated during the server compilation.</p>
+<h2 id="structure-of-the-module-map">Structure of the Module Map</h2>
+<p>The module map is serialized as a JSON manifest (often referred to as
+the client manifest or SSR manifest). It acts as a dictionary linking
+server-side client references to browser-side bundles.</p>
+<p>A typical entry in a Webpack RSC module map contains:</p>
+<ul>
+<li><strong>ID:</strong> The canonical identifier of the module
+(typically a file path or Webpack module ID).</li>
+<li><strong>Chunks:</strong> An array of chunk IDs or filenames that
+must be downloaded by the browser before this module can be
+executed.</li>
+<li><strong>Name:</strong> The specific export name (such as
+<code>default</code> or a named export like <code>Counter</code>).</li>
+<li><strong>Async/Sync Flags:</strong> Metadata indicating whether the
+chunk should be loaded asynchronously or synchronously.</li>
+</ul>
+<h2 id="server-side-serialization">Server-Side Serialization</h2>
+<p>When a server component renders a client component, React does not
+output HTML for that component. Instead, it emits a serialized payload
+using the RSC flight protocol.</p>
+<p>React queries the Webpack runtime for the client reference associated
+with that module. React then serializes this boundary into the RSC
+stream as a special reference token containing the module ID and export
+name. Because the server knows the abstract reference, it can stream the
+UI tree without evaluating client-side dependencies (such as React
+hooks, DOM operations, or browser APIs).</p>
+<h2 id="client-side-resolution-and-hydration">Client-Side Resolution and
+Hydration</h2>
+<p>When the browser receives the RSC stream, it must convert the
+serialized reference tokens back into interactive components. This
+process unfolds in three steps:</p>
+<ol type="1">
+<li><strong>Decoding the Stream:</strong> The client-side flight
+response parser (<code>react-server-dom-webpack/client</code>)
+encounters the client reference marker in the stream.</li>
+<li><strong>Consulting the Module Map:</strong> The parser checks the
+module map injected into the client environment (usually provided as an
+inline global script or fetched alongside the initial HTML). The module
+map informs the runtime which specific Webpack chunks contain the
+required component code.</li>
+<li><strong>Chunk Loading and Execution:</strong> The runtime triggers
+Webpack's internal module loader—typically via
+<code>__webpack_require__.e</code> (chunk loading) followed by
+<code>__webpack_require__</code> (module execution). Once the chunk is
+loaded and executed, the actual React component is passed into the React
+tree to complete hydration and render the interactive UI.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

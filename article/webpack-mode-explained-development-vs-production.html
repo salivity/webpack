@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Mode Explained: Development vs Production - webpack</title>
+    <meta name="description" content="The mode configuration option in Webpack instructs the bundler to automatically apply built-in optimization strategies tailored to specific environments: development, production, or none. This article explains the primary purpose of the mode flag, breaks">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-mode-explained-development-vs-production">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Mode Explained: Development vs Production - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-mode-explained-development-vs-production" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The mode configuration option in Webpack instructs the bundler to automatically apply built-in optimization strategies tailored to specific environments: development, production, or none. This article explains the primary purpose of the mode flag, breaks" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-mode-explained-development-vs-production">Webpack Mode
+Explained: Development vs Production</h1>
+<p>The <code>mode</code> configuration option in Webpack instructs the
+bundler to automatically apply built-in optimization strategies tailored
+to specific environments: <code>development</code>,
+<code>production</code>, or <code>none</code>. This article explains the
+primary purpose of the <code>mode</code> flag, breaks down the key
+technical differences between development and production settings, and
+highlights how choosing the correct mode impacts build performance,
+debugging capabilities, and runtime asset delivery.</p>
+<h2 id="the-core-purpose-of-the-mode-option">The Core Purpose of the
+<code>mode</code> Option</h2>
+<p>Prior to Webpack 4, developers had to manually configure complex
+plugins and loaders to tailor builds for local development or live
+deployment. The <code>mode</code> parameter was introduced to eliminate
+boilerplate configuration via sensible, zero-configuration defaults.
+Setting the <code>mode</code> enables Webpack to configure its internal
+plugins and behaviors automatically based on the intended target
+environment.</p>
+<p>If no <code>mode</code> is explicitly provided, Webpack defaults to
+<code>production</code> and logs a warning in the console.</p>
+<h2 id="development-mode-mode-development">Development Mode
+(<code>mode: 'development'</code>)</h2>
+<p>The primary objective of <code>development</code> mode is to provide
+an optimal developer experience, fast re-compilation times, and powerful
+debugging tools.</p>
+<p>When <code>mode: 'development'</code> is set, Webpack applies the
+following configurations:</p>
+<ul>
+<li><strong>Environment Variable:</strong> Sets
+<code>process.env.NODE_ENV</code> to <code>"development"</code>,
+allowing dependencies and application code to execute development-only
+logic (such as detailed logging or warning checks).</li>
+<li><strong>Readable Output:</strong> Leaves the emitted JavaScript
+unminified and maintains readable variable and module names to simplify
+inspection in browser developer tools.</li>
+<li><strong>Source Maps:</strong> Configures fast, detailed source maps
+(typically <code>eval-cheap-module-source-map</code> or similar) so
+stack traces point directly to original source files rather than
+compiled bundles.</li>
+<li><strong>Build Speed:</strong> Disables computationally heavy
+optimization algorithms (like dead-code elimination and scope hoisting)
+to ensure rapid incremental builds during local development.</li>
+</ul>
+<h2 id="production-mode-mode-production">Production Mode
+(<code>mode: 'production'</code>)</h2>
+<p>The primary objective of <code>production</code> mode is to optimize
+the final build artifacts for deployment, focusing on small file sizes,
+fast page loads, and execution performance.</p>
+<p>When <code>mode: 'production'</code> is set, Webpack enables
+aggressive optimization plugins:</p>
+<ul>
+<li><strong>Environment Variable:</strong> Sets
+<code>process.env.NODE_ENV</code> to <code>"production"</code>. This
+allows libraries (like React or Vue) to strip out development-only
+warnings and error-checking code paths.</li>
+<li><strong>Code Minification:</strong> Automatically uses the
+<code>TerserWebpackPlugin</code> to minify JavaScript by removing
+whitespace, comments, and renaming variables to shorter
+identifiers.</li>
+<li><strong>Tree Shaking:</strong> Employs static analysis to identify
+and eliminate unused exports and dead code, ensuring only referenced
+code reaches the final bundle.</li>
+<li><strong>Scope Hoisting:</strong> Enables
+<code>ModuleConcatenationPlugin</code> to hoist all modules into a
+single closure where possible, reducing bundle overhead and improving
+execution speed in the browser.</li>
+<li><strong>Error Prevention:</strong> Suppresses non-critical warnings
+and optimizes asset emissions for caching and CDN delivery.</li>
+</ul>
+<h2 id="how-to-configure-the-mode">How to Configure the Mode</h2>
+<p>Webpack allows you to set the mode through two main approaches:</p>
+<h3 id="1-in-the-webpack-configuration-file">1. In the Webpack
+Configuration File</h3>
+<p>You can declare the mode statically in
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other configurations</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="2-via-the-command-line-interface-cli">2. Via the Command Line
+Interface (CLI)</h3>
+<p>You can pass the mode flag directly when executing the Webpack build
+script in <code>package.json</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;scripts&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;dev&quot;</span><span class="fu">:</span> <span class="st">&quot;webpack --mode=development&quot;</span><span class="fu">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;build&quot;</span><span class="fu">:</span> <span class="st">&quot;webpack --mode=production&quot;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Passing the mode through the CLI allows a single configuration file
+to dynamically serve both local development and production release
+workflows without duplicating configuration logic.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Compile-Time i18n Localization Guide - webpack</title>
+    <meta name="description" content="Handling multi-language localization (i18n) at compile time with Webpack allows you to generate distinct, fully translated bundles for each supported language. By baking translations directly into the JavaScript output during the build process, you elimin">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-compile-time-i-18-n-localization-guide">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Compile-Time i18n Localization Guide - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-compile-time-i-18-n-localization-guide" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Handling multi-language localization (i18n) at compile time with Webpack allows you to generate distinct, fully translated bundles for each supported language. By baking translations directly into the JavaScript output during the build process, you elimin" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-compile-time-i18n-localization-guide">Webpack
+Compile-Time i18n Localization Guide</h1>
+<p>Handling multi-language localization (i18n) at compile time with
+Webpack allows you to generate distinct, fully translated bundles for
+each supported language. By baking translations directly into the
+JavaScript output during the build process, you eliminate runtime
+parsing overhead, reduce client-side bundle sizes, and optimize
+application performance. This guide explains how compile-time i18n works
+in Webpack, provides a concrete implementation using Webpack’s
+multi-compiler mode and <code>DefinePlugin</code>, and outlines best
+practices for serving localized assets.</p>
+<hr />
+<h3 id="why-compile-time-i18n">Why Compile-Time i18n?</h3>
+<p>Runtime i18n libraries typically load a large dictionary file into
+memory and evaluate translation keys dynamically on every render. In
+contrast, compile-time i18n replaces translation keys with actual string
+literals when bundling.</p>
+<ul>
+<li><strong>Zero Runtime Overhead:</strong> No dynamic key lookup,
+dictionary parsing, or extra i18n runtime library code sent to the
+client.</li>
+<li><strong>Minimal Bundle Sizes:</strong> Each bundle contains only the
+strings for a single locale, preventing users from downloading unused
+languages.</li>
+<li><strong>Static Optimization:</strong> Minifiers (like Terser) can
+optimize static strings directly within the abstract syntax tree
+(AST).</li>
+</ul>
+<hr />
+<h3 id="step-1-organize-translation-dictionaries">Step 1: Organize
+Translation Dictionaries</h3>
+<p>Create separate JSON files for each supported locale inside a
+<code>locales</code> directory:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">src/locales/en.json</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;greeting&quot;</span><span class="fu">:</span> <span class="st">&quot;Hello&quot;</span><span class="fu">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;farewell&quot;</span><span class="fu">:</span> <span class="st">&quot;Goodbye&quot;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="er">//</span> <span class="er">src/locales/es.json</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;greeting&quot;</span><span class="fu">:</span> <span class="st">&quot;Hola&quot;</span><span class="fu">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;farewell&quot;</span><span class="fu">:</span> <span class="st">&quot;Adiós&quot;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<hr />
+<h3 id="step-2-configure-webpack-multi-compiler-mode">Step 2: Configure
+Webpack Multi-Compiler Mode</h3>
+<p>Webpack natively supports exporting an array of configurations. By
+mapping over your list of supported locales, you create an isolated
+compilation run for each language. Use <code>webpack.DefinePlugin</code>
+to inject the matching translation dictionary as a global constant.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpack <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> HtmlWebpackPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;html-webpack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> supportedLocales <span class="op">=</span> [<span class="st">&#39;en&#39;</span><span class="op">,</span> <span class="st">&#39;es&#39;</span>]<span class="op">;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> supportedLocales<span class="op">.</span><span class="fu">map</span>((locale) <span class="kw">=&gt;</span> {</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> translations <span class="op">=</span> <span class="pp">require</span>(<span class="vs">`./src/locales/</span><span class="sc">${</span>locale<span class="sc">}</span><span class="vs">.json`</span>)<span class="op">;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">name</span><span class="op">:</span> locale<span class="op">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>      <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span><span class="op">,</span> locale)<span class="op">,</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>      <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;bundle.[contenthash].js&#39;</span><span class="op">,</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>      <span class="dt">clean</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>      <span class="kw">new</span> webpack<span class="op">.</span><span class="fu">DefinePlugin</span>({</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>        <span class="dt">__TRANSLATIONS__</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(translations)<span class="op">,</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>        <span class="dt">__LOCALE__</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(locale)<span class="op">,</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>      })<span class="op">,</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>      <span class="kw">new</span> <span class="fu">HtmlWebpackPlugin</span>({</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>        <span class="dt">template</span><span class="op">:</span> <span class="st">&#39;./src/index.html&#39;</span><span class="op">,</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>        <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;index.html&#39;</span><span class="op">,</span></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>        <span class="dt">templateParameters</span><span class="op">:</span> {</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>          <span class="dt">lang</span><span class="op">:</span> locale<span class="op">,</span></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>      })<span class="op">,</span></span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>  }<span class="op">;</span></span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<hr />
+<h3 id="step-3-reference-translations-in-application-code">Step 3:
+Reference Translations in Application Code</h3>
+<p>In your source code, access the translations using the identifier
+defined in <code>DefinePlugin</code>. Since <code>DefinePlugin</code>
+performs direct code replacement, <code>__TRANSLATIONS__.greeting</code>
+becomes <code>"Hello"</code> or <code>"Hola"</code> in the compiled
+output.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// src/index.js</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">renderApp</span>() {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> <span class="bu">root</span> <span class="op">=</span> <span class="bu">document</span><span class="op">.</span><span class="fu">getElementById</span>(<span class="st">&#39;root&#39;</span>)<span class="op">;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> title <span class="op">=</span> <span class="bu">document</span><span class="op">.</span><span class="fu">createElement</span>(<span class="st">&#39;h1&#39;</span>)<span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  title<span class="op">.</span><span class="at">textContent</span> <span class="op">=</span> __TRANSLATIONS__<span class="op">.</span><span class="at">greeting</span><span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> footer <span class="op">=</span> <span class="bu">document</span><span class="op">.</span><span class="fu">createElement</span>(<span class="st">&#39;p&#39;</span>)<span class="op">;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  footer<span class="op">.</span><span class="at">textContent</span> <span class="op">=</span> __TRANSLATIONS__<span class="op">.</span><span class="at">farewell</span><span class="op">;</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="bu">root</span><span class="op">.</span><span class="fu">appendChild</span>(title)<span class="op">;</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="bu">root</span><span class="op">.</span><span class="fu">appendChild</span>(footer)<span class="op">;</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="fu">renderApp</span>()<span class="op">;</span></span></code></pre></div>
+<hr />
+<h3 id="step-4-alternative-approaches-for-advanced-syntax">Step 4:
+Alternative Approaches for Advanced Syntax</h3>
+<p>If your application requires pluralization, gender agreements, or ICU
+message formatting, simple JSON string replacement may not suffice.
+Consider these alternatives:</p>
+<ol type="1">
+<li><strong>Babel Plugins (<code>babel-plugin-formatjs</code> or custom
+AST transforms):</strong> Pre-compiles ICU message syntax at build time
+directly into optimized AST representations or plain strings.</li>
+<li><strong>NormalModuleReplacementPlugin:</strong> Replace generic
+placeholder files (e.g., <code>import i18n from 'i18n'</code>) with
+locale-specific modules (e.g., <code>i18n.en.js</code>) during
+resolution.</li>
+</ol>
+<hr />
+<h3 id="step-5-deployment-and-serving-strategy">Step 5: Deployment and
+Serving Strategy</h3>
+<p>Because the build produces separate directories
+(<code>dist/en</code>, <code>dist/es</code>), configure your edge server
+or reverse proxy (such as Nginx, Cloudflare, or AWS CloudFront) to route
+requests:</p>
+<ul>
+<li><strong>URL Path Prefix:</strong> Map routes like
+<code>example.com/es/</code> to serve
+<code>dist/es/index.html</code>.</li>
+<li><strong>Accept-Language Header:</strong> Use edge functions or
+server middleware to inspect the user's <code>Accept-Language</code>
+header and redirect root visitors to the optimal localized
+directory.</li>
+</ul>
+<hr />
+<h3 id="trade-offs-to-consider">Trade-offs to Consider</h3>
+<ul>
+<li><strong>Build Time:</strong> Compiling <em>N</em> locales multiplies
+overall build duration linearly unless builds are parallelized across
+distinct CI jobs.</li>
+<li><strong>Language Switching:</strong> Changing language requires a
+full page reload or navigation to a different path rather than a runtime
+state update.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

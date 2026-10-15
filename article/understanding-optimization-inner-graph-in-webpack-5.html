@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding optimization.innerGraph in Webpack 5 - webpack</title>
+    <meta name="description" content="Webpack 5 introduced optimization.innerGraph, an advanced static analysis feature designed to significantly improve dead-code elimination (tree-shaking). By analyzing the internal graph of symbols and variables within a module, Webpack can trace dependenc">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/understanding-optimization-inner-graph-in-webpack-5">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Understanding optimization.innerGraph in Webpack 5 - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/understanding-optimization-inner-graph-in-webpack-5" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 introduced optimization.innerGraph, an advanced static analysis feature designed to significantly improve dead-code elimination (tree-shaking). By analyzing the internal graph of symbols and variables within a module, Webpack can trace dependenc" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="understanding-optimizationinnergraph-in-webpack-5">Understanding
+optimization.innerGraph in Webpack 5</h1>
+<p>Webpack 5 introduced <code>optimization.innerGraph</code>, an
+advanced static analysis feature designed to significantly improve
+dead-code elimination (tree-shaking). By analyzing the internal graph of
+symbols and variables within a module, Webpack can trace dependencies
+between imported values and exported declarations. This article explores
+how <code>optimization.innerGraph</code> functions, how it tracks
+variable references, and how it safely removes unused code that older
+bundling strategies were forced to retain.</p>
+<h2 id="what-is-optimizationinnergraph">What is
+optimization.innerGraph?</h2>
+<p><code>optimization.innerGraph</code> is a compiler optimization
+setting enabled by default in Webpack 5 production mode. It directs
+Webpack to inspect the inner dependency tree of individual JavaScript
+modules.</p>
+<p>In earlier versions of Webpack, tree-shaking primarily operated at
+the module boundary. If an exported function referenced an imported
+dependency, Webpack struggled to determine whether dropping that unused
+export could also safely drop the imported dependency.
+<code>optimization.innerGraph</code> solves this limitation by tracking
+symbol usage transitively through internal variables, function calls,
+and declarations.</p>
+<h2 id="how-webpack-5-uses-innergraph-to-track-variables">How Webpack 5
+Uses innerGraph to Track Variables</h2>
+<p>The inner graph algorithm constructs a map of connections between
+imports, local variables, and exports within the Abstract Syntax Tree
+(AST) of a file.</p>
+<h3 id="1-generating-module-level-symbol-references">1. Generating
+Module-Level Symbol References</h3>
+<p>When parsing a module, Webpack identifies:</p>
+<ul>
+<li><strong>Imported specifiers</strong> (e.g.,
+<code>import { a } from './dep'</code>)</li>
+<li><strong>Top-level declarations</strong> (functions, classes,
+<code>const</code>/<code>let</code>/<code>var</code>)</li>
+<li><strong>Exported symbols</strong> (e.g.,
+<code>export { b }</code>)</li>
+</ul>
+<p>Instead of treating the module as a single scope where any top-level
+reference flags an import as "used," Webpack creates isolated nodes for
+each declaration and maps dependencies between them.</p>
+<h3 id="2-tracing-the-chain-of-usage">2. Tracing the Chain of Usage</h3>
+<p>Consider the following module:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { heavyLibrary } <span class="im">from</span> <span class="st">&#39;./heavyLibrary&#39;</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">helper</span>() {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="fu">heavyLibrary</span>()<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">function</span> <span class="fu">usedExport</span>() {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="st">&#39;Hello World&#39;</span><span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">function</span> <span class="fu">unusedExport</span>() {</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="fu">helper</span>()<span class="op">;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Without inner graph analysis, the compiler sees <code>helper()</code>
+referencing <code>heavyLibrary</code> at the top level and may assume
+<code>heavyLibrary</code> is needed if any part of the module is
+touched.</p>
+<p>With <code>optimization.innerGraph</code> enabled:</p>
+<ol type="1">
+<li>Webpack tags <code>heavyLibrary</code> as a dependency of the local
+function <code>helper</code>.</li>
+<li>It tags <code>helper</code> as an internal dependency of
+<code>unusedExport</code>.</li>
+<li>It detects that the consuming application only imports and uses
+<code>usedExport</code>.</li>
+<li>Because <code>unusedExport</code> is not imported, Webpack traverses
+down the internal graph: <code>unusedExport</code> is unreferenced,
+meaning <code>helper</code> is unreferenced, which ultimately proves
+<code>heavyLibrary</code> is unreferenced.</li>
+<li>Both <code>helper</code> and <code>import { heavyLibrary }</code>
+are safely pruned from the bundle.</li>
+</ol>
+<h3 id="3-handling-pure-annotations-and-closures">3. Handling Pure
+Annotations and Closures</h3>
+<p>The inner graph works closely with pure expressions (such as
+<code>/*#__PURE__*/</code> annotations) and class declarations. If a
+class or an assigned expression has an internal reference to an imported
+module, Webpack evaluates whether the class itself is ever exposed or
+invoked. If the containing variable never reaches an active export, the
+entire chain is marked unused.</p>
+<h2 id="configuring-innergraph">Configuring innerGraph</h2>
+<p>Because <code>innerGraph</code> is enabled by default in production,
+manual intervention is rarely necessary. However, it can be explicitly
+toggled in the <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">innerGraph</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> <span class="co">// Set to false to disable internal variable tracking</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Disabling this setting reduces build times slightly for massive
+codebases, but it usually results in larger output bundles because
+Webpack will fail to tree-shake nested and indirect dependencies.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

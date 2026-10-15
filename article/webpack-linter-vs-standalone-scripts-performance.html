@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Linter vs Standalone Scripts Performance - webpack</title>
+    <meta name="description" content="Integrating code linters directly into the Webpack compilation pipeline introduces significant performance bottlenecks that slow down local development and CI/CD pipelines. While running linters inside Webpack ensures that invalid code halts the build imm">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-linter-vs-standalone-scripts-performance">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Linter vs Standalone Scripts Performance - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-linter-vs-standalone-scripts-performance" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Integrating code linters directly into the Webpack compilation pipeline introduces significant performance bottlenecks that slow down local development and CI/CD pipelines. While running linters inside Webpack ensures that invalid code halts the build imm" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-linter-vs-standalone-scripts-performance">Webpack Linter
+vs Standalone Scripts Performance</h1>
+<p>Integrating code linters directly into the Webpack compilation
+pipeline introduces significant performance bottlenecks that slow down
+local development and CI/CD pipelines. While running linters inside
+Webpack ensures that invalid code halts the build immediately, it
+couples static analysis with module bundling, forcing developers to wait
+for heavy AST processing during routine file saves. Separating linting
+into standalone scripts decouples code quality enforcement from the
+bundling process, resulting in faster Hot Module Replacement (HMR),
+reduced memory consumption, and dramatically shorter build times.</p>
+<h3 id="increased-build-and-rebuild-latency">Increased Build and Rebuild
+Latency</h3>
+<p>Running linters via Webpack plugins or loaders (such as
+<code>eslint-webpack-plugin</code>) forces Webpack to parse, traverse,
+and evaluate every matched JavaScript or TypeScript file using an
+Abstract Syntax Tree (AST) before it can emit assets. In standard
+Webpack configurations, bundling and transpiling already consume
+significant CPU resources. Injecting static analysis directly into this
+lifecycle compounds the processing overhead.</p>
+<p>During local development, this penalty directly impacts Hot Module
+Replacement (HMR). Rather than taking milliseconds to recompile an
+altered component, Webpack must re-lint the changed module and
+potentially its dependents, extending rebuild latency from instantaneous
+updates to several seconds.</p>
+<h3
+id="single-threaded-bottlenecks-and-resource-competition">Single-Threaded
+Bottlenecks and Resource Competition</h3>
+<p>Node.js executes on a single thread by default. When Webpack handles
+module resolution, transpilation, optimization, and linting
+simultaneously within the same process, these tasks actively compete for
+execution time.</p>
+<p>Linters rely on computationally expensive rules—especially when
+leveraging type-aware linting in TypeScript. Running this work inside
+Webpack congests the main thread, delaying critical compilation tasks.
+While multi-process solutions like thread-loader exist, passing complex
+AST states between workers introduces serialization overhead that often
+negates the concurrency benefits.</p>
+<h3 id="inefficient-caching-and-re-linting-overhead">Inefficient Caching
+and Re-Linting Overhead</h3>
+<p>Webpack and linters employ different caching strategies:</p>
+<ul>
+<li><strong>Webpack Caching:</strong> Invalidates files based on module
+dependency graphs and content hashes to produce bundled assets.</li>
+<li><strong>Linter Caching:</strong> Evaluates files against
+configuration rules, ignoring asset delivery constraints.</li>
+</ul>
+<p>When integrated inside Webpack, cache invalidations are tied to the
+build context. Modifying an unrelated import or build configuration
+often triggers broad re-linting across files that have not actually
+changed. Standalone CLI linters, by contrast, maintain their own
+dedicated cache artifacts (such as <code>.eslintcache</code>), which
+purely track source file content and rule hashes, avoiding false cache
+busts caused by Webpack's module graph updates.</p>
+<h3 id="decoupling-linting-for-maximum-performance">Decoupling Linting
+for Maximum Performance</h3>
+<p>Executing linters as standalone npm scripts resolves these
+performance issues by separating concerns:</p>
+<ol type="1">
+<li><strong>Independent Execution:</strong> Webpack focuses exclusively
+on bundling and source transformation, ensuring local HMR remains as
+fast as possible.</li>
+<li><strong>Parallel CI Workflows:</strong> Continuous integration
+systems can run bundle generation, unit testing, and standalone linting
+scripts in parallel across separate runner cores rather than
+sequentially within a single giant build step.</li>
+<li><strong>Optimized Local Feedback:</strong> Developers can delegate
+immediate syntax feedback to IDE extensions, reserving full-project
+linting scripts for pre-commit Git hooks or explicit verification
+steps.</li>
+</ol>
+<p>Keeping the Webpack configuration lean by omitting in-bundle linting
+plugins preserves compilation throughput and maintains a responsive
+local development environment.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

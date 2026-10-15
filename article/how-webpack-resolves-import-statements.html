@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Resolves Import Statements - webpack</title>
+    <meta name="description" content="When Webpack encounters an import statement in source code, it initiates a module resolution process powered by its internal resolver library, enhanced-resolve. This mechanism converts abstract path specifiers into concrete, absolute file paths on the fil">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-resolves-import-statements">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Resolves Import Statements - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-resolves-import-statements" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When Webpack encounters an import statement in source code, it initiates a module resolution process powered by its internal resolver library, enhanced-resolve. This mechanism converts abstract path specifiers into concrete, absolute file paths on the fil" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-resolves-import-statements">How Webpack Resolves
+Import Statements</h1>
+<p>When Webpack encounters an <code>import</code> statement in source
+code, it initiates a module resolution process powered by its internal
+resolver library, <code>enhanced-resolve</code>. This mechanism converts
+abstract path specifiers into concrete, absolute file paths on the file
+system, taking into account path types, file extensions, directory
+package manifests, and custom configuration rules.</p>
+<h3 id="1-determining-the-path-type">1. Determining the Path Type</h3>
+<p>Webpack first identifies the format of the import string. Import
+paths fall into three distinct categories:</p>
+<ul>
+<li><strong>Absolute Paths:</strong> Paths starting with <code>/</code>
+(e.g., <code>import util from '/src/util'</code>). Webpack treats these
+as already pointing to an exact system location and skips relative path
+computations.</li>
+<li><strong>Relative Paths:</strong> Paths starting with <code>./</code>
+or <code>../</code> (e.g., <code>import helper from './helper'</code>).
+The resolver calculates the absolute path by appending this specifier to
+the directory of the file containing the <code>import</code>
+statement.</li>
+<li><strong>Module Paths:</strong> Non-relative identifiers (e.g.,
+<code>import React from 'react'</code>). Webpack searches for these
+modules inside directories specified by the <code>resolve.modules</code>
+configuration option, which defaults to <code>['node_modules']</code>.
+It starts in the current directory and walks up the directory tree until
+it locates a matching folder or reaches the file system root.</li>
+</ul>
+<h3 id="2-resolving-aliases">2. Resolving Aliases</h3>
+<p>Before checking the disk, Webpack checks the path against the
+<code>resolve.alias</code> configuration. If a module path begins with
+an alias key (such as <code>@components</code>), Webpack substitutes
+that alias with its mapped absolute path before continuing the
+resolution pipeline.</p>
+<h3 id="3-file-resolution">3. File Resolution</h3>
+<p>Once a target path is established, Webpack checks whether the target
+points directly to a file:</p>
+<ul>
+<li><strong>Exact Match:</strong> If the path includes an extension and
+points to an existing file, resolution succeeds.</li>
+<li><strong>Missing Extensions:</strong> If no extension is specified,
+Webpack systematically appends extensions from the
+<code>resolve.extensions</code> array (defaulting to
+<code>['.js', '.json', '.wasm']</code>) in order until an existing file
+is found.</li>
+</ul>
+<h3 id="4-directory-resolution">4. Directory Resolution</h3>
+<p>If the resolved path points to a directory rather than a file,
+Webpack resolves it through the following steps:</p>
+<ol type="1">
+<li><strong>Check <code>package.json</code>:</strong> If the directory
+contains a <code>package.json</code>, Webpack reads the field matching
+the <code>resolve.mainFields</code> configuration (commonly
+<code>browser</code>, <code>module</code>, or <code>main</code>
+depending on the build target) or uses modern <code>package.json</code>
+<code>exports</code> maps.</li>
+<li><strong>Fallback to Index Files:</strong> If no
+<code>package.json</code> exists or the specified entry file is missing,
+Webpack checks for filenames defined in <code>resolve.mainFiles</code>
+(defaulting to <code>['index']</code>), trying each extension in
+<code>resolve.extensions</code> (such as <code>index.js</code>).</li>
+</ol>
+<h3 id="5-final-processing-and-bundling">5. Final Processing and
+Bundling</h3>
+<p>Once the absolute file path is determined, Webpack checks its
+<code>module.rules</code> to match the file path against configured
+loaders (such as <code>babel-loader</code> or <code>ts-loader</code>).
+The file is then read, parsed into an Abstract Syntax Tree (AST) to
+discover downstream dependencies, and added to the dependency graph.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

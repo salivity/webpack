@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Manifest V3 Prohibits Eval and Dynamic Imports - webpack</title>
+    <meta name="description" content="Google Chrome&#39;s Manifest V3 enforces strict security policies designed to prevent extensions from executing arbitrary or remotely hosted code. This architectural shift strictly forbids the use of eval() and severely restricts dynamic imports, creating imm">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/why-manifest-v-3-prohibits-eval-and-dynamic-imports">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Manifest V3 Prohibits Eval and Dynamic Imports - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/why-manifest-v-3-prohibits-eval-and-dynamic-imports" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Google Chrome&#39;s Manifest V3 enforces strict security policies designed to prevent extensions from executing arbitrary or remotely hosted code. This architectural shift strictly forbids the use of eval() and severely restricts dynamic imports, creating imm" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-manifest-v3-prohibits-eval-and-dynamic-imports">Why Manifest
+V3 Prohibits Eval and Dynamic Imports</h1>
+<p>Google Chrome's Manifest V3 enforces strict security policies
+designed to prevent extensions from executing arbitrary or remotely
+hosted code. This architectural shift strictly forbids the use of
+<code>eval()</code> and severely restricts dynamic imports, creating
+immediate build and runtime failures for standard Webpack
+configurations. This article breaks down why these mechanisms are
+banned, how they conflict with Manifest V3's Content Security Policy and
+Service Worker environment, and the technical reasons Webpack builds
+must be adapted to comply.</p>
+<h3 id="the-strict-content-security-policy-csp">The Strict Content
+Security Policy (CSP)</h3>
+<p>The core reason <code>eval()</code> is prohibited in Manifest V3 is
+the enforced default Content Security Policy (CSP). Under Manifest V2,
+developers could loosen CSP restrictions to allow
+<code>unsafe-eval</code>, enabling arbitrary string-to-code execution.
+Manifest V3 completely disallows modifying the CSP to include
+<code>'unsafe-eval'</code>.</p>
+<p>The policy requires that all logic executed by the extension be fully
+contained and statically verifiable within the extension’s packaged
+archive. Because <code>eval()</code>, <code>new Function()</code>, and
+string-based execution in <code>setTimeout()</code> or
+<code>setInterval()</code> allow arbitrary strings to be interpreted as
+executable logic at runtime, they present a major attack vector.
+Attackers could exploit these vectors to bypass Google Web Store review
+processes, inject malicious scripts, or alter an extension's behavior
+post-installation.</p>
+<h3 id="why-webpack-defaults-trigger-the-eval-prohibition">Why Webpack
+Defaults Trigger the <code>eval()</code> Prohibition</h3>
+<p>Webpack commonly uses <code>eval()</code> to optimize developer
+workflows. During development, Webpack’s default configuration assigns
+source mapping options such as <code>devtool: 'eval'</code> or
+<code>devtool: 'eval-cheap-source-map'</code>.</p>
+<p>These settings wrap every compiled module inside an
+<code>eval()</code> function string to improve incremental build speeds.
+When an unpacked Manifest V3 extension attempts to load these bundles,
+Chrome's runtime immediately blocks execution and throws a CSP violation
+error. To comply, Webpack builds targeting Manifest V3 must explicitly
+disable eval-based source maps and use compliant alternatives, such as
+<code>source-map</code> or <code>cheap-module-source-map</code>.</p>
+<h3
+id="transition-to-service-workers-and-the-dynamic-import-problem">Transition
+to Service Workers and the Dynamic Import Problem</h3>
+<p>Manifest V3 replaces persistent background pages with ephemeral
+Service Workers. This transition fundamentally changes how code executes
+and dynamically loads.</p>
+<ol type="1">
+<li><strong>Service Worker Lifetime and Asynchronous Loading:</strong>
+Extension Service Workers are terminated when idle and restarted when
+events fire. Traditional dynamic imports (<code>import()</code>) often
+rely on creating DOM <code>&lt;script&gt;</code> tags to fetch and
+execute secondary chunks on demand. Because Service Workers lack access
+to the DOM, standard DOM-based dynamic loading mechanisms fail
+entirely.</li>
+<li><strong>Deterministic Code Evaluation:</strong> Service Workers
+require all synchronous event listeners to be registered on their
+initial turn of the event loop. Dynamic code splitting via asynchronous
+<code>import()</code> can delay listener registration, causing the
+browser to miss incoming extension events (such as alarms, web requests,
+or message passing).</li>
+<li><strong>Prevention of Remotely Hosted Execution:</strong> Dynamic
+<code>import()</code> statements capable of taking variable parameters
+create the risk of fetching remote modules or altering dependency graphs
+at runtime. Manifest V3 explicitly mandates that all executable code
+must be packaged locally within the CRX file, making arbitrary remote
+dynamic imports non-compliant by design.</li>
+</ol>
+<h3 id="webpack-code-splitting-limitations">Webpack Code Splitting
+Limitations</h3>
+<p>In standard web applications, Webpack automatically manages dynamic
+<code>import()</code> statements via chunking, loading additional files
+asynchronously as needed. In Manifest V3 extensions, especially within
+the background Service Worker context, standard chunk loading strategies
+break.</p>
+<p>Webpack's runtime relies on loading chunks either through JSONP
+(which injects DOM scripts) or fetch-and-eval techniques, both of which
+are blocked by Manifest V3's environment. For background scripts,
+Webpack builds must be configured to output single, self-contained
+bundles or use static ES module imports that the browser can parse and
+validate ahead of execution.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

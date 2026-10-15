@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding Tapable Hook Types in Webpack - webpack</title>
+    <meta name="description" content="Tapable is the core library responsible for Webpack&#39;s plugin architecture, functioning as a specialized event emitter that coordinates complex plugin workflows. This article provides a comprehensive overview of the hook types available in Tapable, breakin">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/understanding-tapable-hook-types-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Understanding Tapable Hook Types in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/understanding-tapable-hook-types-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Tapable is the core library responsible for Webpack&#39;s plugin architecture, functioning as a specialized event emitter that coordinates complex plugin workflows. This article provides a comprehensive overview of the hook types available in Tapable, breakin" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="understanding-tapable-hook-types-in-webpack">Understanding
+Tapable Hook Types in Webpack</h1>
+<p>Tapable is the core library responsible for Webpack's plugin
+architecture, functioning as a specialized event emitter that
+coordinates complex plugin workflows. This article provides a
+comprehensive overview of the hook types available in Tapable, breaking
+down how they execute plugins synchronously, asynchronously in parallel,
+and asynchronously in series, as well as the unique flow control
+mechanisms each hook variant provides.</p>
+<hr />
+<h3 id="tapable-execution-paradigms">Tapable Execution Paradigms</h3>
+<p>Tapable categorizes hooks into three primary execution modes:</p>
+<ol type="1">
+<li><strong>Synchronous Hooks (<code>Sync*</code>)</strong>: Execute
+plugins one after another in a blocking manner using standard function
+calls. They are registered using <code>.tap()</code>.</li>
+<li><strong>Asynchronous Series Hooks
+(<code>AsyncSeries*</code>)</strong>: Execute plugins sequentially,
+waiting for the current plugin to complete its asynchronous operation
+before starting the next. They can be registered using
+<code>.tap()</code>, <code>.tapAsync()</code> (callback-based), or
+<code>.tapPromise()</code> (promise-based).</li>
+<li><strong>Asynchronous Parallel Hooks
+(<code>AsyncParallel*</code>)</strong>: Trigger all registered plugins
+simultaneously without waiting for prior plugins to finish. They also
+support <code>.tap()</code>, <code>.tapAsync()</code>, and
+<code>.tapPromise()</code>.</li>
+</ol>
+<hr />
+<h3 id="hook-flow-behaviors">Hook Flow Behaviors</h3>
+<p>Each execution paradigm combines with four behavioral patterns that
+dictate how return values are handled and how control flow
+progresses:</p>
+<ul>
+<li><strong>Basic</strong>: Runs every registered plugin in order,
+regardless of what each function returns.</li>
+<li><strong>Bail</strong>: Allows early exit. If a plugin returns any
+value other than <code>undefined</code>, the hook terminates immediately
+and ignores the remaining plugins.</li>
+<li><strong>Waterfall</strong>: Passes the return value of one plugin as
+the argument to the next plugin in the chain.</li>
+<li><strong>Loop</strong>: Continues re-executing plugins from the
+beginning of the chain as long as any plugin returns a value other than
+<code>undefined</code>.</li>
+</ul>
+<hr />
+<h3 id="complete-list-of-tapable-hook-types">Complete List of Tapable
+Hook Types</h3>
+<p>Tapable exports nine main hook classes based on the matrix of
+execution paradigms and flow behaviors:</p>
+<h4 id="1-synchronous-hooks">1. Synchronous Hooks</h4>
+<ul>
+<li><strong><code>SyncHook</code></strong>: The basic synchronous hook.
+It executes all tapped functions sequentially and discards any returned
+values.</li>
+<li><strong><code>SyncBailHook</code></strong>: Executes functions
+sequentially until one returns a defined value. Once a value is
+returned, execution stops immediately and that value is returned by the
+hook call.</li>
+<li><strong><code>SyncWaterfallHook</code></strong>: Executes functions
+sequentially, piping the return value of each function into the first
+argument of the subsequent function.</li>
+<li><strong><code>SyncLoopHook</code></strong>: Executes functions in a
+loop. If a function returns a defined value, the execution restarts from
+the first registered plugin until all plugins complete and return
+<code>undefined</code>.</li>
+</ul>
+<h4 id="2-asynchronous-series-hooks">2. Asynchronous Series Hooks</h4>
+<ul>
+<li><strong><code>AsyncSeriesHook</code></strong>: Executes asynchronous
+plugins one after another, waiting for each callback or promise
+resolution before invoking the next.</li>
+<li><strong><code>AsyncSeriesBailHook</code></strong>: Executes
+asynchronous plugins sequentially, but stops processing the chain as
+soon as a plugin resolves or returns a defined value.</li>
+<li><strong><code>AsyncSeriesWaterfallHook</code></strong>: Executes
+asynchronous plugins sequentially, passing the resolved value of each
+step into the next plugin's input.</li>
+<li><strong><code>AsyncSeriesLoopHook</code></strong>: Executes
+asynchronous plugins sequentially in a loop, restarting from the first
+plugin whenever a plugin resolves to a defined value.</li>
+</ul>
+<h4 id="3-asynchronous-parallel-hooks">3. Asynchronous Parallel
+Hooks</h4>
+<ul>
+<li><strong><code>AsyncParallelHook</code></strong>: Invokes all
+registered plugins at the same time and completes only when all plugin
+callbacks or promises have resolved.</li>
+<li><strong><code>AsyncParallelBailHook</code></strong>: Invokes all
+registered plugins concurrently, but resolves the overall hook
+immediately as soon as the first plugin returns or resolves a defined
+value.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

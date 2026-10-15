@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How eslint-webpack-plugin Integrates into Webpack - webpack</title>
+    <meta name="description" content="The eslint-webpack-plugin integrates static code analysis directly into the Webpack compilation pipeline, allowing developers to catch JavaScript and TypeScript errors during development and build processes. This article explains the architectural shift f">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-eslint-webpack-plugin-integrates-into-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How eslint-webpack-plugin Integrates into Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-eslint-webpack-plugin-integrates-into-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The eslint-webpack-plugin integrates static code analysis directly into the Webpack compilation pipeline, allowing developers to catch JavaScript and TypeScript errors during development and build processes. This article explains the architectural shift f" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-eslint-webpack-plugin-integrates-into-webpack">How
+eslint-webpack-plugin Integrates into Webpack</h1>
+<p>The <code>eslint-webpack-plugin</code> integrates static code
+analysis directly into the Webpack compilation pipeline, allowing
+developers to catch JavaScript and TypeScript errors during development
+and build processes. This article explains the architectural shift from
+legacy loaders to the plugin system, outlines the specific Webpack
+compiler lifecycle hooks utilized by <code>eslint-webpack-plugin</code>,
+and details how it processes files, formats diagnostics, and impacts
+build termination.</p>
+<h2 id="the-shift-from-loaders-to-plugins">The Shift from Loaders to
+Plugins</h2>
+<p>Historically, linting in Webpack was handled by
+<code>eslint-loader</code>. Loaders operate on individual files during
+the module transformation phase, before the Dependency Graph is fully
+resolved. This led to performance bottlenecks, issues with sourcemaps,
+and difficulties linting files that were not directly processed by
+module rules.</p>
+<p><code>eslint-webpack-plugin</code> decouples linting from individual
+file transformations. Instead of intercepting every module import as a
+transformation step, it operates as a separate lifecycle process managed
+by Webpack's unified plugin architecture.</p>
+<h2 id="hooking-into-the-compiler-lifecycle">Hooking into the Compiler
+Lifecycle</h2>
+<p>Webpack exposes a series of lifecycle events via its Tapable engine.
+<code>eslint-webpack-plugin</code> taps into these hooks to inspect
+files and report diagnostics at optimal moments:</p>
+<ol type="1">
+<li><strong>Initialization (<code>compiler.hooks.initialize</code> or
+<code>environment</code>):</strong> The plugin reads its configuration
+(e.g., extensions, caching strategies, fix flags, and ESLint CLI
+options) and instantiates the underlying ESLint engine.</li>
+<li><strong>Execution Hook (<code>compiler.hooks.thisCompilation</code>
+or <code>compiler.hooks.emit</code>):</strong> Depending on the
+configuration, the plugin taps into compilation phases to identify
+target files. It determines which files in the dependency graph or the
+project directory need linting.</li>
+<li><strong>Watch Mode (<code>compiler.hooks.watchRun</code>):</strong>
+When running in watch mode or through <code>webpack-dev-server</code>,
+the plugin taps into <code>watchRun</code> to read changed files. It
+uses this information to lint only the modified files rather than the
+entire codebase.</li>
+</ol>
+<h2 id="execution-and-worker-threading">Execution and Worker
+Threading</h2>
+<p>When the lifecycle hook executes:</p>
+<ul>
+<li><strong>File Selection:</strong> The plugin resolves target files
+matching the configured extensions (such as <code>.js</code>,
+<code>.jsx</code>, <code>.ts</code>, <code>.tsx</code>) while excluding
+ignored patterns (such as <code>node_modules</code>).</li>
+<li><strong>Parallel Processing:</strong> To minimize build-time
+overhead, <code>eslint-webpack-plugin</code> can run linting operations
+in parallel worker threads using a worker pool.</li>
+<li><strong>Auto-Fixing:</strong> If the <code>fix</code> option is
+enabled, the plugin writes automatically corrected code directly to the
+filesystem before subsequent build stages consume the updated
+files.</li>
+</ul>
+<h2 id="emitting-diagnostics-into-webpack">Emitting Diagnostics into
+Webpack</h2>
+<p>Rather than writing directly to <code>console.log</code> or
+terminating the process independently,
+<code>eslint-webpack-plugin</code> normalizes ESLint results into native
+Webpack data structures:</p>
+<ul>
+<li><strong>Warnings:</strong> Linting issues with warning severity are
+pushed into Webpack’s <code>compilation.warnings</code> array.</li>
+<li><strong>Errors:</strong> Issues with error severity are pushed into
+<code>compilation.errors</code>.</li>
+</ul>
+<p>By utilizing these standard compilation arrays, the plugin ensures
+full compatibility with the rest of the Webpack ecosystem. Development
+servers can capture these messages to render browser overlays, terminal
+formatters can style them cleanly, and CI environments can inspect build
+results natively.</p>
+<h2 id="managing-build-success-and-failure">Managing Build Success and
+Failure</h2>
+<p>The plugin directly controls whether a build succeeds or fails using
+the <code>failOnError</code> and <code>failOnWarning</code>
+configuration parameters. When an ESLint rule violation occurs:</p>
+<ul>
+<li>If <code>failOnError</code> is <code>true</code> (default), the
+presence of items in <code>compilation.errors</code> signals Webpack to
+abort the emission stage in production builds and exit with a non-zero
+status code.</li>
+<li>In development environments, errors are typically deferred or
+surfaced through <code>webpack-dev-server</code> without completely
+breaking the active build process, allowing hot module replacement (HMR)
+to continue functioning once corrections are made.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

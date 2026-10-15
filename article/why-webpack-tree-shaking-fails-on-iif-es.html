@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Webpack Tree Shaking Fails on IIFEs - webpack</title>
+    <meta name="description" content="Immediately Invoked Function Expressions (IIFEs) present a significant challenge for Webpack&#39;s tree shaking mechanism because they execute automatically at runtime, making it difficult for static analysis to determine if they are safe to remove. While Web">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/why-webpack-tree-shaking-fails-on-iif-es">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Webpack Tree Shaking Fails on IIFEs - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/why-webpack-tree-shaking-fails-on-iif-es" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Immediately Invoked Function Expressions (IIFEs) present a significant challenge for Webpack&#39;s tree shaking mechanism because they execute automatically at runtime, making it difficult for static analysis to determine if they are safe to remove. While Web" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-webpack-tree-shaking-fails-on-iifes">Why Webpack Tree
+Shaking Fails on IIFEs</h1>
+<p>Immediately Invoked Function Expressions (IIFEs) present a
+significant challenge for Webpack's tree shaking mechanism because they
+execute automatically at runtime, making it difficult for static
+analysis to determine if they are safe to remove. While Webpack can
+easily track and eliminate unused ECMAScript module (ESM) exports, it
+adopts a conservative approach toward IIFEs to avoid breaking code that
+relies on side effects. Consequently, unused IIFE blocks often remain in
+the final production bundle unless explicitly marked as
+side-effect-free.</p>
+<h3 id="the-role-of-static-analysis-in-tree-shaking">The Role of Static
+Analysis in Tree Shaking</h3>
+<p>Tree shaking relies on the static structure of ES modules
+(<code>import</code> and <code>export</code> statements). Because ES
+module dependencies are deterministic and known at compile time before
+any code runs, Webpack can build an abstract syntax tree (AST) and mark
+exports that are never imported elsewhere in the application. The actual
+dead-code elimination is then deferred to a minifier, typically Terser,
+which strips out declarations marked as unused.</p>
+<h3 id="the-problem-with-immediate-execution">The Problem with Immediate
+Execution</h3>
+<p>Unlike plain function declarations that only execute when called, an
+IIFE runs the moment the script is evaluated. From a bundler's
+perspective, whether the returned value of an IIFE is assigned to an
+unused variable is irrelevant; the execution itself has already
+occurred.</p>
+<p>Because JavaScript is a dynamic, highly mutable language, an IIFE can
+easily perform operations outside its immediate scope. Common side
+effects include:</p>
+<ul>
+<li>Modifying global objects such as <code>window</code> or
+<code>document</code>.</li>
+<li>Reading or writing to <code>localStorage</code> or
+<code>sessionStorage</code>.</li>
+<li>Mutating external variables or prototypes.</li>
+<li>Setting timers via <code>setTimeout</code> or
+<code>setInterval</code>.</li>
+<li>Triggering network requests or logging to the console.</li>
+</ul>
+<h3 id="the-halting-problem-and-conservative-bundling">The Halting
+Problem and Conservative Bundling</h3>
+<p>To safely delete an unreferenced IIFE, Webpack and Terser must
+guarantee that running it produces zero observable side effects.
+Determining whether arbitrary, non-trivial JavaScript code has side
+effects is fundamentally equivalent to solving the halting problem.</p>
+<p>Analyzing complex operations, deep object references, or calls to
+external libraries within an IIFE is computationally impractical and
+prone to false negatives. If a bundler incorrectly prunes an IIFE that
+configured a necessary global polyfill or registered a DOM listener, it
+would silently break the application. Therefore, bundlers follow a
+strict rule: if an expression cannot be proven pure with absolute
+certainty, it must be preserved.</p>
+<h3 id="resolving-the-issue-annotations-and-esm">Resolving the Issue:
+Annotations and ESM</h3>
+<p>To allow Webpack to eliminate dead IIFEs, developers must provide
+explicit hints to the compiler:</p>
+<ol type="1">
+<li><strong><code>/*#__PURE__*/</code> Annotations:</strong> Placing a
+<code>/*#__PURE__*/</code> comment immediately before an IIFE tells
+Terser and Webpack that the function call has no side effects. If its
+result is unused, the entire expression can be pruned safely.
+Transpilers like Babel and TypeScript can generate these annotations
+automatically in many cases.</li>
+<li><strong><code>sideEffects</code> in
+<code>package.json</code>:</strong> Setting
+<code>"sideEffects": false</code> tells Webpack that the entire module
+or package contains no side effects, permitting more aggressive
+elimination of unreferenced files even if they contain top-level
+IIFEs.</li>
+<li><strong>Migrating to Pure ES Modules:</strong> Refactoring code away
+from legacy patterns—such as Universal Module Definition (UMD) wrappers
+that bundle code inside outer IIFEs—into native <code>import</code> and
+<code>export</code> statements allows Webpack to analyze and prune code
+paths natively without relying on heuristic side-effect detection.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

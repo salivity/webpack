@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How maxSize Works in Webpack SplitChunksPlugin - webpack</title>
+    <meta name="description" content="The maxSize option in Webpack&#39;s SplitChunksPlugin automatically splits oversized chunks into smaller, more manageable pieces when a chunk exceeds a specified byte threshold. By enforcing a maximum file size while respecting module boundaries and caching r">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-max-size-works-in-webpack-split-chunks-plugin">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How maxSize Works in Webpack SplitChunksPlugin - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-max-size-works-in-webpack-split-chunks-plugin" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The maxSize option in Webpack&#39;s SplitChunksPlugin automatically splits oversized chunks into smaller, more manageable pieces when a chunk exceeds a specified byte threshold. By enforcing a maximum file size while respecting module boundaries and caching r" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-maxsize-works-in-webpack-splitchunksplugin">How maxSize
+Works in Webpack SplitChunksPlugin</h1>
+<p>The <code>maxSize</code> option in Webpack's
+<code>SplitChunksPlugin</code> automatically splits oversized chunks
+into smaller, more manageable pieces when a chunk exceeds a specified
+byte threshold. By enforcing a maximum file size while respecting module
+boundaries and caching requirements, this setting helps developers
+optimize asset delivery, improve HTTP/2 parallel loading, and prevent
+massive bundles from delaying initial page rendering.</p>
+<h3 id="the-chunk-splitting-lifecycle">The Chunk Splitting
+Lifecycle</h3>
+<p>Webpack executes chunk optimization in sequential phases. First,
+<code>SplitChunksPlugin</code> creates initial chunks based on
+parameters like <code>minSize</code>, entry points, and chunk types
+(async or initial).</p>
+<p>Once the initial chunks are formed, Webpack evaluates each chunk
+against the configured <code>maxSize</code> (or its variants,
+<code>maxAsyncSize</code> and <code>maxInitialSize</code>). If a chunk's
+total byte weight exceeds this threshold, Webpack invokes an internal
+splitting algorithm to break that single chunk into multiple sibling
+chunks.</p>
+<h3 id="the-splitting-mechanism-and-module-boundaries">The Splitting
+Mechanism and Module Boundaries</h3>
+<p>Webpack cannot break a single module (such as an individual
+JavaScript file or library) into pieces. Consequently, the breakdown
+algorithm functions under specific constraints:</p>
+<ol type="1">
+<li><strong>Module-Level Granularity</strong>: Webpack sorts the modules
+contained within the oversized chunk and partitions them into groups.
+Each group becomes a new chunk whose size stays as close to or below the
+<code>maxSize</code> limit as possible.</li>
+<li><strong>Atomic Modules</strong>: If an individual module (for
+example, a large third-party library like <code>lodash</code> or
+<code>three.js</code>) is intrinsically larger than the specified
+<code>maxSize</code>, Webpack cannot split it further. In this scenario,
+the module is isolated into its own dedicated chunk that exceeds
+<code>maxSize</code>. Webpack prioritizes module execution integrity
+over the strict size limit.</li>
+<li><strong>The <code>minSize</code> Priority</strong>: When splitting,
+Webpack attempts to avoid creating chunks that fall below the
+<code>minSize</code> threshold. If splitting an oversized chunk would
+yield tiny, inefficient files smaller than <code>minSize</code>, Webpack
+limits how aggressively it partitions the assets.</li>
+</ol>
+<h3 id="naming-conventions-and-determinism">Naming Conventions and
+Determinism</h3>
+<p>When <code>maxSize</code> divides an existing chunk, Webpack
+generates deterministic names for the resulting parts to ensure
+effective browser caching:</p>
+<ul>
+<li>The derived chunk names are constructed using the original chunk
+name combined with a hash of the modules included in that specific
+subdivision (e.g., <code>vendors~main~1a2b3c4d.js</code>).</li>
+<li>If custom naming functions are disabled, Webpack relies on internal
+numerical or hashed chunk IDs.</li>
+<li>Because the split is deterministic, updating a single module only
+invalidates the specific sub-chunk containing that module, leaving the
+other derived chunks intact in the user's browser cache.</li>
+</ul>
+<h3 id="configuration-example">Configuration Example</h3>
+<p>A standard implementation defines both <code>minSize</code> and
+<code>maxSize</code> to establish an acceptable file-size window:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">splitChunks</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">minSize</span><span class="op">:</span> <span class="dv">20000</span><span class="op">,</span> <span class="co">// 20 KB minimum threshold</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">maxSize</span><span class="op">:</span> <span class="dv">70000</span><span class="op">,</span> <span class="co">// 70 KB target maximum</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>In this configuration, Webpack merges small modules until they reach
+at least 20 KB, but once a combined chunk approaches or exceeds 70 KB,
+it divides the modules into additional chunks to keep individual asset
+payloads lightweight.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

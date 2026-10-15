@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Use target: &#39;node&#39; in Webpack Backend Configs - webpack</title>
+    <meta name="description" content="When using Webpack to bundle backend applications, setting the target: &#39;node&#39; configuration option is essential for compiling code meant to execute in a Node.js runtime rather than a web browser. This article explains the core functions of target: &#39;node&#39;,">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/why-use-target-node-in-webpack-backend-configs">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Use target: &#39;node&#39; in Webpack Backend Configs - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/why-use-target-node-in-webpack-backend-configs" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When using Webpack to bundle backend applications, setting the target: &#39;node&#39; configuration option is essential for compiling code meant to execute in a Node.js runtime rather than a web browser. This article explains the core functions of target: &#39;node&#39;," />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-use-target-node-in-webpack-backend-configs">Why Use target:
+'node' in Webpack Backend Configs</h1>
+<p>When using Webpack to bundle backend applications, setting the
+<code>target: 'node'</code> configuration option is essential for
+compiling code meant to execute in a Node.js runtime rather than a web
+browser. This article explains the core functions of
+<code>target: 'node'</code>, highlighting how it preserves native
+Node.js APIs, handles runtime-specific global variables, and configures
+appropriate module loading strategies for server-side environments.</p>
+<p>By default, Webpack assumes a target of <code>'web'</code>. When set
+to the browser environment, Webpack attempts to package all dependencies
+into client-safe bundles, which leads to critical issues when compiling
+server-side code. Specifying <code>target: 'node'</code> fundamentally
+alters the compilation process in several key ways.</p>
+<h3 id="1-handling-core-nodejs-modules">1. Handling Core Node.js
+Modules</h3>
+<p>Node.js includes built-in modules such as <code>fs</code>,
+<code>path</code>, <code>http</code>, and <code>crypto</code>. In a
+browser-targeted build, Webpack either fails to resolve these modules or
+bundles heavy polyfills to mimic their functionality.</p>
+<p>When <code>target: 'node'</code> is applied, Webpack recognizes these
+core modules natively. Instead of attempting to bundle them or inject
+polyfills, Webpack automatically treats them as external dependencies
+and compiles them into standard runtime imports (e.g.,
+<code>require('fs')</code>).</p>
+<h3 id="2-preserving-nodejs-runtime-globals">2. Preserving Node.js
+Runtime Globals</h3>
+<p>In browser builds, Webpack frequently mocks or alters variables like
+<code>__dirname</code>, <code>__filename</code>, and
+<code>global</code>. When compiling a backend service, you typically
+rely on the true filesystem paths and system runtime values.</p>
+<p>The <code>target: 'node'</code> configuration instructs Webpack to
+retain native Node.js references for these globals, ensuring operations
+that rely on the local file system or process context behave accurately
+at runtime.</p>
+<h3 id="3-appropriate-code-generation-and-module-loading">3. Appropriate
+Code Generation and Module Loading</h3>
+<p>A backend application executes using Node's native module system.
+Setting the target to <code>node</code>:</p>
+<ul>
+<li>Configures chunk-loading mechanisms to use Node's
+<code>require</code> or dynamic <code>import()</code> calls instead of
+manipulating DOM script tags (e.g.,
+<code>document.createElement('script')</code>).</li>
+<li>Optimizes output templates and runtime code specifically for the V8
+engine without browser-specific safety wrappers.</li>
+<li>Retains compatibility with native C++ addons (<code>.node</code>
+files) that cannot be packaged into browser scripts.</li>
+</ul>
+<h3 id="4-integration-with-external-dependencies">4. Integration with
+External Dependencies</h3>
+<p>While <code>target: 'node'</code> automatically ignores built-in
+Node.js modules, backend applications often choose not to bundle
+third-party libraries located in <code>node_modules</code>. Because the
+execution environment already has access to the local filesystem and
+dependencies, developers typically pair <code>target: 'node'</code> with
+<code>webpack-node-externals</code>. This combination keeps server
+bundles lightweight, reduces build times, and avoids runtime issues with
+packages that are not designed to be bundled.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

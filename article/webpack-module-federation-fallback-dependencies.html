@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Module Federation Fallback Dependencies - webpack</title>
+    <meta name="description" content="Webpack Module Federation handles remote micro-frontend failures by combining shared scope negotiation, semantic versioning constraints, and runtime fallbacks configured in the build settings. When a remote container fails to load, Webpack prevents fatal">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-module-federation-fallback-dependencies">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Module Federation Fallback Dependencies - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-module-federation-fallback-dependencies" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack Module Federation handles remote micro-frontend failures by combining shared scope negotiation, semantic versioning constraints, and runtime fallbacks configured in the build settings. When a remote container fails to load, Webpack prevents fatal" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-module-federation-fallback-dependencies">Webpack Module
+Federation Fallback Dependencies</h1>
+<p>Webpack Module Federation handles remote micro-frontend failures by
+combining shared scope negotiation, semantic versioning constraints, and
+runtime fallbacks configured in the build settings. When a remote
+container fails to load, Webpack prevents fatal application crashes by
+falling back to locally bundled copies of dependencies and allowing
+dynamic error-handling strategies. This article explains the technical
+mechanisms Webpack uses to detect remote load failures, negotiate shared
+module scopes, and resolve fallback dependencies.</p>
+<h3 id="the-role-of-the-shared-scope">The Role of the Shared Scope</h3>
+<p>At the heart of Webpack Module Federation is the global shared scope
+object, represented internally as <code>__webpack_share_scopes__</code>.
+When a host or remote container initializes, it registers its available
+shared modules into this scope along with metadata such as version
+numbers, priority, and loading status.</p>
+<p>Under normal circumstances, Webpack queries this shared pool to
+determine the highest compatible version of a library (e.g., React,
+Lodash) to avoid loading duplicate code. Each micro-frontend that lists
+a library under the <code>shared</code> configuration can act as either
+a provider, a consumer, or both.</p>
+<h3 id="how-fallback-dependencies-are-resolved-on-remote-failure">How
+Fallback Dependencies Are Resolved on Remote Failure</h3>
+<p>When a remote micro-frontend fails to load—due to network drops, a
+missing <code>remoteEntry.js</code>, or a runtime script error—the
+fallback resolution proceeds through the following sequence:</p>
+<ol type="1">
+<li><strong>Failure to Populate the Shared Scope:</strong> If the remote
+container fails before executing its initialization function, it never
+registers its local versions of dependencies into
+<code>__webpack_share_scopes__</code>. The shared registry remains
+populated only by the host and any other remotes that initialized
+successfully.</li>
+<li><strong>Version Negotiation with Remaining Providers:</strong> When
+the host or another container requests a shared module, the Webpack
+runtime searches the shared scope for an entry that satisfies the
+requested semantic versioning range (<code>requiredVersion</code>).</li>
+<li><strong>Falling Back to the Local Build:</strong> If the failed
+remote was expected to provide a dependency, but no valid instance
+exists in the shared scope, Webpack checks whether the consuming
+application has a bundled fallback. By default, any package listed in
+<code>shared</code> includes a local fallback module unless explicitly
+disabled. Webpack executes this local factory function to instantiate
+the bundled dependency.</li>
+<li><strong>Behavior with <code>import: false</code>:</strong> If a
+micro-frontend sets <code>import: false</code> for a dependency in its
+<code>shared</code> configuration, it designates that dependency as an
+external requirement that must be provided by another container. If the
+remote providing that package fails, Webpack cannot fall back to a local
+copy and will throw an unhandled runtime error
+(<code>Shared module is not available for consumption</code>).</li>
+</ol>
+<h3 id="singleton-and-strict-version-enforcement">Singleton and Strict
+Version Enforcement</h3>
+<p>Configuration options within the <code>shared</code> object
+significantly influence fallback behavior:</p>
+<ul>
+<li><strong><code>singleton: true</code></strong>: Webpack permits only
+one instance of the module in the shared scope. If a remote provides a
+newer version of a singleton library but fails to load, Webpack will use
+the host’s local version instead. A warning will only be emitted if
+version constraints are violated.</li>
+<li><strong><code>strictVersion: true</code></strong>: Webpack rejects
+fallbacks that fall outside the specified <code>requiredVersion</code>
+range. If the remote providing the valid version fails and the local
+fallback version does not satisfy the constraint, module execution
+halts.</li>
+<li><strong><code>requiredVersion</code></strong>: Dictates whether the
+local fallback or an alternative remote's shared dependency matches the
+semver criteria.</li>
+</ul>
+<h3 id="runtime-catch-blocks-and-dynamic-remotes">Runtime Catch Blocks
+and Dynamic Remotes</h3>
+<p>While Webpack natively resolves shared libraries back to local
+bundles, loading remote components directly (such as
+<code>import('remoteApp/Widget')</code>) requires deliberate runtime
+handling. If <code>remoteEntry.js</code> is unreachable, the import
+promise rejects.</p>
+<p>To ensure component-level fallbacks, developers implement two primary
+patterns alongside Webpack's module resolution:</p>
+<ul>
+<li><strong>Promise-Based Dynamic Remotes:</strong> Remote entry URLs
+can be wrapped in promise-based scripts within
+<code>webpack.config.js</code>. If the primary remote URL fails to
+resolve, the promise catches the error and attempts to fetch an
+alternative URL or resolves to an empty module.</li>
+<li><strong>UI-Level Error Boundaries:</strong> Wrapping dynamic imports
+in standard JavaScript <code>catch()</code> handlers or React Error
+Boundaries allows applications to gracefully catch the failed module
+load and render a local fallback component instead of crashing the host
+tree.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

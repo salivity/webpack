@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Manifest Icons for Multiple Pixel Densities - webpack</title>
+    <meta name="description" content="Webpack handles Web App Manifest icons for multiple pixel densities by either leveraging specialized Progressive Web App (PWA) plugins to automate image resizing and manifest generation or by utilizing native asset modules to bundle pre-rendered assets. T">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-manifest-icons-for-multiple-pixel-densities">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Manifest Icons for Multiple Pixel Densities - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-manifest-icons-for-multiple-pixel-densities" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack handles Web App Manifest icons for multiple pixel densities by either leveraging specialized Progressive Web App (PWA) plugins to automate image resizing and manifest generation or by utilizing native asset modules to bundle pre-rendered assets. T" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-manifest-icons-for-multiple-pixel-densities">Webpack
+Manifest Icons for Multiple Pixel Densities</h1>
+<p>Webpack handles Web App Manifest icons for multiple pixel densities
+by either leveraging specialized Progressive Web App (PWA) plugins to
+automate image resizing and manifest generation or by utilizing native
+asset modules to bundle pre-rendered assets. This guide explains how
+Webpack processes multi-density icon sets, dynamically maps hashed
+filenames to your manifest, and ensures icons display sharply across
+devices ranging from standard displays to ultra-high-DPI screens.</p>
+<h3 id="automated-icon-generation-with-plugins">Automated Icon
+Generation with Plugins</h3>
+<p>The most common and robust way Webpack handles multi-density manifest
+icons is through plugins such as <code>webpack-pwa-manifest</code>.
+Rather than requiring you to manually create every resolution required
+by mobile operating systems, the plugin automates the process:</p>
+<ol type="1">
+<li><strong>Single Source Ingestion</strong>: You provide a single
+high-resolution icon (typically a 512x512 PNG or an SVG) in your Webpack
+configuration.</li>
+<li><strong>Automated Resizing</strong>: During compilation, the plugin
+invokes an image processing library (such as Sharp or Jimp) to resize
+the source file into specified dimensions (e.g., 48x48, 96x96, 192x192,
+512x512).</li>
+<li><strong>Manifest Injection</strong>: It compiles the final
+<code>manifest.json</code>, automatically filling the <code>icons</code>
+array with the correct <code>src</code>, <code>sizes</code>,
+<code>type</code>, and purpose (such as <code>any</code> or
+<code>maskable</code>) for each generated resolution.</li>
+<li><strong>Cache Busting</strong>: Webpack emits each generated image
+file with a unique content hash in the output directory, and updates the
+manifest references accordingly.</li>
+</ol>
+<h3 id="native-asset-modules-and-manual-manifests">Native Asset Modules
+and Manual Manifests</h3>
+<p>If you prefer full control over asset compression and choose not to
+use an automated generator, you can define icons manually using Webpack
+5 Asset Modules:</p>
+<ul>
+<li><strong>Asset Processing</strong>: Icons created for different pixel
+densities (e.g., standard 1x, Retina 2x, and 3x densities) are imported
+into your application bundle as <code>asset/resource</code>.</li>
+<li><strong>Path Resolution</strong>: Because Webpack fingerprints
+filenames (e.g., <code>icon-192.[contenthash].png</code>), hardcoding
+paths in a static manifest file will lead to broken links. To fix this,
+you must either reference the icons through template plugins like
+<code>html-webpack-plugin</code> or process the manifest through a
+loader that resolves relative asset paths inside JSON files.</li>
+<li><strong>Direct Copying</strong>: Alternatively, developers often use
+<code>copy-webpack-plugin</code> to transfer a directory of pre-scaled
+icons directly to the output folder without hashing, maintaining static
+paths in the manifest. While simpler, this approach sacrifices automatic
+cache-busting.</li>
+</ul>
+<h3 id="scalable-vector-graphics-svg-handling">Scalable Vector Graphics
+(SVG) Handling</h3>
+<p>For modern browsers, Webpack can eliminate the need for rasterized
+multi-density assets altogether by bundling vector assets:</p>
+<ul>
+<li>You configure Webpack's asset pipeline to emit an SVG icon.</li>
+<li>In the manifest, the icon entry specifies <code>sizes: "any"</code>
+and <code>type: "image/svg+xml"</code>.</li>
+<li>The client device scales the single vector file to whatever pixel
+density the screen requires, avoiding downscaling artifacts or
+multi-file asset generation.</li>
+</ul>
+<h3 id="cache-fingerprinting-and-asset-emitting">Cache Fingerprinting
+and Asset Emitting</h3>
+<p>Regardless of the approach, the primary role of Webpack in managing
+multi-density icons is resolving dependencies and generating accurate
+emission paths. Because the web app manifest is a standalone file
+fetched by the browser outside standard JavaScript module evaluation,
+Webpack synchronizes the emitted image filenames with the manifest's
+internal JSON structure, ensuring the browser fetches the appropriate
+icon based on the user's device resolution.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

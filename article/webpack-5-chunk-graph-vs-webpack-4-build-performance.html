@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack 5 ChunkGraph vs Webpack 4 Build Performance - webpack</title>
+    <meta name="description" content="Webpack 5 introduced ChunkGraph as an independent architectural layer to decouple module information from chunk aggregation, directly solving the severe compilation and caching bottlenecks present in Webpack 4. In previous versions, the relationships betw">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-5-chunk-graph-vs-webpack-4-build-performance">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack 5 ChunkGraph vs Webpack 4 Build Performance - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-5-chunk-graph-vs-webpack-4-build-performance" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 introduced ChunkGraph as an independent architectural layer to decouple module information from chunk aggregation, directly solving the severe compilation and caching bottlenecks present in Webpack 4. In previous versions, the relationships betw" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-5-chunkgraph-vs-webpack-4-build-performance">Webpack 5
+ChunkGraph vs Webpack 4 Build Performance</h1>
+<p>Webpack 5 introduced <code>ChunkGraph</code> as an independent
+architectural layer to decouple module information from chunk
+aggregation, directly solving the severe compilation and caching
+bottlenecks present in Webpack 4. In previous versions, the
+relationships between chunks and modules were stored directly within the
+<code>Chunk</code> and <code>Module</code> instances themselves,
+creating cyclic dependencies and memory-heavy mutations during
+compilation passes. By isolating these relationships into a dedicated,
+queryable <code>ChunkGraph</code> structure, Webpack 5 reduces memory
+overhead, accelerates incremental rebuilds, and unlocks robust
+persistent caching across builds.</p>
+<h3 id="the-architectural-flaw-in-webpack-4">The Architectural Flaw in
+Webpack 4</h3>
+<p>In Webpack 4, chunks and modules maintained tightly coupled,
+bidirectional references. A <code>Module</code> object maintained a list
+of all chunks it belonged to (<code>module.chunks</code>), while a
+<code>Chunk</code> object simultaneously maintained a list of all its
+modules (<code>chunk.modules</code>).</p>
+<p>This bidirectional architecture caused several performance penalties
+during compilation:</p>
+<ul>
+<li><strong>Continuous State Mutation:</strong> As optimization plugins
+split, merged, or eliminated chunks, they had to continuously mutate
+properties across dozens or thousands of individual <code>Chunk</code>
+and <code>Module</code> instances.</li>
+<li><strong>Costly Graph Traversals:</strong> Determining the impact of
+a single module change required traversing deeply nested, circular
+object structures.</li>
+<li><strong>Serialization Bottlenecks:</strong> Because modules and
+chunks were circularly tied, serializing the compilation state to disk
+was complex and slow, effectively blocking the implementation of a
+reliable persistent filesystem cache.</li>
+</ul>
+<h3 id="how-chunkgraph-solves-the-bottleneck">How ChunkGraph Solves the
+Bottleneck</h3>
+<p>Webpack 5 redefined <code>Module</code> and <code>Chunk</code> to be
+minimal, immutable descriptors of source code and output boundaries. All
+relationship metadata was moved into a separate mapping interface: the
+<code>ChunkGraph</code>.</p>
+<p>Instead of asking a chunk for its modules via
+<code>chunk.modules</code>, the compiler now queries the graph via
+<code>chunkGraph.getChunkModules(chunk)</code>. Similarly, checking
+which chunks contain a module is handled via
+<code>chunkGraph.getModuleChunks(module)</code>.</p>
+<pre><code>Webpack 4:  [ Module ] &lt;====== (Bidirectional references) ======&gt; [ Chunk ]
+
+Webpack 5:  [ Module ]                                           [ Chunk ]
+                 \                                                   /
+                  \---&gt; [ ChunkGraph (Stores Relationships) ] &lt;-----/</code></pre>
+<h3 id="direct-compilation-performance-gains">Direct Compilation
+Performance Gains</h3>
+<h4 id="1-linear-time-incremental-builds">1. Linear-Time Incremental
+Builds</h4>
+<p>In Webpack 4, updating a single module in watch mode forced the
+compiler to traverse and re-evaluate entire chunks to maintain internal
+pointer consistency. In Webpack 5, modifying a file only requires
+updating the specific edges connected to that module within the
+<code>ChunkGraph</code>. Intermediate data structures remain untouched,
+significantly shortening the feedback loop during Hot Module Replacement
+(HMR).</p>
+<h4 id="2-efficient-persistent-caching">2. Efficient Persistent
+Caching</h4>
+<p>The primary performance feature of Webpack 5 is filesystem caching,
+allowing subsequent cold builds to complete almost instantly. Decoupling
+the graph allows Webpack to serialize the module graph, chunk
+definitions, and the <code>ChunkGraph</code> mapping independently.
+Modules can be cached to disk without needing to serialize the transient
+states of the chunks they might belong to in any given run.</p>
+<h4 id="3-reduced-memory-footprint-and-garbage-collection">3. Reduced
+Memory Footprint and Garbage Collection</h4>
+<p>By eliminating thousands of cross-referencing pointers, the memory
+overhead of the V8 JavaScript engine drops significantly. During
+long-running watch sessions or large production builds, Webpack 4
+frequently triggered intensive garbage collection cycles to clean up
+discarded chunk-module references. Webpack 5 reduces object churn,
+resulting in lower peak memory usage and fewer CPU pauses.</p>
+<h4 id="4-streamlined-optimization-passes">4. Streamlined Optimization
+Passes</h4>
+<p>Phases such as code splitting, tree shaking, and scope hoisting
+require frequent queries about module locations. In Webpack 5, the
+<code>ChunkGraph</code> provides optimized indexing methods to verify
+module-chunk memberships in constant <span
+class="math inline">\(O(1)\)</span> or near-linear time, drastically
+reducing the total execution time of the optimization and
+asset-generation stages.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

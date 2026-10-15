@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Module Federation Performance Overhead - webpack</title>
+    <meta name="description" content="Webpack Module Federation allows independent applications to dynamically share code at runtime, enabling micro-frontend architectures. While it offers substantial operational scalability, the dynamic orchestration of remote containers introduces specific">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-module-federation-performance-overhead">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Module Federation Performance Overhead - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-module-federation-performance-overhead" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack Module Federation allows independent applications to dynamically share code at runtime, enabling micro-frontend architectures. While it offers substantial operational scalability, the dynamic orchestration of remote containers introduces specific" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-module-federation-performance-overhead">Webpack Module
+Federation Performance Overhead</h1>
+<p>Webpack Module Federation allows independent applications to
+dynamically share code at runtime, enabling micro-frontend
+architectures. While it offers substantial operational scalability, the
+dynamic orchestration of remote containers introduces specific
+performance overheads. This article examines the core mechanisms that
+degrade performance—including network waterfalls from remote entry
+manifests, runtime dependency negotiation, container initialization
+latencies, and execution costs—along with practical mitigation
+techniques to preserve Core Web Vitals.</p>
+<h3 id="network-waterfalls-and-remote-entry-loading">Network Waterfalls
+and Remote Entry Loading</h3>
+<p>The most immediate overhead of Module Federation is the additional
+round-trip time (RTT) required to resolve remote containers.</p>
+<ul>
+<li><strong>Manifest Resolution (<code>remoteEntry.js</code>):</strong>
+Before a host can load an exposed module, it must fetch and parse the
+remote application's <code>remoteEntry.js</code> manifest. This creates
+an asynchronous network waterfall: the host script executes, triggers
+the fetch for <code>remoteEntry.js</code>, parses it, and only then
+requests the actual chunk containing the component.</li>
+<li><strong>Cascading Requests:</strong> If a remote module also
+consumes another remote container, these waterfalls compound. In
+high-latency mobile networks, each sequential network round-trip
+drastically inflates Time to First Meaningful Paint and Largest
+Contentful Paint (LCP).</li>
+</ul>
+<h3 id="shared-dependency-negotiation">Shared Dependency
+Negotiation</h3>
+<p>Module Federation dynamically resolves shared dependencies (such as
+React, Vue, or utility libraries) across containers using a runtime
+sharing scope.</p>
+<ul>
+<li><strong>Version Mismatch and Duplication:</strong> Containers
+specify semantic versioning (<code>semver</code>) ranges for shared
+libraries. If the host and remote cannot resolve to an overlapping
+version (or if <code>singleton: false</code> is configured), both
+versions of the library are downloaded and executed. This directly
+increases total JavaScript payload size and memory consumption.</li>
+<li><strong>Strict Mode Failures:</strong> Using
+<code>singleton: true</code> and <code>strictVersion: true</code>
+prevents duplication but can cause runtime exceptions if versions drift,
+forcing architects into delicate dependency synchronization that often
+defaults to larger fallback bundles.</li>
+</ul>
+<h3 id="container-initialization-and-runtime-orchestration">Container
+Initialization and Runtime Orchestration</h3>
+<p>Beyond raw network requests, the Webpack runtime must coordinate the
+container lifecycle before modules can be consumed:</p>
+<ul>
+<li><strong>Scope Initialization:</strong> The runtime must execute
+<code>__webpack_init_sharing__('default')</code> and initialize each
+remote container via
+<code>container.init(__webpack_share_scopes__.default)</code>. This
+phase requires iterating through the shared dependency tree, registering
+available versions, and assigning priority.</li>
+<li><strong>Dynamic Script Injection:</strong> Dynamic remotes require
+runtime script element creation and DOM insertion. While relatively
+fast, the cumulative cost of DOM manipulation, evaluation, and
+context-switching blocks the main thread, contributing to higher Total
+Blocking Time (TBT).</li>
+</ul>
+<h3 id="impact-on-core-web-vitals">Impact on Core Web Vitals</h3>
+<ul>
+<li><strong>Largest Contentful Paint (LCP):</strong> Delayed if the
+primary UI component belongs to a remote container requiring sequential
+<code>remoteEntry.js</code> and chunk resolution.</li>
+<li><strong>Interaction to Next Paint (INP):</strong> Impacted if heavy
+shared dependency negotiation or dynamic bundle execution interrupts
+user interactions on the main thread.</li>
+<li><strong>Cumulative Layout Shift (CLS):</strong> Occurs when remote
+modules render asynchronously without designated layout placeholders or
+skeletons, shifting adjacent DOM elements upon arrival.</li>
+</ul>
+<h3 id="mitigation-strategies">Mitigation Strategies</h3>
+<p>To offset container orchestration overhead, apply the following
+optimizations:</p>
+<ul>
+<li><strong>Preload Remote Manifests:</strong> Inject
+<code>&lt;link rel="preload" as="script" href="..."&gt;</code> tags for
+critical <code>remoteEntry.js</code> files directly in the initial HTML
+to eliminate the sequential discovery waterfall.</li>
+<li><strong>Enforce Strict Singletons:</strong> Keep framework runtimes
+(e.g., <code>react</code>, <code>react-dom</code>) aligned across
+repositories using monorepos or centralized dependency management to
+guarantee that zero duplicate runtime code is shipped.</li>
+<li><strong>Static Remotes over Dynamic Remotes:</strong> Define remotes
+in the Webpack configuration rather than resolving them via dynamic
+runtime promises whenever URLs are known at build time.</li>
+<li><strong>Implement Asset Placeholders:</strong> Always pair remote
+module consumption with <code>React.Suspense</code> or framework
+equivalents that render fixed-dimension skeletons, mitigating layout
+instability.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

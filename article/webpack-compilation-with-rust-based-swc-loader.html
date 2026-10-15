@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Compilation with Rust-Based swc-loader - webpack</title>
+    <meta name="description" content="Webpack accelerates JavaScript and TypeScript compilation by delegating source code transformation to Rust-based utilities such as SWC (Speedy Web Compiler) via swc-loader. This article covers how Webpack leverages native Rust binaries to replace traditio">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-compilation-with-rust-based-swc-loader">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Compilation with Rust-Based swc-loader - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-compilation-with-rust-based-swc-loader" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack accelerates JavaScript and TypeScript compilation by delegating source code transformation to Rust-based utilities such as SWC (Speedy Web Compiler) via swc-loader. This article covers how Webpack leverages native Rust binaries to replace traditio" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-compilation-with-rust-based-swc-loader">Webpack
+Compilation with Rust-Based swc-loader</h1>
+<p>Webpack accelerates JavaScript and TypeScript compilation by
+delegating source code transformation to Rust-based utilities such as
+SWC (Speedy Web Compiler) via <code>swc-loader</code>. This article
+covers how Webpack leverages native Rust binaries to replace traditional
+JavaScript-based compilers like Babel, explains the role of
+<code>swc-loader</code> within the Webpack module lifecycle, provides a
+direct implementation configuration, and outlines the performance and
+feature benefits of adopting Rust tooling in existing projects.</p>
+<h3 id="the-role-of-loaders-in-webpack">The Role of Loaders in
+Webpack</h3>
+<p>Webpack is fundamentally a module bundler. It builds an internal
+dependency graph by resolving <code>import</code> and
+<code>require</code> statements across a project's files. However,
+Webpack natively understands only standard JavaScript and JSON files. To
+process other file formats—such as TypeScript, JSX, or modern ECMAScript
+features—Webpack relies on loaders.</p>
+<p>Loaders intercept files matching specified regular expressions during
+the build process, transform the source code into valid JavaScript, and
+pass the transformed output back to Webpack to complete the bundling
+process.</p>
+<h3 id="why-transition-from-babel-to-swc">Why Transition from Babel to
+SWC</h3>
+<p>Historically, <code>babel-loader</code> has been the standard
+solution for transpiling modern JavaScript, TypeScript, and JSX. While
+feature-rich and supported by a vast plugin ecosystem, Babel operates
+entirely within the Node.js runtime. This introduces performance
+constraints:</p>
+<ul>
+<li><strong>Single-Threaded Execution:</strong> JavaScript runs on a
+single thread by default, creating a processing bottleneck during heavy
+AST (Abstract Syntax Tree) generation and traversal.</li>
+<li><strong>V8 Engine Overhead:</strong> Just-In-Time (JIT) compilation
+and Garbage Collection (GC) pauses introduce latency when parsing
+thousands of files.</li>
+</ul>
+<p>SWC solves this problem by being written completely in Rust. It
+compiles down to native machine code, supports CPU-level
+multi-threading, and executes AST transformations with minimal memory
+overhead. Under typical workloads, SWC can transpile code between 10 to
+20 times faster than Babel on a single thread, and significantly faster
+when utilizing multiple CPU cores.</p>
+<h3 id="how-swc-loader-works">How <code>swc-loader</code> Works</h3>
+<p>The integration between Webpack and SWC is mediated by
+<code>swc-loader</code>.</p>
+<ol type="1">
+<li><strong>Interception:</strong> Webpack encounters an import (for
+example, <code>app.tsx</code>) and routes the file's raw content to
+<code>swc-loader</code> according to the module rules.</li>
+<li><strong>Native Bridge:</strong> <code>swc-loader</code> communicates
+with <code>@swc/core</code> through Node-API (N-API) bindings.</li>
+<li><strong>Rust Compilation:</strong> <code>@swc/core</code> invokes
+the underlying Rust binary, which parses the source, applies
+transformations (such as stripping TypeScript types or transforming
+JSX), and produces the target JavaScript alongside source maps.</li>
+<li><strong>Handoff to Webpack:</strong> The compiled JavaScript string
+and source maps are returned across the native boundary back to
+Webpack.</li>
+<li><strong>Bundling:</strong> Webpack receives the transformed code and
+proceeds with tree-shaking, minification, and packaging into the final
+bundle.</li>
+</ol>
+<h3 id="implementing-swc-loader-in-webpack">Implementing
+<code>swc-loader</code> in Webpack</h3>
+<p>To use <code>swc-loader</code>, install the loader and the SWC core
+engine:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">--save-dev</span> @swc/core swc-loader</span></code></pre></div>
+<p>Next, configure the loader in <code>webpack.config.js</code> by
+replacing <code>babel-loader</code> or <code>ts-loader</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">m</span><span class="sc">?</span><span class="ss">js</span><span class="sc">|</span><span class="ss">jsx</span><span class="sc">|</span><span class="ss">ts</span><span class="sc">|</span><span class="ss">tsx</span><span class="sc">)$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">exclude</span><span class="op">:</span> <span class="ss">/node_modules/</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> {</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>          <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;swc-loader&#39;</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>          <span class="dt">options</span><span class="op">:</span> {</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>            <span class="dt">jsc</span><span class="op">:</span> {</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>              <span class="dt">parser</span><span class="op">:</span> {</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>                <span class="dt">syntax</span><span class="op">:</span> <span class="st">&#39;typescript&#39;</span><span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>                <span class="dt">tsx</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>                <span class="dt">dynamicImport</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>              }<span class="op">,</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>              <span class="dt">transform</span><span class="op">:</span> {</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>                <span class="dt">react</span><span class="op">:</span> {</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>                  <span class="dt">runtime</span><span class="op">:</span> <span class="st">&#39;automatic&#39;</span><span class="op">,</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>                }<span class="op">,</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>              }<span class="op">,</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>            }<span class="op">,</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    <span class="dt">extensions</span><span class="op">:</span> [<span class="st">&#39;.js&#39;</span><span class="op">,</span> <span class="st">&#39;.jsx&#39;</span><span class="op">,</span> <span class="st">&#39;.ts&#39;</span><span class="op">,</span> <span class="st">&#39;.tsx&#39;</span>]<span class="op">,</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Configuration can also be offloaded to a <code>.swcrc</code> file
+located in the project root, keeping the Webpack configuration
+minimal.</p>
+<h3 id="key-considerations">Key Considerations</h3>
+<p>While <code>swc-loader</code> delivers substantial speed
+improvements, two architectural characteristics should be noted:</p>
+<ul>
+<li><strong>Type Checking:</strong> Like Babel, SWC only strips
+TypeScript types during transpilation; it does not perform type
+checking. To maintain type safety, run <code>tsc --noEmit</code> as a
+separate script or utilize plugins such as
+<code>fork-ts-checker-webpack-plugin</code> in a dedicated process.</li>
+<li><strong>Plugins and Macros:</strong> Projects that depend on custom
+Babel plugins or Babel macros cannot use them directly with SWC. SWC
+uses its own WebAssembly (Wasm) plugin system, requiring equivalent
+plugins written in Rust or supported natively in SWC's
+configuration.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

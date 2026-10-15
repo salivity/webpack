@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Tree Shaking in Webpack for Nested Exports - webpack</title>
+    <meta name="description" content="Modern JavaScript applications often contain large libraries where only a fraction of nested utility functions or object properties are needed. Deep tree shaking in Webpack—driven primarily by Webpack 5&#39;s inner-graph analysis and nested export tracking—so">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/deep-tree-shaking-in-webpack-for-nested-exports">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Deep Tree Shaking in Webpack for Nested Exports - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/deep-tree-shaking-in-webpack-for-nested-exports" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Modern JavaScript applications often contain large libraries where only a fraction of nested utility functions or object properties are needed. Deep tree shaking in Webpack—driven primarily by Webpack 5&#39;s inner-graph analysis and nested export tracking—so" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="deep-tree-shaking-in-webpack-for-nested-exports">Deep Tree
+Shaking in Webpack for Nested Exports</h1>
+<p>Modern JavaScript applications often contain large libraries where
+only a fraction of nested utility functions or object properties are
+needed. Deep tree shaking in Webpack—driven primarily by Webpack 5's
+inner-graph analysis and nested export tracking—solves this bloat by
+analyzing property access chains across module boundaries. This article
+details the mechanics of how Webpack identifies unused object
+properties, the configuration settings required to activate deep tree
+shaking, and the coding patterns developers must adopt to eliminate dead
+code from production bundles.</p>
+<h2 id="the-problem-with-traditional-tree-shaking">The Problem with
+Traditional Tree Shaking</h2>
+<p>In earlier versions of Webpack, dead-code elimination operated
+exclusively at the root level of ES Module (ESM) exports. If a module
+exported distinct named identifiers, Webpack could easily drop unused
+ones:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// utilities.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> usefulFunction <span class="op">=</span> () <span class="kw">=&gt;</span> { <span class="co">/* ... */</span> }<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> unusedFunction <span class="op">=</span> () <span class="kw">=&gt;</span> { <span class="co">/* ... */</span> }<span class="op">;</span></span></code></pre></div>
+<p>However, libraries frequently export complex objects, namespaces, or
+grouped configurations:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// utilities.js</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> api <span class="op">=</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">get</span><span class="op">:</span> () <span class="kw">=&gt;</span> { <span class="co">/* ... */</span> }<span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">post</span><span class="op">:</span> () <span class="kw">=&gt;</span> { <span class="co">/* ... */</span> }<span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">delete</span><span class="op">:</span> () <span class="kw">=&gt;</span> { <span class="co">/* ... */</span> }</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Historically, importing <code>api.get</code> compelled the bundler to
+retain the entire <code>api</code> object. Because JavaScript objects
+are dynamic, the bundler could not guarantee that <code>api.post</code>
+or <code>api.delete</code> were not accessed elsewhere or dynamically
+evaluated via runtime expressions such as <code>api[methodName]</code>.
+Consequently, the full object definition remained in the compiled
+output.</p>
+<h2 id="how-webpack-eliminates-unused-nested-properties">How Webpack
+Eliminates Unused Nested Properties</h2>
+<p>Webpack 5 introduced advanced static analysis engines—specifically
+nested export tracking and the inner-graph algorithm—to look beyond the
+top-level export boundaries.</p>
+<h3 id="1-nested-export-tracking">1. Nested Export Tracking</h3>
+<p>When a module exports an object or re-exports an external module as a
+namespace (<code>import * as tools from './tools'</code>), Webpack
+constructs an abstract syntax tree (AST) of the importing modules. If an
+import only ever reads a specific property—for example,
+<code>tools.formatDate()</code>—Webpack flags the rest of the object's
+properties as unreferenced. During code generation, Webpack decomposes
+or prunes the unreferenced properties before passing the intermediate
+code to Terser or another minifier.</p>
+<h3 id="2-inner-graph-analysis">2. Inner-Graph Analysis</h3>
+<p>Webpack’s inner-graph optimization tracks variable usages and
+dependencies <em>within</em> a module. If an internal function is only
+referenced by an exported property that ultimately goes unused by the
+consumer, the inner-graph algorithm detects this isolated chain.</p>
+<p>For instance, if <code>api.delete</code> relies on an internal helper
+<code>formatPayload</code>, and <code>api.delete</code> is never invoked
+across your application, Webpack marks both <code>api.delete</code> and
+<code>formatPayload</code> as dead code, stripping both from the
+bundle.</p>
+<h2 id="enabling-deep-tree-shaking-in-webpack">Enabling Deep Tree
+Shaking in Webpack</h2>
+<p>Deep tree shaking operates out of the box in Webpack 5 when running
+in production mode, but specific compiler options must remain
+active:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">usedExports</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">innerGraph</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">sideEffects</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">minimize</span><span class="op">:</span> <span class="kw">true</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<ul>
+<li><strong><code>usedExports: true</code></strong>: Instructs Webpack
+to determine which exports are used for each module.</li>
+<li><strong><code>innerGraph: true</code></strong>: Enables the
+algorithm that tracks symbol usage across nested scopes and internal
+assignments.</li>
+<li><strong><code>sideEffects: true</code></strong>: Allows Webpack to
+skip entire modules declared side-effect-free in
+<code>package.json</code> if none of their exports are consumed.</li>
+</ul>
+<h2 id="rules-to-ensure-deep-pruning-works">Rules to Ensure Deep Pruning
+Works</h2>
+<p>Static analysis relies on predictable code structures. To ensure
+Webpack can safely remove unused nested properties, adhere to the
+following conventions:</p>
+<ul>
+<li><strong>Use Pure ESM Syntax</strong>: Deep tree shaking cannot
+analyze CommonJS (<code>require</code> and <code>module.exports</code>).
+Always use standard <code>import</code> and <code>export</code>
+statements.</li>
+<li><strong>Avoid Dynamic Property Access</strong>: Code like
+<code>const action = api[dynamicKey]</code> forces Webpack to retain all
+properties of the <code>api</code> object to prevent runtime
+errors.</li>
+<li><strong>Avoid Object Mutation</strong>: Modifying, assigning
+properties dynamically, or passing the container object to external
+functions prevents Webpack from guaranteeing purity.</li>
+<li><strong>Mark Pure Function Calls</strong>: When assigning properties
+via helper calls (e.g.,
+<code>export const config = { item: createItem() }</code>), annotate the
+call with <code>/*#__PURE__*/</code> if it has no side effects. This
+guarantees the property can be dropped if unused.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

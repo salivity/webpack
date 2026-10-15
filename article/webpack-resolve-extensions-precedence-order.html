@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack resolve.extensions Precedence Order - webpack</title>
+    <meta name="description" content="This article explains how Webpack evaluates file extensions when resolving module requests using the resolve.extensions configuration. It details the left-to-right precedence rule, default extension behaviors, how to maintain or override default lists, an">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-resolve-extensions-precedence-order">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack resolve.extensions Precedence Order - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-resolve-extensions-precedence-order" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how Webpack evaluates file extensions when resolving module requests using the resolve.extensions configuration. It details the left-to-right precedence rule, default extension behaviors, how to maintain or override default lists, an" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-resolveextensions-precedence-order">Webpack
+resolve.extensions Precedence Order</h1>
+<p>This article explains how Webpack evaluates file extensions when
+resolving module requests using the <code>resolve.extensions</code>
+configuration. It details the left-to-right precedence rule, default
+extension behaviors, how to maintain or override default lists, and how
+resolution order impacts projects containing files with identical base
+names.</p>
+<h3 id="the-left-to-right-precedence-rule">The Left-to-Right Precedence
+Rule</h3>
+<p>In Webpack, the <code>resolve.extensions</code> option specifies an
+array of strings that tell the bundler which file extensions to check
+when an import statement lacks a file extension (e.g.,
+<code>import Component from './Component'</code>).</p>
+<p>Webpack processes the <code>resolve.extensions</code> array strictly
+from left to right. When looking for an extension-less file, Webpack
+tests each extension in the exact order it appears in the array. As soon
+as it encounters a file on disk that matches an extension, it halts the
+search and resolves that file. Any subsequent extensions in the array
+are ignored for that specific import.</p>
+<p>Consider the following configuration:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">extensions</span><span class="op">:</span> [<span class="st">&#39;.tsx&#39;</span><span class="op">,</span> <span class="st">&#39;.ts&#39;</span><span class="op">,</span> <span class="st">&#39;.jsx&#39;</span><span class="op">,</span> <span class="st">&#39;.js&#39;</span>]<span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>If a directory contains both <code>Component.tsx</code> and
+<code>Component.js</code>, and an import asks for
+<code>./Component</code>:</p>
+<ol type="1">
+<li>Webpack checks for <code>./Component.tsx</code>.</li>
+<li>Because it exists, Webpack resolves <code>./Component.tsx</code> and
+immediately stops.</li>
+<li><code>./Component.js</code> is ignored.</li>
+</ol>
+<p>If the order were reversed (<code>['.js', '.tsx']</code>), Webpack
+would resolve <code>Component.js</code> instead.</p>
+<h3 id="default-extensions-in-webpack-5">Default Extensions in Webpack
+5</h3>
+<p>By default, Webpack 5 provides a built-in list:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>[<span class="st">&#39;.js&#39;</span><span class="op">,</span> <span class="st">&#39;.json&#39;</span><span class="op">,</span> <span class="st">&#39;.wasm&#39;</span>]</span></code></pre></div>
+<p>When you define a custom <code>resolve.extensions</code> array
+without referencing the defaults, your custom array completely
+overwrites this default list. If your project still relies on
+extension-less imports for JSON or WebAssembly files, omitting them will
+cause module resolution errors.</p>
+<h3 id="retaining-defaults-with-the-spread-operator">Retaining Defaults
+with the Spread Operator</h3>
+<p>Webpack 5 introduced the spread string (<code>'...'</code>) within
+the <code>resolve.extensions</code> array. This syntax allows you to
+import and position the default extensions relative to your custom
+extensions.</p>
+<h4 id="prioritizing-custom-extensions-before-defaults">Prioritizing
+Custom Extensions Before Defaults</h4>
+<p>To prioritize extensions like TypeScript before the default
+<code>.js</code> or <code>.json</code> files:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">extensions</span><span class="op">:</span> [<span class="st">&#39;.ts&#39;</span><span class="op">,</span> <span class="st">&#39;.tsx&#39;</span><span class="op">,</span> <span class="st">&#39;...&#39;</span>]<span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This resolves in the order:
+<code>['.ts', '.tsx', '.js', '.json', '.wasm']</code>.</p>
+<h4 id="prioritizing-defaults-before-custom-extensions">Prioritizing
+Defaults Before Custom Extensions</h4>
+<p>To check standard JavaScript files before custom extensions:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">extensions</span><span class="op">:</span> [<span class="st">&#39;...&#39;</span><span class="op">,</span> <span class="st">&#39;.vue&#39;</span>]<span class="op">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This resolves in the order:
+<code>['.js', '.json', '.wasm', '.vue']</code>.</p>
+<h3 id="best-practices-for-ordering-extensions">Best Practices for
+Ordering Extensions</h3>
+<ol type="1">
+<li><strong>Place most frequently used extensions first</strong>: If
+your codebase is primarily TypeScript, placing <code>.ts</code> and
+<code>.tsx</code> at the beginning reduces the number of file system
+checks Webpack must perform during the build process, which improves
+build performance.</li>
+<li><strong>Be specific with type definitions</strong>: Do not include
+<code>.d.ts</code> in <code>resolve.extensions</code>, as definition
+files should not be compiled directly into bundles.</li>
+<li><strong>Avoid name collisions</strong>: Relying on precedence to
+differentiate between two source files with the same name (such as
+<code>Button.js</code> and <code>Button.jsx</code>) can cause unexpected
+bugs during refactoring. Keep file base names unique within the same
+directory whenever possible.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

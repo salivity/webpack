@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TerserPlugin extractComments in Webpack Builds - webpack</title>
+    <meta name="description" content="This article explains the extractComments option in Webpack&#39;s TerserPlugin, covering its purpose, default behavior, and practical configuration. You will learn why Webpack generates separate .LICENSE.txt files during production builds, how this setting ai">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/terser-plugin-extract-comments-in-webpack-builds">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="TerserPlugin extractComments in Webpack Builds - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/terser-plugin-extract-comments-in-webpack-builds" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the extractComments option in Webpack&#39;s TerserPlugin, covering its purpose, default behavior, and practical configuration. You will learn why Webpack generates separate .LICENSE.txt files during production builds, how this setting ai" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="terserplugin-extractcomments-in-webpack-builds">TerserPlugin
+extractComments in Webpack Builds</h1>
+<p>This article explains the <code>extractComments</code> option in
+Webpack's TerserPlugin, covering its purpose, default behavior, and
+practical configuration. You will learn why Webpack generates separate
+<code>.LICENSE.txt</code> files during production builds, how this
+setting aids legal compliance without sacrificing code minification, and
+how to customize or disable the feature depending on your deployment
+requirements.</p>
+<h2 id="what-is-extractcomments">What is extractComments?</h2>
+<p><code>TerserPlugin</code> is the default JavaScript minifier used by
+Webpack in production mode. The <code>extractComments</code> option
+controls whether legal, copyright, and licensing comments found in your
+source code and <code>node_modules</code> dependencies are preserved and
+extracted into a separate text file.</p>
+<p>By default, minification removes white space, shortens variable
+names, and strips out unnecessary code and comments to minimize bundle
+size. However, open-source licenses (such as MIT, Apache 2.0, and BSD)
+typically require that their copyright notices and license terms remain
+intact when distributed.</p>
+<p>Instead of leaving these large blocks of text inside your active
+JavaScript files—which would increase parse times and payload
+sizes—TerserPlugin extracts them into a companion file, typically named
+<code>&lt;output-filename&gt;.LICENSE.txt</code>, and leaves a small
+comment referencing this file at the top of the bundle.</p>
+<h2 id="default-behavior-in-webpack">Default Behavior in Webpack</h2>
+<p>In Webpack 5, <code>extractComments</code> is enabled by default in
+production mode (<code>true</code>).</p>
+<p>By default, TerserPlugin identifies license comments using a built-in
+regular expression that looks for terms like <code>@license</code>,
+<code>@preserve</code>, <code>/*!</code>, or <code>@cc_on</code>. When
+one of these matches is detected:</p>
+<ol type="1">
+<li>The comment is removed from the main JavaScript chunk.</li>
+<li>The comment is written to a
+<code>&lt;bundle-name&gt;.js.LICENSE.txt</code> file in the output
+directory.</li>
+<li>A single-line reference comment pointing to the license file is
+added to the top of the minified bundle.</li>
+</ol>
+<h2 id="how-to-configure-extractcomments">How to Configure
+extractComments</h2>
+<p>You configure <code>extractComments</code> within the
+<code>optimization.minimizer</code> section of your
+<code>webpack.config.js</code>.</p>
+<h3 id="1-disabling-comment-extraction">1. Disabling Comment
+Extraction</h3>
+<p>If you do not want Webpack to generate <code>.LICENSE.txt</code>
+files, you can set the option to <code>false</code>. When disabled, all
+comments (including licenses) are completely removed from the build
+output unless preserved via Terser's general comment settings.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> TerserPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;terser-webpack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">minimize</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">minimizer</span><span class="op">:</span> [</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      <span class="kw">new</span> <span class="fu">TerserPlugin</span>({</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">extractComments</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      })<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="2-customizing-with-a-regular-expression-or-function">2.
+Customizing with a Regular Expression or Function</h3>
+<p>You can pass a regular expression or a custom function to match
+specific comments:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> <span class="fu">TerserPlugin</span>({</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Only extract comments that contain the word &quot;LICENSE&quot;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">extractComments</span><span class="op">:</span> <span class="ss">/LICENSE/i</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p>Using a function provides granular control over which comments are
+preserved based on the AST node or comment text:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> <span class="fu">TerserPlugin</span>({</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">extractComments</span><span class="op">:</span> (astNode<span class="op">,</span> comment) <span class="kw">=&gt;</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> comment<span class="op">.</span><span class="at">value</span><span class="op">.</span><span class="fu">includes</span>(<span class="st">&#39;@custom-license&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<h3 id="3-advanced-configuration-using-an-object">3. Advanced
+Configuration Using an Object</h3>
+<p>To control the output filename, condition, or the banner text
+referencing the extracted file, pass an object:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> <span class="fu">TerserPlugin</span>({</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">extractComments</span><span class="op">:</span> {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">condition</span><span class="op">:</span> <span class="ss">/</span><span class="sc">^\**</span><span class="ss">!</span><span class="sc">|</span><span class="ss">@preserve</span><span class="sc">|</span><span class="ss">@license</span><span class="sc">|</span><span class="ss">@cc_on/i</span><span class="op">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> (fileData) <span class="kw">=&gt;</span> {</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Custom naming format for license files</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> <span class="vs">`</span><span class="sc">${</span>fileData<span class="op">.</span><span class="at">filename</span><span class="sc">}</span><span class="vs">.legal.txt`</span><span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">banner</span><span class="op">:</span> (licenseFile) <span class="kw">=&gt;</span> {</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Custom banner left in the minified JS bundle</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> <span class="vs">`License information can be found in </span><span class="sc">${</span>licenseFile<span class="sc">}</span><span class="vs">`</span><span class="op">;</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<h2 id="summary">Summary</h2>
+<p>The <code>extractComments</code> option in TerserPlugin provides an
+automated way to satisfy open-source licensing requirements while
+maintaining optimized, lightweight JavaScript bundles. While it is
+active by default in Webpack production builds, you can easily disable
+it to prevent the creation of <code>.LICENSE.txt</code> files or
+customize it to fit specific project and licensing workflows.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

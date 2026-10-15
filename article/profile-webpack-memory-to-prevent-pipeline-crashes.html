@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Webpack Memory to Prevent Pipeline Crashes - webpack</title>
+    <meta name="description" content="Webpack builds frequently crash in Continuous Integration (CI) environments due to the dreaded JavaScript heap out of memory error. This article outlines how to systematically profile Webpack&#39;s memory consumption, capture heap snapshots, identify resource">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/profile-webpack-memory-to-prevent-pipeline-crashes">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Profile Webpack Memory to Prevent Pipeline Crashes - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/profile-webpack-memory-to-prevent-pipeline-crashes" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack builds frequently crash in Continuous Integration (CI) environments due to the dreaded JavaScript heap out of memory error. This article outlines how to systematically profile Webpack&#39;s memory consumption, capture heap snapshots, identify resource" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="profile-webpack-memory-to-prevent-pipeline-crashes">Profile
+Webpack Memory to Prevent Pipeline Crashes</h1>
+<p>Webpack builds frequently crash in Continuous Integration (CI)
+environments due to the dreaded
+<code>JavaScript heap out of memory</code> error. This article outlines
+how to systematically profile Webpack's memory consumption, capture heap
+snapshots, identify resource-heavy loaders and plugins, and optimize
+your configuration to keep your deployment pipelines fast and
+stable.</p>
+<h2 id="1-monitor-heap-usage-with-nodejs-flags">1. Monitor Heap Usage
+with Node.js Flags</h2>
+<p>Before capturing granular profiles, determine whether Webpack is
+approaching the default memory limit of your Node.js runtime.</p>
+<p>You can expose garbage collection metrics and expand memory
+thresholds directly via the <code>NODE_OPTIONS</code> environment
+variable:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Log garbage collection events to stdout</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="va">NODE_OPTIONS</span><span class="op">=</span><span class="st">&quot;--trace-gc&quot;</span> <span class="ex">npx</span> webpack <span class="at">--config</span> webpack.config.js</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Increase the maximum memory limit (e.g., to 4GB) as a temporary buffer</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="va">NODE_OPTIONS</span><span class="op">=</span><span class="st">&quot;--max-old-space-size=4096&quot;</span> <span class="ex">npx</span> webpack</span></code></pre></div>
+<p><code>--trace-gc</code> shows how frequently the garbage collector
+runs and how much memory is freed. If marks and sweeps occur
+continuously with minimal memory reclaimed, your build is leaking memory
+or holding references to large ASTs (Abstract Syntax Trees).</p>
+<h2 id="2-capture-automatic-heap-snapshots-on-oom">2. Capture Automatic
+Heap Snapshots on OOM</h2>
+<p>To diagnose the exact point of a crash without guessing, configure
+Node.js to automatically write a heap snapshot immediately before it
+runs out of memory:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="va">NODE_OPTIONS</span><span class="op">=</span><span class="st">&quot;--heapsnapshot-near-heap-limit=3&quot;</span> <span class="ex">npx</span> webpack</span></code></pre></div>
+<p>This command instructs Node.js to generate up to three
+<code>.heapsnapshot</code> files when memory reaches critical
+thresholds. You can load these snapshots directly into Google Chrome
+DevTools (Memory tab) to inspect the retained objects, large string
+copies, or unresolved AST nodes.</p>
+<h2 id="3-profile-memory-using-chrome-devtools">3. Profile Memory Using
+Chrome DevTools</h2>
+<p>For step-by-step profiling during a local build:</p>
+<ol type="1">
+<li><p>Run Webpack with the Node inspector flag:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">node</span> <span class="at">--inspect-brk</span> ./node_modules/webpack/bin/webpack.js</span></code></pre></div></li>
+<li><p>Open Chrome and navigate to
+<code>chrome://inspect</code>.</p></li>
+<li><p>Click <strong>inspect</strong> next to the target Node.js
+process.</p></li>
+<li><p>In the DevTools window, switch to the <strong>Memory</strong>
+tab.</p></li>
+<li><p>Choose <strong>Heap snapshot</strong> or <strong>Allocation
+instrumentation on timeline</strong>, then click
+<strong>Start</strong>.</p></li>
+<li><p>Resume script execution in the Console or Sources tab to let
+Webpack run.</p></li>
+</ol>
+<p>Inspect the snapshot summary by <strong>Retained Size</strong> to
+discover what consumes the most RAM. Common offenders include large
+source maps retained in memory, duplicated dependencies, and extensive
+module graphs generated by deep import chains.</p>
+<h2 id="4-track-per-hook-memory-inside-webpack">4. Track Per-Hook Memory
+Inside Webpack</h2>
+<p>You can write a lightweight custom plugin to measure memory deltas
+across Webpack's compilation lifecycle. Add this to your
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MemoryUsagePlugin {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(compiler) {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> logMemory <span class="op">=</span> (stage) <span class="kw">=&gt;</span> {</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> used <span class="op">=</span> <span class="bu">process</span><span class="op">.</span><span class="fu">memoryUsage</span>()<span class="op">.</span><span class="at">heapUsed</span> <span class="op">/</span> <span class="dv">1024</span> <span class="op">/</span> <span class="dv">1024</span><span class="op">;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>      <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="vs">`[Memory] </span><span class="sc">${</span>stage<span class="sc">}</span><span class="vs">: </span><span class="sc">${</span><span class="bu">Math</span><span class="op">.</span><span class="fu">round</span>(used <span class="op">*</span> <span class="dv">100</span>) <span class="op">/</span> <span class="dv">100</span><span class="sc">}</span><span class="vs"> MB`</span>)<span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    }<span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">beforeRun</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&#39;MemoryUsagePlugin&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="fu">logMemory</span>(<span class="st">&#39;Before Run&#39;</span>))<span class="op">;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">compile</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&#39;MemoryUsagePlugin&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="fu">logMemory</span>(<span class="st">&#39;Compile Started&#39;</span>))<span class="op">;</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">compilation</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&#39;MemoryUsagePlugin&#39;</span><span class="op">,</span> (compilation) <span class="kw">=&gt;</span> {</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>      compilation<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">finishModules</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&#39;MemoryUsagePlugin&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="fu">logMemory</span>(<span class="st">&#39;Modules Finished&#39;</span>))<span class="op">;</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>      compilation<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">seal</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&#39;MemoryUsagePlugin&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="fu">logMemory</span>(<span class="st">&#39;Optimization/Sealing&#39;</span>))<span class="op">;</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">done</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&#39;MemoryUsagePlugin&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="fu">logMemory</span>(<span class="st">&#39;Build Done&#39;</span>))<span class="op">;</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other configuration</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [<span class="kw">new</span> <span class="fu">MemoryUsagePlugin</span>()]</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This output reveals whether memory spikes occur during module parsing
+(loaders) or during chunk optimization and minification (plugins).</p>
+<h2 id="5-prevent-pipeline-crashes">5. Prevent Pipeline Crashes</h2>
+<p>Once you identify the bottleneck, apply these standard practices:</p>
+<ul>
+<li><strong>Limit Parallelism:</strong> Thread-based loaders like
+<code>thread-loader</code> or parallel execution in
+<code>TerserPlugin</code> spawn child processes that replicate memory
+overhead. Reduce <code>parallel</code> workers to match your CI
+container's actual CPU and RAM allocation.</li>
+<li><strong>Offload Type Checking:</strong> Run
+<code>fork-ts-checker-webpack-plugin</code> in an isolated CI step
+rather than running it inside the main Webpack compilation process.</li>
+<li><strong>Optimize Source Maps:</strong> Avoid high-memory devtools
+like <code>source-map</code> or <code>inline-source-map</code> in CI.
+Switch to <code>eval-cheap-module-source-map</code> or omit source maps
+entirely for production builds where not strictly required.</li>
+<li><strong>Enable Filesystem Caching:</strong> If using Webpack 5,
+configure <code>cache: { type: 'filesystem' }</code>. Disk caching
+drastically reduces continuous heap usage across repeated pipeline
+executions.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

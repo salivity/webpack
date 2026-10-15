@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Audit and Clean Legacy Webpack Configurations - webpack</title>
+    <meta name="description" content="Over time, Webpack configurations accumulate obsolete plugins, duplicate polyfills, and inefficient loaders that significantly slow down build times and inflate bundle sizes. This guide outlines a systematic approach to auditing and modernizing legacy Web">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-to-audit-and-clean-legacy-webpack-configurations">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Audit and Clean Legacy Webpack Configurations - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-to-audit-and-clean-legacy-webpack-configurations" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Over time, Webpack configurations accumulate obsolete plugins, duplicate polyfills, and inefficient loaders that significantly slow down build times and inflate bundle sizes. This guide outlines a systematic approach to auditing and modernizing legacy Web" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-audit-and-clean-legacy-webpack-configurations">How to
+Audit and Clean Legacy Webpack Configurations</h1>
+<p>Over time, Webpack configurations accumulate obsolete plugins,
+duplicate polyfills, and inefficient loaders that significantly slow
+down build times and inflate bundle sizes. This guide outlines a
+systematic approach to auditing and modernizing legacy Webpack
+configurations by profiling bottlenecks, removing redundant
+dependencies, optimizing module resolution, and implementing native
+performance features to achieve faster, leaner builds.</p>
+<h2 id="1-profile-and-benchmark-the-existing-setup">1. Profile and
+Benchmark the Existing Setup</h2>
+<p>Before making any changes, establish an accurate baseline to identify
+which stages and files cause the most friction.</p>
+<ul>
+<li><p><strong>Plugin and Loader Timing:</strong> Integrate
+<code>speed-measure-webpack-plugin</code> (SMP) into your configuration
+to measure how long each loader and plugin takes during
+compilation.</p></li>
+<li><p><strong>Bundle Composition:</strong> Run
+<code>webpack-bundle-analyzer</code> to generate an interactive visual
+map of bundle contents. This quickly surfaces duplicate packages,
+oversized dependencies, and unused libraries.</p></li>
+<li><p><strong>Built-in Profiling:</strong> Execute your build with the
+native CLI profiling flags:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">webpack</span> <span class="at">--profile</span> <span class="at">--json</span><span class="op">=</span>compilation-stats.json</span></code></pre></div>
+<p>Upload the output to tools like Webpack Analyse or Statoscope to
+analyze dependency trees and identify duplicate modules.</p></li>
+</ul>
+<h2 id="2-remove-deprecated-plugins-and-legacy-shims">2. Remove
+Deprecated Plugins and Legacy Shims</h2>
+<p>Webpack has evolved significantly, rendering many popular Webpack 3
+and 4 workarounds obsolete.</p>
+<ul>
+<li><p><strong>Replace File/URL Loaders:</strong> If running Webpack 5,
+remove <code>file-loader</code>, <code>url-loader</code>, and
+<code>raw-loader</code>. Replace them with built-in <a
+href="https://webpack.js.org/guides/asset-modules/">Asset
+Modules</a>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Legacy:</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co">// { test: /\.(png|jpg)$/, use: &#39;url-loader?limit=8192&#39; }</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Modern:</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>{ <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">png</span><span class="sc">|</span><span class="ss">jpg</span><span class="sc">)$</span><span class="ss">/</span><span class="op">,</span> <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset&#39;</span> }</span></code></pre></div></li>
+<li><p><strong>Eliminate Node.js Polyfills:</strong> Webpack 5 no longer
+includes automatic Node.js core module polyfills (e.g.,
+<code>crypto</code>, <code>path</code>, <code>buffer</code>). Review the
+<code>resolve.fallback</code> settings and remove polyfills that are not
+strictly required in the browser.</p></li>
+<li><p><strong>Retire Obsolete Cache Plugins:</strong> Remove outdated
+caching tools like <code>HardSourceWebpackPlugin</code> or
+<code>cache-loader</code>, as they often conflict with modern caching
+architectures.</p></li>
+</ul>
+<h2 id="3-scope-loaders-and-restrict-resolution">3. Scope Loaders and
+Restrict Resolution</h2>
+<p>Excessive file system traversal is one of the most common causes of
+slow builds.</p>
+<ul>
+<li><p><strong>Enforce <code>include</code> and
+<code>exclude</code>:</strong> Ensure every rule—particularly
+transpilation loaders like <code>babel-loader</code> or
+<code>ts-loader</code>—explicitly defines an <code>include</code> path
+to target only project source code:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">tsx</span><span class="sc">?$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">include</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;src&#39;</span>)<span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">use</span><span class="op">:</span> <span class="st">&#39;swc-loader&#39;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div></li>
+<li><p><strong>Trim <code>resolve.extensions</code>:</strong> Keep the
+<code>resolve.extensions</code> array as short as possible (e.g.,
+<code>['.js', '.ts', '.tsx']</code>) and place the most frequent file
+types first. Avoid generic extensions like <code>.json</code> or
+<code>.css</code> if they are rarely imported without explicit
+paths.</p></li>
+<li><p><strong>Define Explicit Aliases:</strong> Use precise
+<code>resolve.alias</code> paths pointing to specific directories to
+prevent Webpack from searching recursively through
+<code>node_modules</code>.</p></li>
+</ul>
+<h2 id="4-modernize-the-transpilation-pipeline">4. Modernize the
+Transpilation Pipeline</h2>
+<p>Legacy configurations often rely on heavy Babel presets that slow
+down builds.</p>
+<ul>
+<li><strong>Adopt Next-Gen Compilers:</strong> Replace
+<code>babel-loader</code> or standard <code>ts-loader</code> with faster
+alternatives like <code>swc-loader</code> or
+<code>esbuild-loader</code>. These tools perform transpilation
+significantly faster using Rust or Go under the hood.</li>
+<li><strong>Audit Babel Presets:</strong> If Babel is required, inspect
+<code>.babelrc</code> or <code>babel.config.js</code>. Ensure
+<code>@babel/preset-env</code> targets modern browsers using an
+up-to-date <code>browserslist</code> configuration, avoiding unnecessary
+syntax transforms and polyfills.</li>
+<li><strong>Offload Type Checking:</strong> Configure
+<code>ts-loader</code> with <code>transpileOnly: true</code> and run
+<code>fork-ts-checker-webpack-plugin</code> in a separate process so
+that type checking does not block compilation.</li>
+</ul>
+<h2 id="5-enable-persistent-caching">5. Enable Persistent Caching</h2>
+<p>Webpack 5 provides a powerful built-in filesystem cache that
+dramatically accelerates subsequent builds and rebuilds.</p>
+<ul>
+<li><p>Configure filesystem caching in your configuration file:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">cache</span><span class="op">:</span> {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;filesystem&#39;</span><span class="op">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">buildDependencies</span><span class="op">:</span> {</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">config</span><span class="op">:</span> [<span class="bu">__filename</span>]</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div></li>
+<li><p>Ensure that any dynamic configuration variables (such as
+environment variables or build versions) are declared as cache
+dependencies so that the cache invalidates appropriately when those
+variables change.</p></li>
+</ul>
+<h2 id="6-clean-up-code-splitting-configurations">6. Clean Up Code
+Splitting Configurations</h2>
+<p>Legacy setups often contain convoluted
+<code>CommonsChunkPlugin</code> configurations or poorly tuned
+<code>SplitChunksPlugin</code> rules that lead to over-fragmentation or
+massive shared chunks.</p>
+<ul>
+<li><p><strong>Reset to Sensible Defaults:</strong> Webpack’s default
+<code>optimization.splitChunks</code> settings work well for most
+applications. Begin by resetting custom chunk splitting logic to:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>optimization<span class="op">:</span> {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">splitChunks</span><span class="op">:</span> {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div></li>
+<li><p><strong>Prevent Vendor Bloat:</strong> Split heavy, infrequently
+changed libraries (such as UI frameworks or charting libraries) into
+dedicated cache groups, while allowing smaller utility modules to bundle
+alongside application code to avoid excessive HTTP requests.</p></li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

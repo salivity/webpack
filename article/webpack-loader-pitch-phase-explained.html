@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Loader Pitch Phase Explained - webpack</title>
+    <meta name="description" content="This article provides a concise overview of the pitch phase in Webpack loaders, explaining how its execution order differs from the standard loader phase, how its short-circuiting mechanism operates, and the primary scenarios where developers leverage it">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-loader-pitch-phase-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Loader Pitch Phase Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-loader-pitch-phase-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides a concise overview of the pitch phase in Webpack loaders, explaining how its execution order differs from the standard loader phase, how its short-circuiting mechanism operates, and the primary scenarios where developers leverage it" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-loader-pitch-phase-explained">Webpack Loader Pitch Phase
+Explained</h1>
+<p>This article provides a concise overview of the pitch phase in
+Webpack loaders, explaining how its execution order differs from the
+standard loader phase, how its short-circuiting mechanism operates, and
+the primary scenarios where developers leverage it to optimize or alter
+asset transformation pipelines.</p>
+<h2 id="how-the-pitch-phase-works">How the Pitch Phase Works</h2>
+<p>Webpack processes loader chains in two distinct phases: the pitch
+phase and the normal phase.</p>
+<p>By default, Webpack executes loaders in reverse order (right-to-left
+or bottom-to-top) during the normal phase. However, before the normal
+execution begins, Webpack runs from left-to-right (top-to-bottom) during
+the pitch phase.</p>
+<p>Each loader can optionally export a <code>pitch</code> method
+alongside its standard export:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> <span class="kw">function</span> (content) {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Normal phase</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> content<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span><span class="op">.</span><span class="at">pitch</span> <span class="op">=</span> <span class="kw">function</span> (remainingRequest<span class="op">,</span> precedingRequest<span class="op">,</span> data) {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Pitch phase</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>The <code>pitch</code> function receives three parameters:</p>
+<ul>
+<li><code>remainingRequest</code>: The request string representing all
+loaders that will be executed after this one, including the resource
+file itself.</li>
+<li><code>precedingRequest</code>: The request string representing all
+loaders that have already executed their pitch method.</li>
+<li><code>data</code>: An empty object shared between the
+<code>pitch</code> method and the normal phase of the same loader,
+allowing metadata to be passed across phases.</li>
+</ul>
+<h2 id="the-short-circuiting-mechanism">The Short-Circuiting
+Mechanism</h2>
+<p>The most critical feature of the pitch phase is its ability to
+short-circuit the execution chain. If a loader's <code>pitch</code>
+method returns a defined value (anything other than
+<code>undefined</code>), Webpack immediately halts the pitch phase. It
+skips the remaining loaders in the chain, ignores the resource file
+itself, and turns around to execute the normal phase of the
+<em>preceding</em> loader.</p>
+<p>For example, given a loader configuration of
+<code>[loaderA, loaderB, loaderC]</code>:</p>
+<ol type="1">
+<li><code>loaderA.pitch</code> executes.</li>
+<li><code>loaderB.pitch</code> executes and returns a string of
+code.</li>
+<li><code>loaderC.pitch</code>, the source file reading, and
+<code>loaderB</code>'s normal phase are completely skipped.</li>
+<li>Execution jumps directly to <code>loaderA</code>'s normal phase,
+receiving the output from <code>loaderB.pitch</code>.</li>
+</ol>
+<h2 id="when-to-utilize-the-pitch-phase">When to Utilize the Pitch
+Phase</h2>
+<p>Developers and loader authors utilize the pitch phase in several
+specific scenarios:</p>
+<h3 id="1-code-generation-and-interception-eg-style-loader">1. Code
+Generation and Interception (e.g., <code>style-loader</code>)</h3>
+<p>The most common use case is when a loader needs to bypass the typical
+source transformation and instead generate JavaScript that imports other
+loaders dynamically. For instance, <code>style-loader</code> uses its
+pitch method to generate a runtime script that imports the CSS output
+from <code>css-loader</code> and injects it into the DOM via a
+<code>&lt;style&gt;</code> tag, rather than directly transforming raw
+CSS text.</p>
+<h3 id="2-caching">2. Caching</h3>
+<p>Loaders that implement caching mechanisms, such as older
+implementations like <code>cache-loader</code>, utilize the pitch phase
+to check if a compiled result exists on disk or in memory. If a valid
+cache exists, the pitch method returns the cached module code
+immediately, preventing subsequent resource-intensive loaders (like
+Babel or TypeScript compilers) from executing.</p>
+<h3 id="3-metadata-sharing">3. Metadata Sharing</h3>
+<p>The <code>data</code> argument passed to the pitch method can be
+mutated to persist state into the normal phase. This is useful when
+expensive calculations or file inspections must be performed early,
+allowing the results to be consumed later without repeating work.</p>
+<h3 id="4-bypassing-underlying-loaders-conditionally">4. Bypassing
+Underlying Loaders Conditionally</h3>
+<p>The pitch phase allows you to inspect the incoming resource path
+(<code>remainingRequest</code>) and decide whether the file even
+requires processing. If a condition is met, returning the processed
+output immediately saves compilation time by preventing the rest of the
+loader stack from running.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

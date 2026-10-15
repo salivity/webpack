@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Does Webpack Process Entry Points? - webpack</title>
+    <meta name="description" content="Webpack uses entry points as the contextual starting blocks to construct its internal dependency graph and compile modern JavaScript applications. When a build initiates, Webpack traverses each imported module starting directly from these roots, resolving">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-does-webpack-process-entry-points">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Does Webpack Process Entry Points? - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-does-webpack-process-entry-points" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack uses entry points as the contextual starting blocks to construct its internal dependency graph and compile modern JavaScript applications. When a build initiates, Webpack traverses each imported module starting directly from these roots, resolving" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-does-webpack-process-entry-points">How Does Webpack Process
+Entry Points?</h1>
+<p>Webpack uses entry points as the contextual starting blocks to
+construct its internal dependency graph and compile modern JavaScript
+applications. When a build initiates, Webpack traverses each imported
+module starting directly from these roots, resolving relative paths,
+processing non-JavaScript assets through loaders, and assembling the
+relationships into self-contained output bundles. Configuring entry
+points appropriately—whether as single strings, arrays, or named
+multi-entry objects—determines both the architecture of your
+application's bundles and how effectively code splitting can optimize
+load performance.</p>
+<h2 id="defining-entry-points-in-configuration">Defining Entry Points in
+Configuration</h2>
+<p>At its core, an entry point indicates which module Webpack should use
+to begin compiling its internal dependency tree. In the absence of
+custom configuration, Webpack defaults to <code>./src/index.js</code>.
+Developers override this behavior by declaring the <code>entry</code>
+property inside <code>webpack.config.js</code>.</p>
+<p>Webpack supports three distinct formats to define entry points, each
+catering to different architectural patterns:</p>
+<ul>
+<li><strong>Single Entry (String):</strong> Passing a single file path
+generates one dependency graph and a single output bundle. This pattern
+suits standard Single Page Applications (SPAs) where a central root
+orchestrates all view layers.</li>
+<li><strong>Multi-Main Entry (Array):</strong> Supplying an array of
+file paths injects multiple independent files together, appending them
+sequentially into one unified bundle. This is useful for injecting
+global styles, polyfills, or setup routines alongside application
+code.</li>
+<li><strong>Object Entry (Key-Value Pairs):</strong> Defining an object
+where keys correspond to chunk names provides the highest degree of
+flexibility. Multi-Page Applications (MPAs) rely heavily on object
+syntax to emit separate script files for discrete views, such as
+<code>app</code> and <code>admin</code>.</li>
+</ul>
+<p>Webpack configuration also permits the object entry syntax to pass
+fine-grained descriptor objects. Through descriptors, entries can
+declare explicit runtime targets, output filenames, and dependencies on
+other entries via the <code>dependOn</code> attribute.</p>
+<h2 id="how-webpack-processes-entry-points-internally">How Webpack
+Processes Entry Points Internally</h2>
+<p>Once the compiler initializes with the user-defined configuration,
+Webpack executes an ordered pipeline to parse and resolve the specified
+entry points into executable code.</p>
+<h3 id="1-compiler-initialization-and-entryplugin-hooking">1. Compiler
+Initialization and EntryPlugin Hooking</h3>
+<p>During startup, Webpack evaluates the <code>entry</code>
+configuration and instantiates an internal <code>EntryPlugin</code> for
+each declared entry target. These plugins tap into the <code>make</code>
+hook of the Webpack <code>Compilation</code> lifecycle, alerting the
+compilation instance to prepare the build queue.</p>
+<h3 id="2-module-resolution-and-creation">2. Module Resolution and
+Creation</h3>
+<p>The compilation resolves the entry path via
+<code>enhanced-resolve</code>, verifying that the target file exists on
+disk and determining its absolute file system path. Once resolved, the
+engine creates a <code>NormalModule</code> representing the root node of
+the chunk.</p>
+<h3 id="3-parsing-and-ast-traversal">3. Parsing and AST Traversal</h3>
+<p>Webpack passes the entry module through registered loaders matching
+its file type. After loaders transform the source text into valid
+JavaScript, Webpack's internal parser parses the code into an Abstract
+Syntax Tree (AST). The parser scans the AST for statement types that
+signify dependencies, including ECMAScript <code>import</code>
+statements, CommonJS <code>require()</code> calls, and dynamic
+<code>import()</code> expressions.</p>
+<h3 id="4-recursive-dependency-graph-construction">4. Recursive
+Dependency Graph Construction</h3>
+<p>Every discovered dependency forms an outbound edge from the entry
+node. Webpack queues each referenced module, resolves it, applies
+matching loaders, and parses its respective AST for deeper nested
+dependencies. This recursive cycle continues down every branch until all
+imported modules, stylesheets, and assets have been cataloged into a
+complete dependency graph.</p>
+<h3 id="5-chunk-generation-and-output">5. Chunk Generation and
+Output</h3>
+<p>With the graph fully formed, Webpack groups modules into chunks based
+on the entry topology and optimization settings. If dynamic imports or
+split-chunk configurations are detected, Webpack isolates shared
+dependencies into secondary chunks. Finally, the runtime template wraps
+each chunk with module registration boilerplate and writes the final
+assets to the destination specified by <code>output.path</code>.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

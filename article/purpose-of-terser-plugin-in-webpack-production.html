@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purpose of TerserPlugin in Webpack Production - webpack</title>
+    <meta name="description" content="TerserPlugin is the default JavaScript minifier and optimizer used by Webpack to prepare codebases for production deployment. This article explains the primary roles of TerserPlugin in Webpack builds, detailing how it compresses source files, eliminates u">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/purpose-of-terser-plugin-in-webpack-production">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Purpose of TerserPlugin in Webpack Production - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/purpose-of-terser-plugin-in-webpack-production" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="TerserPlugin is the default JavaScript minifier and optimizer used by Webpack to prepare codebases for production deployment. This article explains the primary roles of TerserPlugin in Webpack builds, detailing how it compresses source files, eliminates u" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="purpose-of-terserplugin-in-webpack-production">Purpose of
+TerserPlugin in Webpack Production</h1>
+<p>TerserPlugin is the default JavaScript minifier and optimizer used by
+Webpack to prepare codebases for production deployment. This article
+explains the primary roles of TerserPlugin in Webpack builds, detailing
+how it compresses source files, eliminates unused code, and enhances
+runtime performance for end users without altering application
+functionality.</p>
+<h3 id="core-functions-of-terserplugin">Core Functions of
+TerserPlugin</h3>
+<p>The primary objective of TerserPlugin is to reduce the size of
+generated JavaScript bundles. It achieves this through several
+optimization techniques:</p>
+<ul>
+<li><strong>Code Minification:</strong> TerserPlugin removes unnecessary
+characters from the source code, including whitespace, newlines, and
+comments. It also shortens variable, function, and parameter names (a
+process known as mangling) to single- or double-letter identifiers.</li>
+<li><strong>Dead Code Elimination:</strong> In tandem with Webpack's
+tree-shaking features, TerserPlugin analyzes the AST (Abstract Syntax
+Tree) to identify and completely strip out unreachable or unused code,
+such as unreferenced variables or conditions that always evaluate to
+false.</li>
+<li><strong>Syntax Simplification:</strong> It rewires complex
+expressions into equivalent, shorter syntax patterns—for example,
+converting verbose boolean checks or conditionals into compact ternary
+operations.</li>
+<li><strong>Stripping Development Code:</strong> Developers frequently
+configure the plugin to drop statements such as <code>console.log</code>
+and <code>debugger</code>, preventing internal debugging logs from
+leaking into the public environment and shaving off extra bytes.</li>
+</ul>
+<h3 id="integration-in-webpack">Integration in Webpack</h3>
+<p>In Webpack 5, TerserPlugin comes pre-packaged as the default
+minifier. When Webpack's configuration <code>mode</code> is set to
+<code>'production'</code>, TerserPlugin automatically runs inside the
+<code>optimization.minimizer</code> pipeline without requiring manual
+installation.</p>
+<p>However, explicitly declaring TerserPlugin in the Webpack
+configuration allows developers to fine-tune behavior, such as enabling
+multi-process parallel execution to speed up build times, preserving
+specific license comments, or altering source map generation.</p>
+<h3 id="impact-on-web-performance">Impact on Web Performance</h3>
+<p>By drastically reducing JavaScript bundle sizes, TerserPlugin
+directly improves web application performance. Smaller files mean faster
+network transfer times, lower bandwidth consumption for users, and
+significantly reduced parse and compilation times on the client's
+browser engine, leading to improved Core Web Vitals such as Total
+Blocking Time (TBT) and Largest Contentful Paint (LCP).</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

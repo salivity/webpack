@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack HashedModuleIdsPlugin Historical Significance - webpack</title>
+    <meta name="description" content="This article examines the historical significance of the HashedModuleIdsPlugin in older versions of Webpack, specifically Webpack 3 and 4. Before modern automated optimization defaults existed, this plugin was a vital mechanism for achieving reliable long">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-hashed-module-ids-plugin-historical-significance">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack HashedModuleIdsPlugin Historical Significance - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-hashed-module-ids-plugin-historical-significance" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article examines the historical significance of the HashedModuleIdsPlugin in older versions of Webpack, specifically Webpack 3 and 4. Before modern automated optimization defaults existed, this plugin was a vital mechanism for achieving reliable long" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-hashedmoduleidsplugin-historical-significance">Webpack
+HashedModuleIdsPlugin Historical Significance</h1>
+<p>This article examines the historical significance of the
+<code>HashedModuleIdsPlugin</code> in older versions of Webpack,
+specifically Webpack 3 and 4. Before modern automated optimization
+defaults existed, this plugin was a vital mechanism for achieving
+reliable long-term browser caching. By substituting unstable,
+order-dependent numeric module identifiers with deterministic string
+hashes, it prevented widespread and unnecessary cache invalidation
+across production deployments.</p>
+<h3 id="the-caching-problem-in-early-webpack">The Caching Problem in
+Early Webpack</h3>
+<p>In early versions of Webpack, modules were assigned sequential
+numeric IDs based on the order in which they were resolved (such as
+<code>0</code>, <code>1</code>, <code>2</code>, and so on). This design
+caused a major flaw in production asset caching:</p>
+<ul>
+<li>Adding a new module or altering an import order shifted the ID
+numbers of subsequent modules.</li>
+<li>Because these numeric IDs were baked directly into the output
+JavaScript chunks (including the runtime manifest and vendor bundles),
+even a minor change to a single file caused the compiled contents of
+unaffected bundles to change.</li>
+<li>Consequently, the generated file hashes changed, forcing end-user
+browsers and CDNs to dump their caches and re-download entire
+third-party vendor libraries, despite those libraries remaining
+untouched.</li>
+</ul>
+<h3 id="the-role-of-hashedmoduleidsplugin">The Role of
+HashedModuleIdsPlugin</h3>
+<p>Introduced to combat this instability,
+<code>HashedModuleIdsPlugin</code> modified Webpack’s internal module
+identification process. Instead of incremental integers, the plugin
+calculated a short, four-character hash based on the module’s relative
+file path.</p>
+<p>Because the identifier was tied directly to the module's file path on
+disk rather than its order in the build pipeline, module IDs remained
+deterministic. If a developer added a new import or rearranged existing
+code, only the modified bundle's hash changed. The IDs inside the vendor
+chunk remained identical, preserving the vendor bundle’s filename hash
+and keeping the browser cache valid.</p>
+<p>While <code>NamedModulesPlugin</code> also preserved cache
+consistency by using readable file paths, it significantly bloated
+bundle sizes with long string paths. <code>HashedModuleIdsPlugin</code>
+offered the optimal compromise: predictable IDs with minimal byte
+overhead in production environments.</p>
+<h3 id="evolution-and-modern-replacement-in-webpack-5">Evolution and
+Modern Replacement in Webpack 5</h3>
+<p>The historical importance of <code>HashedModuleIdsPlugin</code> lies
+in its role in establishing predictable caching patterns as an essential
+standard for modern web development. It addressed one of the most
+frustrating aspects of asset bundling in the late Webpack 3 and Webpack
+4 eras.</p>
+<p>With the release of Webpack 5, the plugin was officially superseded.
+Webpack 5 introduced native support for deterministic module and chunk
+IDs via the <code>optimization.moduleIds: 'deterministic'</code>
+configuration, which is enabled by default in production mode. While
+<code>HashedModuleIdsPlugin</code> is no longer required today, it
+represents a critical milestone in the evolution of frontend build
+optimizations and CDN caching strategies.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

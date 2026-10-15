@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP/3 Unbundled vs Webpack Bundling Speed - webpack</title>
+    <meta name="description" content="Despite HTTP/3’s advanced multiplexing and reduced transport latency, unbundled delivery remains significantly slower than optimized Webpack bundling in production environments. While HTTP/3 over QUIC resolves transport-level head-of-line blocking and acc">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/http-3-unbundled-vs-webpack-bundling-speed">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="HTTP/3 Unbundled vs Webpack Bundling Speed - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/http-3-unbundled-vs-webpack-bundling-speed" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Despite HTTP/3’s advanced multiplexing and reduced transport latency, unbundled delivery remains significantly slower than optimized Webpack bundling in production environments. While HTTP/3 over QUIC resolves transport-level head-of-line blocking and acc" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="http3-unbundled-vs-webpack-bundling-speed">HTTP/3 Unbundled vs
+Webpack Bundling Speed</h1>
+<p>Despite HTTP/3’s advanced multiplexing and reduced transport latency,
+unbundled delivery remains significantly slower than optimized Webpack
+bundling in production environments. While HTTP/3 over QUIC resolves
+transport-level head-of-line blocking and accelerates connection
+handshakes, it cannot eliminate application-level bottlenecks such as
+dependency waterfalls, suboptimal data compression, and browser
+execution overhead. Consequently, bundling with granular code-splitting
+remains the faster and more efficient approach for delivering web
+applications.</p>
+<h3 id="the-request-waterfall-bottleneck">The Request Waterfall
+Bottleneck</h3>
+<p>The primary reason unbundled ES modules (ESM) underperform is the
+browser-side dependency discovery problem. In an unbundled setup, the
+browser cannot know what dependencies an application needs until it
+downloads, parses, and evaluates the entry module.</p>
+<p>If module A imports module B, and module B imports module C, the
+browser must execute sequential, cascading roundtrips:</p>
+<ol type="1">
+<li>Fetch and parse Module A.</li>
+<li>Discover Module B, then fetch and parse it.</li>
+<li>Discover Module C, then fetch and parse it.</li>
+</ol>
+<p>Even with zero-round-trip-time (0-RTT) handshakes and minimal latency
+on HTTP/3, each tier in a deep dependency graph adds a delay equal to
+the user's round-trip time (RTT). In large real-world applications
+containing hundreds or thousands of modules, this waterfall effect
+creates unacceptable render delays. In contrast, Webpack analyzes the
+full dependency graph ahead of time and packages these relationships,
+allowing the browser to receive and process everything in a single,
+parallelized pass.</p>
+<h3 id="diminished-compression-efficiency">Diminished Compression
+Efficiency</h3>
+<p>HTTP/3 does not fix the loss of compression efficiency caused by
+serving hundreds of small, isolated files. Modern compression algorithms
+like Brotli and Gzip achieve high compression ratios by recognizing
+patterns and repeated strings across a single, contiguous data
+stream.</p>
+<p>When code is split into hundreds of unbundled files:</p>
+<ul>
+<li>Each file is compressed independently within its own context.</li>
+<li>Cross-module redundancy (such as shared variable names, framework
+keywords, and syntax boilerplate) cannot be deduplicated by the
+compressor.</li>
+<li>Cumulative HTTP response header overhead grows significantly,
+consuming extra bandwidth even with QPACK header compression.</li>
+</ul>
+<p>A Webpack bundle aggregates this code, giving compression algorithms
+a much larger window to identify redundancies. As a result, the total
+bytes transferred over the network are substantially lower when bundled
+compared to unbundled delivery.</p>
+<h3 id="missing-tree-shaking-and-dead-code-elimination">Missing
+Tree-Shaking and Dead-Code Elimination</h3>
+<p>Webpack performs advanced static analysis to eliminate unused code
+across the entire application—a process known as tree-shaking. When
+libraries are included via bundling, only the specific functions and
+classes actually imported into the project are packaged into the final
+assets.</p>
+<p>In an unbundled architecture, the browser imports full, source-level
+files. Unless a complex server-side runtime transforms every request on
+the fly, entire libraries and their unused sub-dependencies are sent to
+the client. This wastes bandwidth, bloats network transfers, and
+increases the time required for the browser to compile the code.</p>
+<h3 id="browser-parsing-and-execution-overhead">Browser Parsing and
+Execution Overhead</h3>
+<p>HTTP/3 makes transferring many streams cheaper at the transport
+layer, but it does not reduce the browser’s internal processing cost.
+When receiving hundreds of discrete ES modules, the browser's JavaScript
+engine must:</p>
+<ul>
+<li>Manage hundreds of network streams and incoming buffers
+simultaneously.</li>
+<li>Create and track distinct module records, scope chains, and security
+contexts for each file.</li>
+<li>Link imports and exports dynamically across hundreds of independent
+modules.</li>
+</ul>
+<p>Bundled applications drastically reduce the number of discrete module
+records the JavaScript engine needs to instantiate, leading to faster
+parse, compile, and execution times on mobile devices and lower-powered
+CPUs.</p>
+<h3 id="the-verdict">The Verdict</h3>
+<p>Unbundled delivery is an excellent pattern for local development
+servers, where instant hot module replacement (HMR) and rapid startup
+times outweigh network overhead. However, on production networks—even
+modern HTTP/3 architectures—unbundled delivery fails to outperform
+Webpack.</p>
+<p>The optimal production strategy is not unbundled code, but
+<strong>coarse-grained bundling</strong>: using Webpack to produce a
+balanced set of vendor and route-based split chunks, delivering the
+compression and execution advantages of bundles alongside the caching
+benefits of modern multi-stream networks.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Loaders for 3D Assets: GLTF and OBJ - webpack</title>
+    <meta name="description" content="Integrating 3D assets into modern web applications requires handling binary and text-based model files such as GLTF, GLB, and OBJ. This article outlines the essential Webpack mechanisms and loaders used to bundle these files, comparing modern Webpack 5 bu">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-loaders-for-3-d-assets-gltf-and-obj">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Loaders for 3D Assets: GLTF and OBJ - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-loaders-for-3-d-assets-gltf-and-obj" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Integrating 3D assets into modern web applications requires handling binary and text-based model files such as GLTF, GLB, and OBJ. This article outlines the essential Webpack mechanisms and loaders used to bundle these files, comparing modern Webpack 5 bu" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-loaders-for-3d-assets-gltf-and-obj">Webpack Loaders for
+3D Assets: GLTF and OBJ</h1>
+<p>Integrating 3D assets into modern web applications requires handling
+binary and text-based model files such as GLTF, GLB, and OBJ. This
+article outlines the essential Webpack mechanisms and loaders used to
+bundle these files, comparing modern Webpack 5 built-in Asset Modules
+with specialized loaders designed to parse 3D geometries directly into
+JavaScript.</p>
+<h3 id="webpack-5-built-in-solution-asset-modules">Webpack 5 Built-in
+Solution: Asset Modules</h3>
+<p>In Webpack 5, dedicated file-handling loaders are largely obsolete.
+The recommended approach for 3D formats like <code>.gltf</code>,
+<code>.glb</code>, <code>.obj</code>, <code>.mtl</code>, and
+<code>.bin</code> is using <strong>Asset Modules</strong>, specifically
+<code>asset/resource</code>.</p>
+<p>When configured with <code>asset/resource</code>, Webpack emits the
+3D file to the output directory and exports the public URL string. This
+URL is then passed directly to WebGL framework loaders, such as Three.js
+(<code>GLTFLoader</code>, <code>OBJLoader</code>) or Babylon.js.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">gltf</span><span class="sc">|</span><span class="ss">glb</span><span class="sc">|</span><span class="ss">obj</span><span class="sc">|</span><span class="ss">mtl</span><span class="sc">|</span><span class="ss">bin</span><span class="sc">|</span><span class="ss">fbx</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/resource&#39;</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">generator</span><span class="op">:</span> {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>          <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;assets/models/[name][hash][ext]&#39;</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="specialized-3d-loaders">Specialized 3D Loaders</h3>
+<p>When you need to parse geometry at build time rather than runtime,
+specialized loaders transform the file data into structured JSON or
+native objects directly inside your bundle.</p>
+<h4 id="1-webpack-obj-loader">1. webpack-obj-loader</h4>
+<p>The <code>webpack-obj-loader</code> parses <code>.obj</code> and
+companion <code>.mtl</code> files directly during the Webpack build
+step. Instead of returning a URL string, importing the file returns an
+object containing parsed mesh data (vertices, vertex normals, texture
+coordinates, and faces).</p>
+<ul>
+<li><strong>Use Case:</strong> Best suited for lightweight OBJ models
+where you want immediate access to geometry data without fetching the
+file via an HTTP request at runtime.</li>
+<li><strong>Configuration:</strong></li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">obj</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;webpack-obj-loader&#39;</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h4 id="2-raw-loader-or-assetsource">2. raw-loader (or
+<code>asset/source</code>)</h4>
+<p>Wavefront OBJ and MTL files are plain-text formats. If you prefer to
+parse them with a custom or framework-specific parser at runtime without
+making an extra network request, you can import them as raw strings.</p>
+<ul>
+<li><strong>Webpack 5:</strong> Use
+<code>type: 'asset/source'</code>.</li>
+<li><strong>Webpack 4:</strong> Use <code>raw-loader</code>.</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">obj</span><span class="sc">|</span><span class="ss">mtl</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/source&#39;</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="legacy-loaders-webpack-4-and-below">Legacy Loaders (Webpack 4
+and Below)</h3>
+<p>In Webpack 4, native asset handling was not present, requiring
+external packages:</p>
+<ul>
+<li><strong>file-loader:</strong> Copies the model file to the output
+directory and returns the generated URL. This was the universal choice
+for <code>.gltf</code>, <code>.glb</code>, <code>.obj</code>, and
+accompanying textures.</li>
+<li><strong>url-loader:</strong> Conditionally inlines models as base64
+data URIs if they fall below a designated file-size threshold. While
+functional for tiny OBJ or GLTF files, it is rarely recommended for
+large 3D models due to increased bundle size and memory overhead.</li>
+</ul>
+<h3 id="managing-dependent-assets-in-gltf-and-obj">Managing Dependent
+Assets in GLTF and OBJ</h3>
+<p>A common issue with 3D formats is external dependencies. A
+<code>.gltf</code> file often references <code>.bin</code> buffers and
+<code>.png</code>/<code>.jpg</code> textures, while an <code>.obj</code>
+file references <code>.mtl</code> files.</p>
+<ul>
+<li><strong>Single-file formats:</strong> Use <code>.glb</code> (binary
+GLTF) whenever possible. A <code>.glb</code> embeds all meshes, buffers,
+and textures into a single self-contained binary file, eliminating path
+resolution issues in Webpack.</li>
+<li><strong>Multi-file formats:</strong> When using unpacked
+<code>.gltf</code> or <code>.obj</code>, ensure that your Webpack
+configuration includes rules for <code>.bin</code>, image files, and
+<code>.mtl</code> files using matching output paths so the relative
+references inside the models remain intact at runtime.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

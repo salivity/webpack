@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Module Federation with Server-Side Rendering - webpack</title>
+    <meta name="description" content="Webpack Module Federation allows independently deployed micro-frontends to share code and runtime dependencies dynamically. When paired with server-side rendering (SSR), it provides faster initial page loads and improved SEO, but requires synchronizing as">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-module-federation-with-server-side-rendering">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Module Federation with Server-Side Rendering - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-module-federation-with-server-side-rendering" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack Module Federation allows independently deployed micro-frontends to share code and runtime dependencies dynamically. When paired with server-side rendering (SSR), it provides faster initial page loads and improved SEO, but requires synchronizing as" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-module-federation-with-server-side-rendering">Webpack
+Module Federation with Server-Side Rendering</h1>
+<p>Webpack Module Federation allows independently deployed
+micro-frontends to share code and runtime dependencies dynamically. When
+paired with server-side rendering (SSR), it provides faster initial page
+loads and improved SEO, but requires synchronizing asynchronous remote
+component loading across both the Node.js server runtime and the client
+browser. This article examines the mechanics of integrating Module
+Federation into SSR environments, the challenges of code resolution and
+hydration, and the architectural patterns used to achieve seamless
+execution.</p>
+<h2 id="the-dual-runtime-challenge">The Dual-Runtime Challenge</h2>
+<p>In a purely client-side Module Federation setup, the browser loads a
+host application, requests <code>remoteEntry.js</code> files via
+standard script tags, and dynamically resolves shared modules at
+runtime.</p>
+<p>SSR complicates this model because rendering happens across two
+distinct environments:</p>
+<ol type="1">
+<li><strong>The Server Environment (Node.js):</strong> Lacks native
+browser APIs like <code>document.createElement('script')</code> and
+historically used CommonJS instead of browser-oriented script
+evaluation.</li>
+<li><strong>The Client Environment (Browser):</strong> Must mount the
+exact same component tree that the server produced to prevent hydration
+mismatches.</li>
+</ol>
+<p>For SSR to work with Module Federation, the server must fetch,
+compile, and execute remote code synchronously during the
+request-response lifecycle, while the client must coordinate loading the
+matching chunks.</p>
+<h2 id="server-side-remote-resolution">Server-Side Remote
+Resolution</h2>
+<p>To execute remote modules inside Node.js, the host server cannot rely
+on standard HTTP script injection. Instead, Module Federation addresses
+server execution through custom runtime targets:</p>
+<ul>
+<li><strong>Node-Targeted Builds:</strong> Micro-frontends often emit
+two builds: a client build (targeting standard Webpack web runtimes) and
+a server build (targeting Node.js).</li>
+<li><strong>Dynamic Evaluation or Filesystem Access:</strong> In local
+or containerized setups, the server may read remote entry points
+directly from shared filesystems or evaluate remote manifests over the
+local network using utilities such as Node's <code>vm</code> module or
+dynamic <code>import()</code>.</li>
+<li><strong>Universal Plugins:</strong> Tools like
+<code>@module-federation/node</code> rewrite the standard Webpack chunk
+loading mechanisms so Node.js can stream or fetch remote entries via
+HTTP/HTTPS at runtime, caching the output in memory.</li>
+</ul>
+<h2 id="chunk-flushing-and-critical-asset-injection">Chunk Flushing and
+Critical Asset Injection</h2>
+<p>A major architectural requirement in SSR is chunk flushing:
+identifying every client-side script and stylesheet used during the
+server render so they can be injected into the returned HTML
+document.</p>
+<p>In a federated architecture, the host server must track dependencies
+across distributed boundaries:</p>
+<ol type="1">
+<li>When a remote component renders on the server, the runtime tracks
+which remote assets (JavaScript bundles, CSS assets) were executed.</li>
+<li>The server serializes this dependency list into the initial HTML
+document as pre-load <code>&lt;link&gt;</code> tags and
+<code>&lt;script&gt;</code> tags.</li>
+<li>This step ensures the browser begins downloading remote code
+immediately, before the host application finishes executing on the
+client.</li>
+</ol>
+<p>Without chunk flushing, the browser experiences a "flash of unstyled
+content" (FOUC) or a hydration delay while it discovers and fetches
+remote assets sequentially.</p>
+<h2 id="hydration-synchronization">Hydration Synchronization</h2>
+<p>Hydration occurs when the client-side JavaScript attaches event
+listeners to the pre-rendered server markup. Module Federation
+introduces an asynchronous boundary because remote components must load
+before they can hydrate.</p>
+<p>If the host application mounts on the client before the remote
+component's script finishes downloading, React or similar frameworks
+will throw a hydration mismatch error, causing the client to discard the
+server-rendered DOM and re-render from scratch.</p>
+<p>To solve this:</p>
+<ul>
+<li>Remotes are wrapped in dynamic loading promises or suspense
+boundaries that defer hydration until all required remote code is ready
+in the client's Webpack runtime.</li>
+<li>The injected chunk manifest from the server informs the client
+runtime which remotes are critical to the initial view, ensuring they
+load upfront rather than on-demand.</li>
+</ul>
+<h2 id="fault-tolerance-and-resiliency">Fault Tolerance and
+Resiliency</h2>
+<p>In distributed SSR, a failing remote service can crash the host's
+server-rendering process if not handled defensively. Robust federated
+SSR architectures implement resilience mechanisms:</p>
+<ul>
+<li><strong>Fallbacks and Timeouts:</strong> If a remote server fails to
+return its manifest within a specified threshold, the host catches the
+error, renders a lightweight fallback (such as a skeleton UI) on the
+server, and allows the client to retry fetching the remote.</li>
+<li><strong>In-Memory Caching:</strong> Servers cache compiled remote
+modules and manifests to prevent outbound network requests for every
+single incoming HTTP request, significantly reducing latency and network
+saturation.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

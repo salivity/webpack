@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incompatible Shared UI Libraries in Webpack Micro-Frontends - webpack</title>
+    <meta name="description" content="When two micro-frontends load incompatible versions of a shared UI component library, Webpack’s runtime behavior depends on how the shared configuration in Module Federation is set up. This article explores what occurs when version mismatches arise, detai">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/incompatible-shared-ui-libraries-in-webpack-micro-frontends">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Incompatible Shared UI Libraries in Webpack Micro-Frontends - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/incompatible-shared-ui-libraries-in-webpack-micro-frontends" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When two micro-frontends load incompatible versions of a shared UI component library, Webpack’s runtime behavior depends on how the shared configuration in Module Federation is set up. This article explores what occurs when version mismatches arise, detai" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="incompatible-shared-ui-libraries-in-webpack-micro-frontends">Incompatible
+Shared UI Libraries in Webpack Micro-Frontends</h1>
+<p>When two micro-frontends load incompatible versions of a shared UI
+component library, Webpack’s runtime behavior depends on how the
+<code>shared</code> configuration in Module Federation is set up. This
+article explores what occurs when version mismatches arise, detailing
+runtime crashes, CSS and context collisions, performance degradations,
+and the specific mechanisms Webpack uses to handle conflicting
+dependencies.</p>
+<h3 id="the-role-of-webpack-module-federation">The Role of Webpack
+Module Federation</h3>
+<p>Webpack Module Federation allows independent builds to share code
+dynamically using the <code>shared</code> configuration. When declaring
+a shared UI library (like Material UI, Ant Design, or an internal design
+system), developers typically configure parameters such as
+<code>singleton</code>, <code>requiredVersion</code>, and
+<code>strictVersion</code>. How Webpack reacts to incompatible versions
+depends entirely on whether the library is forced to act as a singleton
+or allowed to fall back to multiple instances.</p>
+<h3 id="scenario-1-the-ui-library-is-configured-as-a-singleton">Scenario
+1: The UI Library is Configured as a Singleton</h3>
+<p>If the shared configuration sets <code>singleton: true</code>,
+Webpack enforces that only one instance of the UI library is loaded in
+the browser, regardless of how many micro-frontends request it.</p>
+<ul>
+<li><strong>Version Negotiation:</strong> Webpack attempts to resolve
+the highest version satisfying all remotes. If Host A requires version
+<code>^1.0.0</code> and Remote B requires version <code>^2.0.0</code>,
+Webpack chooses version 2.x because it is the highest available.</li>
+<li><strong>Breaking API Changes and Runtime Crashes:</strong> If
+version 2.x introduces breaking changes—such as removed props, altered
+component exports, or modified hooks—Host A will crash at runtime with
+errors like <code>TypeError: Cannot read properties of undefined</code>
+or <code>React.createElement: type is invalid</code>.</li>
+<li><strong>Strict Version Enforcement:</strong> If
+<code>strictVersion: true</code> is also configured alongside
+<code>singleton: true</code>, Webpack will not negotiate. It will halt
+execution and throw a runtime error in the console warning that the
+required version range is not satisfied, preventing partial or corrupt
+rendering. If <code>strictVersion: false</code>, Webpack prints a
+console warning and proceeds with the highest version anyway, risking
+unhandled exceptions.</li>
+</ul>
+<h3
+id="scenario-2-the-ui-library-is-not-a-singleton-multiple-instances-allowed">Scenario
+2: The UI Library is Not a Singleton (Multiple Instances Allowed)</h3>
+<p>If <code>singleton: false</code> (or left unset), Webpack isolates
+the incompatible versions. It provides version 1.x to Host A and loads a
+second copy of version 2.x for Remote B. While this prevents direct
+JavaScript API mismatches, it creates other critical issues:</p>
+<ul>
+<li><strong>React Context Fragmentation:</strong> Most modern UI
+component libraries rely on React Context for themes, toast
+notifications, localization, and modal state. React Context relies on
+reference equality. If a component from version 1.x is wrapped inside a
+<code>ThemeProvider</code> from version 2.x, the child component cannot
+read the parent's context. This causes unstyled components, broken
+design tokens, or crashes due to missing context consumers.</li>
+<li><strong>Global CSS and Class Name Collisions:</strong> Many UI
+libraries use CSS class naming conventions (e.g., <code>.btn</code>,
+<code>.modal</code>) or CSS-in-JS solutions with deterministic class
+generation (e.g., <code>.css-1a2b3c</code>). Loading two versions
+simultaneously often results in style leaking, where CSS rules from the
+newer library overwrite the rules of the older library, causing severe
+visual defects across the application.</li>
+<li><strong>Increased Bundle Size and Memory Usage:</strong> Loading
+multiple instances of a heavy component library undermines the main
+performance benefit of micro-frontends. Network transfer sizes double
+for that dependency, and duplicate DOM nodes and scripts increase
+overall browser memory consumption.</li>
+</ul>
+<h3 id="how-to-mitigate-incompatibility-issues">How to Mitigate
+Incompatibility Issues</h3>
+<p>To prevent these failures, adopt the following practices:</p>
+<ol type="1">
+<li><p><strong>Strict Semantic Versioning:</strong> Treat your shared UI
+library as an external contract. Do not introduce breaking changes
+without planning coordinated deployments across all consuming
+micro-frontends.</p></li>
+<li><p><strong>Explicit Shared Configurations:</strong> Define exact
+rules in <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>shared<span class="op">:</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;@my-org/ui-library&#39;</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">strictVersion</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">requiredVersion</span><span class="op">:</span> <span class="st">&#39;^2.0.0&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div></li>
+<li><p><strong>Prefix CSS and Class Names:</strong> Configure CSS-in-JS
+generators or CSS Modules with unique prefixes per micro-frontend or
+major version to prevent runtime style overrides.</p></li>
+<li><p><strong>Decouple UI Primitives from Business Logic:</strong> Keep
+the shared library lightweight, limiting it to stateless design tokens
+and primitives, while keeping complex state and logic contained within
+each individual micro-frontend.</p></li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Next.js Module Federation for Micro-Frontends - webpack</title>
+    <meta name="description" content="This article explains how to build a scalable micro-frontend architecture by integrating Webpack Module Federation into Next.js applications. It covers using the dedicated Next.js Module Federation plugin, configuring both host and remote applications in">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/next-js-module-federation-for-micro-frontends">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Next.js Module Federation for Micro-Frontends - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/next-js-module-federation-for-micro-frontends" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how to build a scalable micro-frontend architecture by integrating Webpack Module Federation into Next.js applications. It covers using the dedicated Next.js Module Federation plugin, configuring both host and remote applications in" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="nextjs-module-federation-for-micro-frontends">Next.js Module
+Federation for Micro-Frontends</h1>
+<p>This article explains how to build a scalable micro-frontend
+architecture by integrating Webpack Module Federation into Next.js
+applications. It covers using the dedicated Next.js Module Federation
+plugin, configuring both host and remote applications in
+<code>next.config.js</code>, managing shared dependencies, handling
+Server-Side Rendering (SSR), and dynamically consuming federated
+components.</p>
+<h3 id="understanding-the-integration-challenge">Understanding the
+Integration Challenge</h3>
+<p>Webpack Module Federation allows multiple independent builds to share
+code and runtime dependencies dynamically. However, implementing it in
+Next.js presents unique challenges because Next.js features a
+specialized compilation pipeline for both Node.js (server-side) and
+browser (client-side) environments, alongside custom routing and asset
+optimization. To bridge this gap seamlessly, developers utilize
+<code>@module-federation/nextjs-mf</code>, a plugin specifically
+designed to handle Next.js chunking and SSR compatibility.</p>
+<h3 id="step-1-install-the-required-plugin">Step 1: Install the Required
+Plugin</h3>
+<p>In both your host (shell) and remote applications, install the
+Next.js Module Federation plugin:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install @module-federation/nextjs-mf</span></code></pre></div>
+<h3 id="step-2-configure-the-remote-application">Step 2: Configure the
+Remote Application</h3>
+<p>The remote application exposes specific components or utilities to be
+consumed by other applications. Modify the remote's
+<code>next.config.js</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> NextFederationPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;@module-federation/nextjs-mf&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">webpack</span>(config<span class="op">,</span> options) {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="op">!</span>options<span class="op">.</span><span class="at">isServer</span>) {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>      config<span class="op">.</span><span class="at">plugins</span><span class="op">.</span><span class="fu">push</span>(</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="kw">new</span> <span class="fu">NextFederationPlugin</span>({</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>          <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;remoteApp&#39;</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>          <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;static/chunks/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>          <span class="dt">exposes</span><span class="op">:</span> {</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;./Button&#39;</span><span class="op">:</span> <span class="st">&#39;./components/Button.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>          <span class="dt">shared</span><span class="op">:</span> {</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>            <span class="dt">react</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> <span class="dt">requiredVersion</span><span class="op">:</span> <span class="kw">false</span> }<span class="op">,</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;react-dom&#39;</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> <span class="dt">requiredVersion</span><span class="op">:</span> <span class="kw">false</span> }<span class="op">,</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        })</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>      )<span class="op">;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> config<span class="op">;</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This configuration exposes <code>./components/Button.js</code> under
+the module identifier <code>'./Button'</code> and outputs a manifest
+file named <code>remoteEntry.js</code>.</p>
+<h3 id="step-3-configure-the-host-application">Step 3: Configure the
+Host Application</h3>
+<p>The host application acts as the shell that consumes federated code
+from the remote. Update the host's <code>next.config.js</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> NextFederationPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;@module-federation/nextjs-mf&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">webpack</span>(config<span class="op">,</span> options) {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    config<span class="op">.</span><span class="at">plugins</span><span class="op">.</span><span class="fu">push</span>(</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>      <span class="kw">new</span> <span class="fu">NextFederationPlugin</span>({</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;hostApp&#39;</span><span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;static/chunks/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">remotes</span><span class="op">:</span> {</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>          <span class="dt">remoteApp</span><span class="op">:</span> <span class="vs">`remoteApp@http://localhost:3001/_next/static/</span><span class="sc">${</span>options<span class="op">.</span><span class="at">isServer</span> <span class="op">?</span> <span class="st">&#39;ssr&#39;</span> <span class="op">:</span> <span class="st">&#39;chunks&#39;</span><span class="sc">}</span><span class="vs">/remoteEntry.js`</span><span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">shared</span><span class="op">:</span> {</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>          <span class="dt">react</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> <span class="dt">requiredVersion</span><span class="op">:</span> <span class="kw">false</span> }<span class="op">,</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>          <span class="st">&#39;react-dom&#39;</span><span class="op">:</span> { <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> <span class="dt">requiredVersion</span><span class="op">:</span> <span class="kw">false</span> }<span class="op">,</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>      })</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    )<span class="op">;</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> config<span class="op">;</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>The dynamic path ensures that Next.js loads the appropriate SSR or
+client-side entry file depending on the execution context.</p>
+<h3 id="step-4-loading-remote-components">Step 4: Loading Remote
+Components</h3>
+<p>In Next.js, federated components are best loaded dynamically to
+prevent hydration errors and handle network latency:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> dynamic <span class="im">from</span> <span class="st">&#39;next/dynamic&#39;</span><span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> RemoteButton <span class="op">=</span> <span class="fu">dynamic</span>(() <span class="kw">=&gt;</span> <span class="im">import</span>(<span class="st">&#39;remoteApp/Button&#39;</span>)<span class="op">,</span> {</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">ssr</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">loading</span><span class="op">:</span> () <span class="kw">=&gt;</span> <span class="op">&lt;</span>p<span class="op">&gt;</span>Loading remote button<span class="op">...&lt;/</span>p<span class="op">&gt;,</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="im">default</span> <span class="kw">function</span> <span class="fu">HomePage</span>() {</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> (</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">&lt;</span>main<span class="op">&gt;</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>      <span class="op">&lt;</span>h1<span class="op">&gt;</span>Host Application<span class="op">&lt;/</span>h1<span class="op">&gt;</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>      <span class="op">&lt;</span>RemoteButton <span class="op">/&gt;</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">&lt;/</span>main<span class="op">&gt;</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Setting <code>ssr: true</code> allows the remote component to render
+on the server if the remote entry supports SSR, while
+<code>ssr: false</code> falls back to purely client-side rendering.</p>
+<h3 id="handling-shared-state-and-best-practices">Handling Shared State
+and Best Practices</h3>
+<ol type="1">
+<li><strong>Singleton Management:</strong> Always set core libraries
+like <code>react</code> and <code>react-dom</code> as singletons to
+prevent multiple instances from breaking React context or hook
+lifecycles.</li>
+<li><strong>Error Boundaries:</strong> Wrap remote imports in React
+Error Boundaries to prevent a failed remote deployment from taking down
+the entire host application.</li>
+<li><strong>Independent Deployments:</strong> Ensure remote entries are
+deployed with reliable caching headers, caching static chunks
+indefinitely while serving <code>remoteEntry.js</code> with short cache
+durations or <code>no-cache</code> to facilitate real-time updates.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

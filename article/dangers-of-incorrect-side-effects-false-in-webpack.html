@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dangers of Incorrect sideEffects False in Webpack - webpack</title>
+    <meta name="description" content="Setting &quot;sideEffects&quot;: false in a library&#39;s package.json informs bundlers like Webpack that any module in the package can be safely skipped if its exported values are not directly consumed. While this allows aggressive tree-shaking to minimize bundle size">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/dangers-of-incorrect-side-effects-false-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Dangers of Incorrect sideEffects False in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/dangers-of-incorrect-side-effects-false-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Setting &quot;sideEffects&quot;: false in a library&#39;s package.json informs bundlers like Webpack that any module in the package can be safely skipped if its exported values are not directly consumed. While this allows aggressive tree-shaking to minimize bundle size" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="dangers-of-incorrect-sideeffects-false-in-webpack">Dangers of
+Incorrect sideEffects False in Webpack</h1>
+<p>Setting <code>"sideEffects": false</code> in a library's
+<code>package.json</code> informs bundlers like Webpack that any module
+in the package can be safely skipped if its exported values are not
+directly consumed. While this allows aggressive tree-shaking to minimize
+bundle size, incorrectly flagging a package with implicit side effects
+as side-effect-free leads Webpack to silently eliminate essential code.
+This article outlines the dangerous, hard-to-detect bugs that occur when
+this property is misused, ranging from completely missing styles to
+broken runtime behavior.</p>
+<h3 id="1-missing-global-css-and-component-styles">1. Missing Global CSS
+and Component Styles</h3>
+<p>The most common consequence of an incorrect
+<code>sideEffects: false</code> flag is the complete elimination of
+imported stylesheets. In many component libraries, CSS is imported
+directly into JavaScript files without exporting anything:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="st">&#39;./Button.css&#39;</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> Button <span class="op">=</span> () <span class="kw">=&gt;</span> { <span class="co">/* ... */</span> }<span class="op">;</span></span></code></pre></div>
+<p>If a consuming application imports a different component from the
+same bundle entry point and does not directly reference
+<code>Button</code>, Webpack considers <code>Button.css</code> dead code
+and strips it entirely. Even worse, if the library relies on global base
+styles, CSS resets, or theme variables imported via bare
+<code>import './global.css';</code> statements, those files are dropped,
+completely breaking the user interface in production.</p>
+<h3 id="2-dropped-polyfills-and-global-runtime-patches">2. Dropped
+Polyfills and Global Runtime Patches</h3>
+<p>Libraries often import polyfills or patch standard runtime
+environments to ensure cross-browser compatibility:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="st">&#39;core-js/actual/structured-clone&#39;</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="st">&#39;./patches/window-fetch&#39;</span><span class="op">;</span></span></code></pre></div>
+<p>Because these files do not export variables, Webpack sees bare import
+statements with no assigned identifiers. When
+<code>sideEffects: false</code> is active, Webpack assumes these modules
+have no impact on the rest of the application and eliminates them. As a
+result, older browsers or environments missing native implementations
+will throw unhandled exceptions such as <code>ReferenceError</code> or
+<code>TypeError: [method] is not a function</code>, leading to critical
+runtime crashes.</p>
+<h3 id="3-broken-self-registering-systems-and-web-components">3. Broken
+Self-Registering Systems and Web Components</h3>
+<p>Many modern architectures rely on modules executing immediately upon
+import to register themselves with a central registry. Common examples
+include:</p>
+<ul>
+<li><strong>Custom Web Components</strong>: Calls to
+<code>customElements.define('custom-button', CustomButton)</code> inside
+a standalone module.</li>
+<li><strong>Pluggable Libraries</strong>: Modules registering drivers,
+adapters, or syntax highlighters (e.g., Prism.js, Chart.js, or database
+drivers).</li>
+<li><strong>Dependency Injection Containers</strong>: Modules
+self-binding interfaces to implementations on evaluation.</li>
+</ul>
+<p>When a package is falsely marked without side effects, importing the
+file for its registration side effect alone
+(<code>import 'my-library/register-plugin'</code>) will be dropped by
+the bundler. The application will compile without warnings, but the
+features will fail silently at runtime, leaving custom HTML tags
+unrendered or plugin hooks absent.</p>
+<h3 id="4-loss-of-state-initializers-and-observability">4. Loss of State
+Initializers and Observability</h3>
+<p>Modules that initialize critical background processes often execute
+at import time without explicit exports:</p>
+<ul>
+<li>Initializing telemetry, analytics, or error-tracking SDKs.</li>
+<li>Setting up global event listeners
+(<code>window.addEventListener</code>).</li>
+<li>Populating shared module-level caches or singletons.</li>
+</ul>
+<p>If an author declares <code>sideEffects: false</code>, any entry
+module that orchestrates these initializations via side-effect imports
+is discarded. Telemetry goes dark, error trackers stop capturing
+uncaught exceptions, and state management systems fail to initialize
+their default stores.</p>
+<h3 id="5-production-only-discrepancies-works-on-my-machine">5.
+Production-Only Discrepancies ("Works on My Machine")</h3>
+<p>Tree-shaking optimizations driven by <code>sideEffects</code> are
+typically disabled during development (<code>mode: 'development'</code>)
+to improve build speeds. Consequently:</p>
+<ul>
+<li>The application functions correctly in local development
+environments.</li>
+<li>Unit tests run through Node.js or test runners (like Jest or Vitest)
+pass because they execute files directly without tree-shaking.</li>
+<li>The bugs manifest exclusively in production builds
+(<code>mode: 'production'</code>) after minification and module
+pruning.</li>
+</ul>
+<p>This discrepancy makes tracking down the root cause notoriously
+difficult, as debugging minified production bundles often masks which
+files were dropped during compilation.</p>
+<h3 id="preventing-side-effect-pruning-issues">Preventing Side-Effect
+Pruning Issues</h3>
+<p>Package authors should never default to a blanket
+<code>"sideEffects": false</code> unless the library is strictly
+composed of pure functions. If side effects exist, authors should either
+avoid module-level execution entirely or use an array to explicitly
+whitelist files that must never be tree-shaken:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;my-library&quot;</span><span class="fu">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;sideEffects&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;*.css&quot;</span><span class="ot">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;*.scss&quot;</span><span class="ot">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;./src/polyfills/**&quot;</span><span class="ot">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;./src/register.js&quot;</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

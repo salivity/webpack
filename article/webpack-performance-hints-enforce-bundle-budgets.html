@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack performance.hints: Enforce Bundle Budgets - webpack</title>
+    <meta name="description" content="This article explains the performance.hints configuration in Webpack and demonstrates how to use it to enforce performance budgets. You will learn the available configuration values, how it pairs with size threshold metrics, and how integrating it into yo">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-performance-hints-enforce-bundle-budgets">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack performance.hints: Enforce Bundle Budgets - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-performance-hints-enforce-bundle-budgets" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the performance.hints configuration in Webpack and demonstrates how to use it to enforce performance budgets. You will learn the available configuration values, how it pairs with size threshold metrics, and how integrating it into yo" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-performancehints-enforce-bundle-budgets">Webpack
+performance.hints: Enforce Bundle Budgets</h1>
+<p>This article explains the <code>performance.hints</code>
+configuration in Webpack and demonstrates how to use it to enforce
+performance budgets. You will learn the available configuration values,
+how it pairs with size threshold metrics, and how integrating it into
+your continuous integration workflow prevents oversized bundles from
+reaching production.</p>
+<h3 id="what-is-performancehints">What is
+<code>performance.hints</code>?</h3>
+<p>In Webpack, <code>performance.hints</code> is a configuration option
+located within the <code>performance</code> object of
+<code>webpack.config.js</code>. It controls how Webpack responds when
+generated assets or entry points exceed defined file size limits. By
+alerting developers to bloated bundles during the build phase, it helps
+maintain web performance benchmarks and fast load times.</p>
+<h3 id="available-options-for-performancehints">Available Options for
+<code>performance.hints</code></h3>
+<p>The <code>performance.hints</code> property accepts three values:</p>
+<ul>
+<li><strong><code>false</code></strong>: Completely disables performance
+notifications. No warnings or errors will be displayed, regardless of
+asset sizes.</li>
+<li><strong><code>"warning"</code></strong>: Emits a compilation warning
+in the terminal if an asset or entry point exceeds the specified
+threshold. The build succeeds and exits cleanly. This is Webpack's
+default behavior in <code>production</code> mode.</li>
+<li><strong><code>"error"</code></strong>: Emits a compilation error if
+limits are breached. This causes the build process to fail with a
+non-zero exit code.</li>
+</ul>
+<h3 id="defining-bundle-budget-thresholds">Defining Bundle Budget
+Thresholds</h3>
+<p><code>performance.hints</code> works in tandem with two other
+properties in the <code>performance</code> object that establish your
+budget limits, measured in bytes:</p>
+<ul>
+<li><strong><code>maxAssetSize</code></strong>: The maximum allowable
+size for any individual emitted file (such as a single JavaScript chunk
+or CSS file).</li>
+<li><strong><code>maxEntrypointSize</code></strong>: The maximum
+allowable total size of all assets combined that are required during the
+initial load of a specific entry point.</li>
+</ul>
+<h3 id="example-configuration">Example Configuration</h3>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other configuration settings</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">performance</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">hints</span><span class="op">:</span> <span class="st">&#39;error&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">maxAssetSize</span><span class="op">:</span> <span class="dv">250000</span><span class="op">,</span> <span class="co">// 250 KB</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">maxEntrypointSize</span><span class="op">:</span> <span class="dv">400000</span> <span class="co">// 400 KB</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>In this setup, if any generated chunk exceeds 250 KB, or if the entry
+point exceeds 400 KB, Webpack will immediately fail the compilation.</p>
+<h3 id="enforcing-budgets-in-cicd-pipelines">Enforcing Budgets in CI/CD
+Pipelines</h3>
+<p>Setting <code>performance.hints: "error"</code> is the primary
+mechanism for hard budget enforcement. While <code>"warning"</code>
+informs developers during local compilation, warnings can easily be
+overlooked.</p>
+<p>When set to <code>"error"</code>, automated CI/CD pipelines will fail
+the build if a pull request introduces dependencies or code that pushes
+bundle sizes beyond the agreed-upon limits. This guarantees that code
+exceeding the performance budget cannot be merged or deployed, forcing
+teams to optimize imports, implement code splitting, or use dynamic
+imports before deployment.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

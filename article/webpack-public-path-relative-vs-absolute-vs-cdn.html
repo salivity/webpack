@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack publicPath: Relative vs Absolute vs CDN - webpack</title>
+    <meta name="description" content="In Webpack, the output.publicPath configuration determines how the application resolves URLs for bundled assets such as scripts, stylesheets, and images in the browser. This article explores the core differences between using a relative, absolute, and CDN">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-public-path-relative-vs-absolute-vs-cdn">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack publicPath: Relative vs Absolute vs CDN - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-public-path-relative-vs-absolute-vs-cdn" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Webpack, the output.publicPath configuration determines how the application resolves URLs for bundled assets such as scripts, stylesheets, and images in the browser. This article explores the core differences between using a relative, absolute, and CDN" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-publicpath-relative-vs-absolute-vs-cdn">Webpack
+publicPath: Relative vs Absolute vs CDN</h1>
+<p>In Webpack, the <code>output.publicPath</code> configuration
+determines how the application resolves URLs for bundled assets such as
+scripts, stylesheets, and images in the browser. This article explores
+the core differences between using a relative, absolute, and CDN-hosted
+<code>publicPath</code>, demonstrating how each impacts your asset URLs
+and deployment strategy.</p>
+<hr />
+<h3 id="what-is-outputpublicpath">What is
+<code>output.publicPath</code>?</h3>
+<p>While <code>output.path</code> tells Webpack where to physically
+write the emitted files on your disk, <code>output.publicPath</code>
+tells loaders and plugins where those files will be located in the
+browser relative to your server or domain. When HTML files, CSS rules,
+or dynamic imports request an asset, Webpack prepends the
+<code>publicPath</code> to the asset's file name.</p>
+<h3 id="1-relative-publicpath">1. Relative <code>publicPath</code></h3>
+<p>A relative <code>publicPath</code> specifies asset locations relative
+to the URL of the HTML document loading the assets. It typically starts
+with <code>./</code>, <code>../</code>, or no slash at all.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">publicPath</span><span class="op">:</span> <span class="st">&#39;./&#39;</span><span class="op">,</span> <span class="co">// or &#39;assets/&#39;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<ul>
+<li><strong>Generated URL Example:</strong>
+<code>&lt;script src="./bundle.js"&gt;&lt;/script&gt;</code> or
+<code>&lt;script src="assets/bundle.js"&gt;&lt;/script&gt;</code></li>
+<li><strong>How it works:</strong> The browser resolves the resource
+relative to the current page's URL path. If the current URL is
+<code>https://example.com/blog/</code>, the asset resolves to
+<code>https://example.com/blog/bundle.js</code>.</li>
+<li><strong>Best used for:</strong>
+<ul>
+<li>Applications hosted in arbitrary or unknown subdirectories.</li>
+<li>Static sites opened directly via the local filesystem
+(<code>file://</code> protocol).</li>
+<li>Desktop applications built with Electron or mobile apps built with
+Cordova/Capacitor.</li>
+</ul></li>
+<li><strong>Limitations:</strong> Breaks single-page applications (SPAs)
+using HTML5 <code>pushState</code> routing. Navigating to a nested route
+like <code>/users/123</code> will cause the browser to search for assets
+under <code>/users/123/bundle.js</code> instead of the root
+directory.</li>
+</ul>
+<h3 id="2-absolute-host-relative-publicpath">2. Absolute (Host-Relative)
+<code>publicPath</code></h3>
+<p>An absolute <code>publicPath</code> begins with a forward slash
+(<code>/</code>). It directs the browser to resolve assets starting from
+the host's root domain, regardless of the page's current URL path.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">publicPath</span><span class="op">:</span> <span class="st">&#39;/&#39;</span><span class="op">,</span> <span class="co">// or &#39;/assets/&#39;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<ul>
+<li><strong>Generated URL Example:</strong>
+<code>&lt;script src="/assets/bundle.js"&gt;&lt;/script&gt;</code></li>
+<li><strong>How it works:</strong> Regardless of whether the user visits
+<code>https://example.com/</code> or
+<code>https://example.com/dashboard/settings/</code>, the browser always
+requests the asset directly from the domain root:
+<code>https://example.com/assets/bundle.js</code>.</li>
+<li><strong>Best used for:</strong>
+<ul>
+<li>Single-Page Applications (React, Vue, Angular) relying on
+client-side routing.</li>
+<li>Web servers where the root path for static assets is fixed and
+predictable.</li>
+</ul></li>
+<li><strong>Limitations:</strong> The application cannot be deployed to
+a subfolder (e.g., <code>https://example.com/my-app/</code>) without
+changing the <code>publicPath</code> to match the subpath (e.g.,
+<code>publicPath: '/my-app/'</code>).</li>
+</ul>
+<h3 id="3-cdn-hosted-fully-qualified-publicpath">3. CDN-Hosted (Fully
+Qualified) <code>publicPath</code></h3>
+<p>A CDN-hosted <code>publicPath</code> includes an explicit external
+protocol and domain (or a protocol-relative URL starting with
+<code>//</code>). It instructs the browser to fetch assets from an
+external storage bucket or Content Delivery Network instead of the host
+web server.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">publicPath</span><span class="op">:</span> <span class="st">&#39;https://cdn.example.com/assets/&#39;</span><span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<ul>
+<li><strong>Generated URL Example:</strong>
+<code>&lt;script src="https://cdn.example.com/assets/bundle.js"&gt;&lt;/script&gt;</code></li>
+<li><strong>How it works:</strong> The asset requests bypass your main
+web server entirely and load directly from the CDN endpoint.</li>
+<li><strong>Best used for:</strong>
+<ul>
+<li>High-traffic production environments offloading static asset
+delivery to services like AWS CloudFront, Cloudflare, or Akamai.</li>
+<li>Micro-frontend architectures where shared assets or remote modules
+are hosted independently from the host page.</li>
+</ul></li>
+<li><strong>Limitations:</strong> Requires dynamic configuration during
+development, as local builds will fail if they point to an unavailable
+remote CDN. This is typically managed via environment variables (e.g.,
+using <code>process.env.NODE_ENV</code> to toggle between <code>/</code>
+in development and the full CDN URL in production).</li>
+</ul>
+<hr />
+<h3 id="summary-of-differences">Summary of Differences</h3>
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Syntax Example</th>
+<th style="text-align: left;">Resolution Context</th>
+<th style="text-align: left;">SPA Routing Friendly</th>
+<th style="text-align: left;">Primary Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Relative</strong></td>
+<td style="text-align: left;"><code>'./'</code> or <code>''</code></td>
+<td style="text-align: left;">Current page URL</td>
+<td style="text-align: left;">No</td>
+<td style="text-align: left;">Offline apps, Electron, flexible
+subfolders</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Absolute</strong></td>
+<td style="text-align: left;"><code>'/'</code> or
+<code>'/assets/'</code></td>
+<td style="text-align: left;">Domain root</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Standard SPAs, monolithic web servers</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CDN-Hosted</strong></td>
+<td style="text-align: left;"><code>'https://cdn.com/'</code></td>
+<td style="text-align: left;">External origin</td>
+<td style="text-align: left;">Yes</td>
+<td style="text-align: left;">Production performance, offloading server
+load</td>
+</tr>
+</tbody>
+</table></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Emits Files Using webpack-sources - webpack</title>
+    <meta name="description" content="This article explores how Webpack manages asset generation and file emission through its internal compilation pipeline and the webpack-sources library. It covers the life cycle of code representation, the mechanics of webpack-sources classes, how assets a">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-emits-files-using-webpack-sources">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Emits Files Using webpack-sources - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-emits-files-using-webpack-sources" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores how Webpack manages asset generation and file emission through its internal compilation pipeline and the webpack-sources library. It covers the life cycle of code representation, the mechanics of webpack-sources classes, how assets a" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-emits-files-using-webpack-sources">How Webpack Emits
+Files Using webpack-sources</h1>
+<p>This article explores how Webpack manages asset generation and file
+emission through its internal compilation pipeline and the
+<code>webpack-sources</code> library. It covers the life cycle of code
+representation, the mechanics of <code>webpack-sources</code> classes,
+how assets are staged in memory, and the final step where Webpack
+converts these abstract source objects into physical files on disk.</p>
+<h2 id="the-role-of-webpack-sources">The Role of webpack-sources</h2>
+<p>In Webpack, chunks and individual assets are rarely stored as plain
+strings during the build process. Instead, Webpack uses the
+<code>webpack-sources</code> utility library. A <code>Source</code>
+object is an abstraction that represents source code along with its
+associated source map, size, and hash information.</p>
+<p>By representing output as structured <code>Source</code> objects
+rather than static strings or buffers, Webpack achieves several key
+benefits:</p>
+<ul>
+<li><strong>Deferred Computation:</strong> String concatenations,
+replacements, and source map generations are delayed until the last
+possible moment, reducing unnecessary memory allocation.</li>
+<li><strong>Automatic Source Map Composition:</strong> Transforming code
+(e.g., minifying or prefixing) while maintaining accurate source maps is
+handled internally through classes like <code>SourceMapSource</code> and
+<code>ReplaceSource</code>.</li>
+<li><strong>Caching:</strong> Classes such as <code>CachedSource</code>
+wrap other sources to memoize results for methods like
+<code>.source()</code>, <code>.buffer()</code>, <code>.size()</code>,
+and <code>.map()</code>.</li>
+</ul>
+<p>Common implementations provided by <code>webpack-sources</code>
+include:</p>
+<ul>
+<li><code>RawSource</code>: Represents raw text or a buffer with no
+source map handling.</li>
+<li><code>ConcatSource</code>: Links multiple <code>Source</code>
+objects together sequentially without immediately evaluating them into a
+single string.</li>
+<li><code>ReplaceSource</code>: Allows slicing and replacing segments of
+a wrapped <code>Source</code> while keeping source map mappings
+aligned.</li>
+<li><code>PrefixSource</code>: Adds a prefix to every line in the
+wrapped source.</li>
+</ul>
+<h2 id="staging-assets-in-the-compilation-phase">Staging Assets in the
+Compilation Phase</h2>
+<p>During the compilation life cycle, modules are parsed, sealed, and
+grouped into chunks. Once chunks are constructed, Webpack invokes
+renderers (such as <code>JavascriptModulesPlugin</code>) to produce the
+final executable bundle strings.</p>
+<p>Instead of writing directly to the filesystem, the rendering plugins
+construct a <code>webpack-sources</code> instance and assign it to the
+<code>compilation.assets</code> dictionary:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>compilation<span class="op">.</span><span class="fu">emitAsset</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">new</span> <span class="fu">ConcatSource</span>(headerSource<span class="op">,</span> moduleSource<span class="op">,</span> footerSource)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<p>Using <code>compilation.emitAsset()</code> registers the target
+filename as a key and the <code>Source</code> instance as the value.
+Plugins can inspect, mutate, replace, or wrap any asset currently
+registered in <code>compilation.assets</code> before physical file
+emission occurs.</p>
+<h2 id="the-emission-phase">The Emission Phase</h2>
+<p>Once all compilation hooks and optimizations (such as minification
+via Terser or dynamic banner injection) complete, the
+<code>Compiler</code> initiates the emission step through
+<code>compiler.emitAssets()</code>.</p>
+<p>The emission pipeline proceeds through the following sequence:</p>
+<ol type="1">
+<li><strong>Triggering the <code>emit</code> Hook:</strong> Webpack
+executes the <code>emit</code> hook, which is the final opportunity for
+plugins to modify <code>compilation.assets</code> or add new
+<code>Source</code> objects.</li>
+<li><strong>Resolving Paths and Directories:</strong> Webpack resolves
+the absolute file path for each asset by combining
+<code>output.path</code> with the asset key. It ensures all required
+target directories exist on the output filesystem using
+<code>outputFileSystem.mkdirp</code> (or native recursive directory
+creation).</li>
+<li><strong>Evaluating the Source:</strong> For each entry in
+<code>compilation.assets</code>, Webpack extracts the binary or text
+payload from the <code>webpack-sources</code> instance by calling
+<code>.buffer()</code> or <code>.source()</code>. If the source object
+is a <code>CachedSource</code>, it retrieves the cached buffer directly;
+otherwise, the underlying tree of <code>ConcatSource</code> or
+<code>ReplaceSource</code> instances computes the final output.</li>
+<li><strong>Writing via <code>outputFileSystem</code>:</strong> Webpack
+writes the resulting buffer to destination paths using the configured
+<code>compiler.outputFileSystem</code>. In standard production builds,
+this is Node’s native <code>fs</code> module. In development using
+<code>webpack-dev-server</code>, this is often a memory filesystem (such
+as <code>memfs</code>), allowing assets to be served directly from RAM
+without touching the hard drive.</li>
+<li><strong>Triggering the <code>afterEmit</code> Hook:</strong> After
+all buffers are written, Webpack cleans up emitted assets from memory,
+flags the build as successful, and executes the <code>afterEmit</code>
+and <code>done</code> hooks with final performance metrics.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

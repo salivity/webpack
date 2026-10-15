@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dart-Sass vs Node-Sass in Webpack sass-loader - webpack</title>
+    <meta name="description" content="When compiling Sass within modern Webpack build pipelines, developers must choose an underlying Sass implementation for sass-loader. This article examines the core differences between dart-sass (published on npm as sass) and node-sass, covering maintenanc">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/dart-sass-vs-node-sass-in-webpack-sass-loader">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Dart-Sass vs Node-Sass in Webpack sass-loader - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/dart-sass-vs-node-sass-in-webpack-sass-loader" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When compiling Sass within modern Webpack build pipelines, developers must choose an underlying Sass implementation for sass-loader. This article examines the core differences between dart-sass (published on npm as sass) and node-sass, covering maintenanc" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="dart-sass-vs-node-sass-in-webpack-sass-loader">Dart-Sass vs
+Node-Sass in Webpack sass-loader</h1>
+<p>When compiling Sass within modern Webpack build pipelines, developers
+must choose an underlying Sass implementation for
+<code>sass-loader</code>. This article examines the core differences
+between <code>dart-sass</code> (published on npm as <code>sass</code>)
+and <code>node-sass</code>, covering maintenance status, CSS feature
+support, installation reliability, compilation performance, and
+practical configuration in Webpack.</p>
+<h3 id="maintenance-and-deprecation-status">Maintenance and Deprecation
+Status</h3>
+<p>The most significant difference between the two packages is their
+lifecycle status:</p>
+<ul>
+<li><strong>node-sass:</strong> Officially deprecated. It acts as a
+Node.js binding for LibSass, a C/C++ implementation of Sass that reached
+end-of-life in 2020. It no longer receives feature updates or bug fixes,
+only minimal security patches.</li>
+<li><strong>dart-sass (npm: <code>sass</code>):</strong> The primary,
+canonical implementation of Sass actively developed and maintained by
+the Sass core team. It receives all new language features and active bug
+fixes.</li>
+</ul>
+<h3 id="feature-support-and-syntax">Feature Support and Syntax</h3>
+<p>Because LibSass is no longer updated, <code>node-sass</code> cannot
+parse modern Sass features.</p>
+<ul>
+<li><code>dart-sass</code> introduces the modern Sass module system
+(<code>@use</code>, <code>@forward</code>, and built-in modules like
+<code>sass:math</code> and <code>sass:color</code>), replacing the
+legacy <code>@import</code> rule which pollutes global namespaces.</li>
+<li><code>node-sass</code> only supports the legacy <code>@import</code>
+syntax and fails to compile stylesheets that utilize modern Sass module
+rules or newer CSS specifications.</li>
+</ul>
+<h3 id="installation-and-portability">Installation and Portability</h3>
+<ul>
+<li><strong>node-sass:</strong> Relies on C++ bindings that must be
+compiled using <code>node-gyp</code> or downloaded as pre-compiled
+platform-specific binaries. This regularly causes build failures when
+updating Node.js versions, deploying to different operating systems, or
+running in restricted CI/CD environments.</li>
+<li><strong>dart-sass:</strong> Distributed as pure JavaScript compiled
+from Dart. It runs natively across any operating system and Node.js
+version without requiring local C++ build tools or external binary
+downloads, resulting in significantly more stable dependency
+installations.</li>
+</ul>
+<h3 id="performance">Performance</h3>
+<ul>
+<li><strong>node-sass:</strong> Historically held a speed advantage
+because it ran compiled C++ code directly against the host
+hardware.</li>
+<li><strong>dart-sass:</strong> The standard npm package runs as
+compiled JavaScript, which can be slower on extremely large codebases
+compared to native binaries. However, Dart Sass can be paired with the
+<code>embedded-host-node</code> package to regain native compilation
+speeds if build performance becomes a bottleneck.</li>
+</ul>
+<h3 id="webpack-configuration">Webpack Configuration</h3>
+<p>Recent versions of <code>sass-loader</code> default to
+<code>sass</code> (<code>dart-sass</code>). You can explicitly define
+the implementation in your <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">s</span><span class="sc">[ac]</span><span class="ss">ss</span><span class="sc">$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> [</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;style-loader&quot;</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;css-loader&quot;</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>          {</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>            <span class="dt">loader</span><span class="op">:</span> <span class="st">&quot;sass-loader&quot;</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>            <span class="dt">options</span><span class="op">:</span> {</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>              <span class="co">// Using dart-sass (npm package: &#39;sass&#39;)</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>              <span class="dt">implementation</span><span class="op">:</span> <span class="pp">require</span>(<span class="st">&quot;sass&quot;</span>)<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>            }<span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        ]<span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="recommendation">Recommendation</h3>
+<p>For all new and existing projects, <code>dart-sass</code> (installed
+via <code>npm install sass</code>) is the industry standard.
+<code>node-sass</code> should be avoided due to deprecation, lack of
+modern language support, and recurring installation problems.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

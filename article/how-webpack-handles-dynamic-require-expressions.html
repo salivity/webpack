@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Handles Dynamic Require Expressions - webpack</title>
+    <meta name="description" content="When Webpack encounters a require statement containing an expression instead of a static string literal, it cannot resolve the exact module path at compile time. To handle this, Webpack extracts whatever static directory and file pattern it can from the e">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-handles-dynamic-require-expressions">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Handles Dynamic Require Expressions - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-handles-dynamic-require-expressions" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When Webpack encounters a require statement containing an expression instead of a static string literal, it cannot resolve the exact module path at compile time. To handle this, Webpack extracts whatever static directory and file pattern it can from the e" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-handles-dynamic-require-expressions">How Webpack
+Handles Dynamic Require Expressions</h1>
+<p>When Webpack encounters a <code>require</code> statement containing
+an expression instead of a static string literal, it cannot resolve the
+exact module path at compile time. To handle this, Webpack extracts
+whatever static directory and file pattern it can from the expression,
+generates a "context module," and bundles every single file that matches
+that pattern. This article explains how Webpack's AST analysis detects
+these expressions, how context modules bundle matching files, the
+performance implications of this behavior, and how developers can
+control the process.</p>
+<h2 id="the-static-analysis-limitation">The Static Analysis
+Limitation</h2>
+<p>Webpack builds its dependency graph at compile time using static
+analysis. Under normal circumstances, a static call like
+<code>require('./locales/en.json')</code> maps directly to a single
+file.</p>
+<p>When you use an expression such as:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> locale <span class="op">=</span> <span class="st">&#39;en&#39;</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> data <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;./locales/&#39;</span> <span class="op">+</span> locale <span class="op">+</span> <span class="st">&#39;.json&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<p>Webpack cannot execute the runtime JavaScript to determine what
+<code>locale</code> evaluates to. Because it cannot predict the exact
+value at build time, it must prepare for any valid runtime outcome.</p>
+<h2 id="context-modules-and-regular-expression-matching">Context Modules
+and Regular Expression Matching</h2>
+<p>To resolve dynamic calls, Webpack's parser inspects the string
+concatenation or template literal via the Abstract Syntax Tree (AST) to
+identify two components:</p>
+<ol type="1">
+<li><strong>A base directory:</strong> The static prefix of the path (in
+this case, <code>./locales/</code>).</li>
+<li><strong>A regular expression:</strong> Derived from the remaining
+dynamic parts and extensions (in this case,
+<code>/^.*\.json$/</code>).</li>
+</ol>
+<p>With these two elements, Webpack creates a <strong>context
+module</strong>. The build process navigates to the
+<code>./locales/</code> directory on your file system, checks every file
+against the regular expression, and includes <em>all</em> matching files
+in the final bundle.</p>
+<p>Internally, Webpack generates a lookup map for that context
+module:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> map <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;./en.json&quot;</span><span class="op">:</span> <span class="dv">1234</span><span class="op">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;./es.json&quot;</span><span class="op">:</span> <span class="dv">1235</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;./fr.json&quot;</span><span class="op">:</span> <span class="dv">1236</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>At runtime, the expression is evaluated to a string, matched against
+the internal map, and the corresponding module ID is loaded. If the
+evaluated string does not exist in the map, Webpack throws a runtime
+<code>Cannot find module</code> error.</p>
+<h2 id="completely-dynamic-expressions">Completely Dynamic
+Expressions</h2>
+<p>If you write a completely dynamic require statement with no static
+prefix:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="pp">require</span>(someVariable)<span class="op">;</span></span></code></pre></div>
+<p>Webpack lacks a base directory to anchor its search. In response, it
+treats the current directory of that file as the base directory and
+matches everything recursively.</p>
+<p>This causes significant performance problems:</p>
+<ul>
+<li>Webpack will attempt to bundle every file in the folder and its
+subdirectories.</li>
+<li>The build output increases dramatically in size.</li>
+<li>Webpack issues a compiler warning:
+<code>Critical dependency: the request of a dependency is an expression</code>.</li>
+</ul>
+<h2 id="performance-and-security-implications">Performance and Security
+Implications</h2>
+<p>Because dynamic expressions bundle all matching files, they can
+introduce unintended consequences:</p>
+<ul>
+<li><strong>Bundle Bloat:</strong> If a directory contains 50
+translation files, all 50 will be bundled into the application, even if
+the user only ever requires one.</li>
+<li><strong>Sensitive File Exposure:</strong> Any file matching the
+pattern—such as internal documentation, tests, or config files inside
+that directory—will be bundled and exposed in the client-side
+JavaScript.</li>
+</ul>
+<h2 id="best-practices-and-control-mechanisms">Best Practices and
+Control Mechanisms</h2>
+<p>To prevent bloated bundles when using dynamic expressions, apply the
+following strategies:</p>
+<h3 id="1-be-as-specific-as-possible">1. Be as Specific as Possible</h3>
+<p>Always include as much static path information as possible, including
+file extensions and specific subdirectories:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Bad: Bundles entire components folder recursively</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="pp">require</span>(<span class="st">&#39;./components/&#39;</span> <span class="op">+</span> name)<span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Better: Limits bundling only to .js files inside a dedicated folder</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="pp">require</span>(<span class="st">&#39;./components/buttons/&#39;</span> <span class="op">+</span> name <span class="op">+</span> <span class="st">&#39;.js&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<h3 id="2-use-requirecontext-for-explicit-control">2. Use
+<code>require.context</code> for Explicit Control</h3>
+<p>Webpack provides the <code>require.context()</code> utility, allowing
+you to explicitly define the directory, whether to search
+subdirectories, and the exact regular expression:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> context <span class="op">=</span> require<span class="op">.</span><span class="fu">context</span>(<span class="st">&#39;./locales&#39;</span><span class="op">,</span> <span class="kw">false</span><span class="op">,</span> <span class="ss">/</span><span class="sc">^(</span><span class="ss">en</span><span class="sc">|</span><span class="ss">es</span><span class="sc">)\.</span><span class="ss">json</span><span class="sc">$</span><span class="ss">/</span>)<span class="op">;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> data <span class="op">=</span> <span class="fu">context</span>(<span class="st">&#39;./&#39;</span> <span class="op">+</span> locale <span class="op">+</span> <span class="st">&#39;.json&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<p>This prevents unwanted files from matching arbitrary dynamic
+expressions.</p>
+<h3 id="3-migrate-to-dynamic-import-with-magic-comments">3. Migrate to
+Dynamic <code>import()</code> with Magic Comments</h3>
+<p>For modern applications, dynamic <code>import()</code> allows
+asynchronous code-splitting. Webpack supports "magic comments" to
+restrict which files are included in the context:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">/* webpackInclude: /(en|es)\.json$/ */</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">/* webpackChunkName: &quot;locale&quot; */</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="vs">`./locales/</span><span class="sc">${</span>locale<span class="sc">}</span><span class="vs">.json`</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<p>This approach generates separate on-demand chunks rather than forcing
+every matching file into the main bundle.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

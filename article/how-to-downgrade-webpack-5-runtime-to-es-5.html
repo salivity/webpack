@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Downgrade Webpack 5 Runtime to ES5 - webpack</title>
+    <meta name="description" content="This article explains how to configure Webpack 5 to force its internal runtime boilerplate code to downgrade to ES5 syntax. By default, Webpack 5 generates modern ES6 runtime code—such as arrow functions and const declarations—regardless of whether loader">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-to-downgrade-webpack-5-runtime-to-es-5">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Downgrade Webpack 5 Runtime to ES5 - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-to-downgrade-webpack-5-runtime-to-es-5" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how to configure Webpack 5 to force its internal runtime boilerplate code to downgrade to ES5 syntax. By default, Webpack 5 generates modern ES6 runtime code—such as arrow functions and const declarations—regardless of whether loader" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-downgrade-webpack-5-runtime-to-es5">How to Downgrade
+Webpack 5 Runtime to ES5</h1>
+<p>This article explains how to configure Webpack 5 to force its
+internal runtime boilerplate code to downgrade to ES5 syntax. By
+default, Webpack 5 generates modern ES6 runtime code—such as arrow
+functions and <code>const</code> declarations—regardless of whether
+loaders like Babel compile your application code down to ES5. Setting
+the correct <code>target</code> property prevents parsing and runtime
+syntax errors in legacy environments like Internet Explorer 11.</p>
+<h2 id="the-target-setting-for-es5-runtime">The Target Setting for ES5
+Runtime</h2>
+<p>To force Webpack 5 to emit ES5-compliant runtime code, set the
+<code>target</code> configuration to an array containing both the
+platform and the ECMAScript version:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> [<span class="st">&#39;web&#39;</span><span class="op">,</span> <span class="st">&#39;es5&#39;</span>]<span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other configurations</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Passing <code>'es5'</code> as an item in the <code>target</code>
+array instructs Webpack to avoid any modern JavaScript features when
+generating runtime wrappers and bundle bootstrapping code.</p>
+<h2 id="why-this-setting-is-required">Why This Setting Is Required</h2>
+<p>In Webpack 4, runtime code was written in ES5 by default. Webpack 5
+assumes an ES2015 (ES6) environment out of the box to reduce bundle
+sizes and improve execution efficiency.</p>
+<p>Even if tools like <code>@babel/preset-env</code> transpile your
+source code down to ES5, Babel does not touch the internal runtime
+wrapper injected by Webpack. Without the <code>['web', 'es5']</code>
+target, Webpack injects arrow functions (e.g.,
+<code>() =&gt; { ... }</code>) into the bundle, causing older browsers
+to fail immediately during script parsing.</p>
+<h2 id="alternative-approaches">Alternative Approaches</h2>
+<h3 id="1-using-browserslist">1. Using Browserslist</h3>
+<p>If your project utilizes a <code>.browserslistrc</code> file or a
+<code>browserslist</code> field in <code>package.json</code>, set the
+target to:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;browserslist&#39;</span><span class="op">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Webpack will automatically parse your Browserslist query. If the
+query includes browsers that do not support ES6 (such as
+<code>ie 11</code>), Webpack will automatically downgrade its runtime
+code to ES5.</p>
+<h3 id="2-manual-environment-control">2. Manual Environment Control</h3>
+<p>The <code>target: ['web', 'es5']</code> shorthand works by setting
+all fields in <code>output.environment</code> to <code>false</code>. You
+can achieve the same result explicitly:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;web&#39;</span><span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">environment</span><span class="op">:</span> {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">arrowFunction</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">bigIntLiteral</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">destructuring</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">dynamicImport</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">forOf</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>      <span class="dt">module</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>      <span class="dt">optionalChaining</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>      <span class="dt">templateLiteral</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Setting <code>target: ['web', 'es5']</code> remains the simplest and
+most maintainable way to ensure complete ES5 compatibility for Webpack 5
+runtime output.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

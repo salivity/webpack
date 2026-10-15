@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Multi-Compiler Dependencies Explained - webpack</title>
+    <meta name="description" content="In Webpack, a multi-compiler configuration allows developers to define and run multiple independent build configurations simultaneously within a single build process. The dependencies property in this setup explicitly controls the execution order between">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-multi-compiler-dependencies-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Multi-Compiler Dependencies Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-multi-compiler-dependencies-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Webpack, a multi-compiler configuration allows developers to define and run multiple independent build configurations simultaneously within a single build process. The dependencies property in this setup explicitly controls the execution order between" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-multi-compiler-dependencies-explained">Webpack
+Multi-Compiler Dependencies Explained</h1>
+<p>In Webpack, a multi-compiler configuration allows developers to
+define and run multiple independent build configurations simultaneously
+within a single build process. The <code>dependencies</code> property in
+this setup explicitly controls the execution order between these
+compilers, ensuring that designated builds do not execute until their
+prerequisite compilers have successfully completed. This article
+explains how the <code>dependencies</code> array functions, why it is
+necessary for shared assets, and how it prevents race conditions in
+complex build environments.</p>
+<h3 id="the-challenge-of-default-parallel-execution">The Challenge of
+Default Parallel Execution</h3>
+<p>When you export an array of configuration objects in a
+<code>webpack.config.js</code> file, Webpack activates its MultiCompiler
+mode. By default, Webpack attempts to execute these builds concurrently
+to optimize build speed.</p>
+<p>While parallel execution works well for truly isolated builds—such as
+compiling localized bundles for different languages—it fails when one
+build relies on the output of another. Without a defined order, tasks
+execute unpredictably, causing dependent builds to fail or bundle
+outdated files.</p>
+<h3 id="the-role-of-the-dependencies-option">The Role of the
+<code>dependencies</code> Option</h3>
+<p>The primary purpose of the <code>dependencies</code> property is to
+enforce a sequential dependency graph across your multi-compiler
+targets. By providing an array of compiler names that a specific
+configuration relies on, Webpack creates a topological sort to schedule
+the builds.</p>
+<p>A compiler with dependencies will remain idle until all
+configurations listed in its <code>dependencies</code> array finish
+emitting their assets.</p>
+<h3 id="key-use-cases">Key Use Cases</h3>
+<h4 id="1-manifest-and-metadata-generation">1. Manifest and Metadata
+Generation</h4>
+<p>A common scenario is a Server-Side Rendering (SSR) setup involving a
+client compiler and a server compiler. The server configuration often
+requires a client-generated manifest (such as <code>manifest.json</code>
+or <code>loadable-stats.json</code>) to map dynamic chunks to HTML
+script tags. Setting the client compiler as a dependency for the server
+compiler guarantees that the manifest exists on the file system before
+the server bundle begins compiling.</p>
+<h4 id="2-micro-frontends-and-shared-dlls">2. Micro-Frontends and Shared
+DLLs</h4>
+<p>When using Module Federation or DLL plugins, a core library or shared
+shell must compile first so that downstream micro-apps or consumers can
+validate and reference the exposed remote containers or vendor
+manifests.</p>
+<h4 id="3-service-workers-and-pre-caching">3. Service Workers and
+Pre-caching</h4>
+<p>Service workers need an accurate list of all emitted production
+assets to cache them for offline use. By setting the service worker
+build to depend on the main application build, the service worker
+compiler can inspect the final build directory and generate an accurate
+cache manifest without race conditions.</p>
+<h3 id="how-to-implement-dependencies">How to Implement
+Dependencies</h3>
+<p>To use this feature, each configuration object must have a unique
+<code>name</code> property. The dependent configuration then references
+this name in its <code>dependencies</code> array:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> [</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;client&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/client.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist/client&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].js&#39;</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Plugins generating manifests run here</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  {</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;server&#39;</span><span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">dependencies</span><span class="op">:</span> [<span class="st">&#39;client&#39;</span>]<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/server.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>      <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist/server&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>      <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;server.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Reads client build assets safely</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>]<span class="op">;</span></span></code></pre></div>
+<h3 id="behavior-in-watch-mode">Behavior in Watch Mode</h3>
+<p>In development or watch mode, the <code>dependencies</code> field
+continues to regulate the build pipeline. If a file in the prerequisite
+build changes, Webpack re-compiles that compiler first. Once that build
+completes, Webpack triggers a re-compilation of the dependent compiler,
+maintaining synchronization across code changes automatically.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

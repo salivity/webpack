@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AsyncDependenciesBlock in Webpack Dynamic Loading - webpack</title>
+    <meta name="description" content="This article explains the purpose and internal mechanics of AsyncDependenciesBlock in Webpack&#39;s module bundling process. Readers will discover how Webpack models dynamic code splitting, how this specific block operates within the dependency graph to trigg">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/async-dependencies-block-in-webpack-dynamic-loading">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="AsyncDependenciesBlock in Webpack Dynamic Loading - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/async-dependencies-block-in-webpack-dynamic-loading" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the purpose and internal mechanics of AsyncDependenciesBlock in Webpack&#39;s module bundling process. Readers will discover how Webpack models dynamic code splitting, how this specific block operates within the dependency graph to trigg" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="asyncdependenciesblock-in-webpack-dynamic-loading">AsyncDependenciesBlock
+in Webpack Dynamic Loading</h1>
+<p>This article explains the purpose and internal mechanics of
+<code>AsyncDependenciesBlock</code> in Webpack's module bundling
+process. Readers will discover how Webpack models dynamic code
+splitting, how this specific block operates within the dependency graph
+to trigger new chunk generation, and how it translates high-level
+asynchronous imports into lazy-loaded browser bundles.</p>
+<h2 id="what-is-asyncdependenciesblock">What Is
+AsyncDependenciesBlock?</h2>
+<p>In Webpack, module relationships are structured as a graph composed
+of modules and dependency blocks. While standard dependencies (such as
+ES module <code>import ... from ...</code> or CommonJS
+<code>require()</code>) are synchronous and bundled into the parent
+chunk, dynamic imports require a boundary.</p>
+<p><code>AsyncDependenciesBlock</code> is the internal class Webpack
+uses to represent this asynchronous boundary. Whenever Webpack's parser
+encounters an asynchronous split point—most commonly a dynamic
+<code>import('...')</code> expression or legacy
+<code>require.ensure</code>—it creates an instance of
+<code>AsyncDependenciesBlock</code> and attaches it to the current
+module's <code>blocks</code> array.</p>
+<h2 id="core-purposes-in-dynamic-loading">Core Purposes in Dynamic
+Loading</h2>
+<h3 id="1-defining-split-points-for-code-splitting">1. Defining Split
+Points for Code Splitting</h3>
+<p>The primary role of <code>AsyncDependenciesBlock</code> is to act as
+a split point in the module graph. Instead of inlining the target module
+and its sub-dependencies into the caller's output bundle, the block
+signals to the Webpack compilation pipeline that the dependencies inside
+it belong in a separate chunk.</p>
+<h3 id="2-managing-chunk-group-creation">2. Managing Chunk Group
+Creation</h3>
+<p>During the chunk graph generation phase, Webpack traverses modules
+and their attached blocks:</p>
+<ul>
+<li><strong>Normal Dependencies:</strong> Placed directly into the
+current chunk.</li>
+<li><strong>AsyncDependenciesBlock:</strong> Triggers the creation of a
+new <code>ChunkGroup</code> and child <code>Chunk</code> (unless merged
+into an existing chunk via optimization rules or split chunks
+configuration).</li>
+</ul>
+<p>The block tracks metadata associated with the dynamic request, such
+as chunk names (defined by magic comments like
+<code>/* webpackChunkName: "my-chunk" */</code>), chunk loading modes
+(lazy, eager, weak), and priority.</p>
+<h3 id="3-integrating-with-webpack-runtime-loading">3. Integrating with
+Webpack Runtime Loading</h3>
+<p>At code generation time, the presence of an
+<code>AsyncDependenciesBlock</code> determines the runtime code output.
+Instead of emitting a direct synchronous module execution, Webpack
+transforms the dynamic import into a runtime call:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>__webpack_require__<span class="op">.</span><span class="fu">e</span>(<span class="st">&quot;chunkId&quot;</span>)<span class="op">.</span><span class="fu">then</span>(__webpack_require__<span class="op">.</span><span class="fu">bind</span>(__webpack_require__<span class="op">,</span> <span class="st">&quot;moduleId&quot;</span>))<span class="op">;</span></span></code></pre></div>
+<p>The <code>AsyncDependenciesBlock</code> stores the target module
+reference, enabling Webpack to emit the correct chunk ID and runtime
+instructions necessary for fetching the script over the network via DOM
+injection or <code>fetch</code>.</p>
+<h3 id="4-handling-prefetching-and-preloading">4. Handling Prefetching
+and Preloading</h3>
+<p><code>AsyncDependenciesBlock</code> also carries configuration for
+resource hints. Magic comments such as <code>webpackPrefetch</code> and
+<code>webpackPreload</code> are parsed and stored directly on the block
+instance. Webpack reads these properties during compilation to generate
+runtime code that automatically injects
+<code>&lt;link rel="prefetch"&gt;</code> or
+<code>&lt;link rel="preload"&gt;</code> tags into the document head when
+the parent module loads.</p>
+<h2 id="summary">Summary</h2>
+<p><code>AsyncDependenciesBlock</code> serves as the architectural
+foundation for dynamic loading in Webpack. By encapsulating asynchronous
+dependencies, chunk configuration, and resource hints into a distinct
+node in the dependency graph, it allows Webpack to isolate code,
+generate separate bundle files, and inject the runtime mechanisms needed
+for on-demand execution.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

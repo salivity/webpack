@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detect Circular Dependencies in Webpack - webpack</title>
+    <meta name="description" content="Circular dependencies occur when two or more modules depend on each other directly or indirectly, often leading to unexpected runtime errors, undefined imports, and unoptimized bundles. This article outlines the primary Webpack plugins and complementary s">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/detect-circular-dependencies-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Detect Circular Dependencies in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/detect-circular-dependencies-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Circular dependencies occur when two or more modules depend on each other directly or indirectly, often leading to unexpected runtime errors, undefined imports, and unoptimized bundles. This article outlines the primary Webpack plugins and complementary s" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="detect-circular-dependencies-in-webpack">Detect Circular
+Dependencies in Webpack</h1>
+<p>Circular dependencies occur when two or more modules depend on each
+other directly or indirectly, often leading to unexpected runtime
+errors, <code>undefined</code> imports, and unoptimized bundles. This
+article outlines the primary Webpack plugins and complementary static
+analysis tools used to detect, visualize, and eliminate circular
+references within a Webpack dependency graph.</p>
+<h3 id="1-circular-dependency-plugin">1. circular-dependency-plugin</h3>
+<p>The most direct solution for Webpack users is
+<code>circular-dependency-plugin</code>. It hooks directly into the
+Webpack compilation pipeline, scanning files during the build process
+and logging cycles to the console.</p>
+<p><strong>Installation:</strong></p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">--save-dev</span> circular-dependency-plugin</span></code></pre></div>
+<p><strong>Webpack Configuration:</strong></p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> CircularDependencyPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;circular-dependency-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">CircularDependencyPlugin</span>({</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Exclude detection in node_modules</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">exclude</span><span class="op">:</span> <span class="ss">/node_modules/</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Include specific files if needed</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">include</span><span class="op">:</span> <span class="ss">/src/</span><span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Add a visual check to the output in the console</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>      <span class="dt">failOnError</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Allow import cycles that include an asyncronous import</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>      <span class="dt">allowAsyncCycles</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Set the current working directory for displaying module paths</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>      <span class="dt">cwd</span><span class="op">:</span> <span class="bu">process</span><span class="op">.</span><span class="fu">cwd</span>()<span class="op">,</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When Webpack builds, any loop (such as
+<code>A.js -&gt; B.js -&gt; A.js</code>) will immediately trigger a
+warning or fail the build depending on the <code>failOnError</code>
+setting.</p>
+<h3 id="2-madge">2. Madge</h3>
+<p>Madge is a developer favorite for analyzing module dependencies
+outside or alongside the Webpack build step. It works with CommonJS,
+AMD, and ES modules, and can generate both visual graphs and text-based
+cycle reports.</p>
+<p><strong>Installation:</strong></p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">-g</span> madge</span></code></pre></div>
+<p><strong>Detecting Cycles via CLI:</strong></p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Check for circular dependencies in a project directory</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="ex">madge</span> <span class="at">--circular</span> ./src/index.js</span></code></pre></div>
+<p>Madge can be integrated into your CI/CD pipeline or
+<code>package.json</code> scripts to prevent pull requests with circular
+dependencies from being merged.</p>
+<h3 id="3-dpdm">3. DPDM</h3>
+<p>DPDM is a high-performance static analysis tool designed specifically
+for JavaScript and TypeScript projects. It detects circular dependencies
+and missing modules significantly faster than many older
+alternatives.</p>
+<p><strong>Installation:</strong></p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">-g</span> dpdm</span></code></pre></div>
+<p><strong>Detecting Cycles via CLI:</strong></p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">dpdm</span> <span class="at">--detect-cycle</span> ./src/index.ts</span></code></pre></div>
+<p>DPDM directly parses TypeScript and TSX files without requiring
+separate compilation steps, making it ideal for modern TypeScript-heavy
+Webpack setups.</p>
+<h3 id="4-eslint-plugin-import-importno-cycle">4. eslint-plugin-import
+(<code>import/no-cycle</code>)</h3>
+<p>While not a Webpack plugin, catching circular dependencies at
+authoring time prevents them from ever reaching your build tool. The
+<code>import/no-cycle</code> rule from <code>eslint-plugin-import</code>
+detects cyclical imports across modules during code linting.</p>
+<p><strong>Configuration (<code>.eslintrc.json</code>):</strong></p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;plugins&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;import&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;rules&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;import/no-cycle&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;error&quot;</span><span class="ot">,</span> <span class="fu">{</span> <span class="dt">&quot;maxDepth&quot;</span><span class="fu">:</span> <span class="er">Infinity</span> <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p><em>Note: Enabling this rule on very large codebases with
+<code>maxDepth: Infinity</code> can increase ESLint execution time, so
+it is often set to a limited depth or run only during CI
+checks.</em></p>
+<h3 id="5-statoscope">5. Statoscope</h3>
+<p>Statoscope is a suite of tools for analyzing Webpack bundles. It
+allows you to inspect module dependencies, analyze bundle sizes, and
+uncover dependency issues.</p>
+<p>By passing Webpack stats generated with
+<code>webpack --json &gt; stats.json</code> into Statoscope, you can
+visually trace the dependency tree and identify complex indirect cycles
+that span across multiple packages or lazy-loaded chunks.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

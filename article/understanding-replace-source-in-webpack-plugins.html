@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding ReplaceSource in Webpack Plugins - webpack</title>
+    <meta name="description" content="ReplaceSource is a specialized utility class provided by the webpack-sources package that enables developers to mutate source code within Webpack bundles while automatically tracking and preserving source maps. Webpack plugins commonly utilize ReplaceSour">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/understanding-replace-source-in-webpack-plugins">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Understanding ReplaceSource in Webpack Plugins - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/understanding-replace-source-in-webpack-plugins" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="ReplaceSource is a specialized utility class provided by the webpack-sources package that enables developers to mutate source code within Webpack bundles while automatically tracking and preserving source maps. Webpack plugins commonly utilize ReplaceSour" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="understanding-replacesource-in-webpack-plugins">Understanding
+ReplaceSource in Webpack Plugins</h1>
+<p><code>ReplaceSource</code> is a specialized utility class provided by
+the <code>webpack-sources</code> package that enables developers to
+mutate source code within Webpack bundles while automatically tracking
+and preserving source maps. Webpack plugins commonly utilize
+<code>ReplaceSource</code> during asset processing hooks to inject,
+remove, or substitute specific tokens and code patterns inside generated
+chunks. By operating on character indices rather than performing raw
+string manipulations, it guarantees that debugging information remains
+synchronized throughout transformations.</p>
+<h3 id="what-is-replacesource">What is ReplaceSource?</h3>
+<p>In Webpack's compilation pipeline, assets are represented as
+<code>Source</code> objects rather than plain strings. These objects
+encapsulate both the raw source code and its corresponding source map
+representation.</p>
+<p><code>ReplaceSource</code> acts as a decorator for another
+<code>Source</code> instance (such as <code>RawSource</code> or
+<code>ConcatSource</code>). Instead of altering code via destructive
+string replacement methods like <code>String.prototype.replace()</code>,
+which breaks source mapping lines and columns,
+<code>ReplaceSource</code> maintains a list of targeted replacements
+mapped to the original positions. When the source is ultimately
+serialized, it produces the modified output alongside a properly shifted
+source map.</p>
+<h3 id="key-methods-of-replacesource">Key Methods of ReplaceSource</h3>
+<p><code>ReplaceSource</code> operates using 0-based character offsets
+relative to the original source text. The most common methods
+include:</p>
+<ul>
+<li><strong><code>replace(start, end, newValue, [name])</code></strong>:
+Replaces the character range from <code>start</code> (inclusive) to
+<code>end</code> (exclusive) with <code>newValue</code>. The optional
+<code>name</code> parameter can annotate the mapping in the source
+map.</li>
+<li><strong><code>insert(position, newValue, [name])</code></strong>:
+Inserts <code>newValue</code> at the specified character offset without
+replacing existing characters.</li>
+</ul>
+<p>A critical advantage of <code>ReplaceSource</code> is that all index
+references correspond to the <strong>original</strong> text. You do not
+need to calculate running offset deltas when performing multiple
+replacements on the same asset.</p>
+<h3 id="how-a-plugin-uses-replacesource">How a Plugin Uses
+ReplaceSource</h3>
+<p>A Webpack plugin typically interacts with <code>ReplaceSource</code>
+inside the <code>compilation.hooks.processAssets</code> hook, usually
+during optimization or code generation stages.</p>
+<p>Here is an end-to-end example demonstrating how a plugin wraps an
+asset in <code>ReplaceSource</code>, finds target text, and commits the
+transformation:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { ReplaceSource } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&quot;webpack-sources&quot;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { Compilation } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&quot;webpack&quot;</span>)<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> BannerReplacementPlugin {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(compiler) {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">compilation</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&quot;BannerReplacementPlugin&quot;</span><span class="op">,</span> (compilation) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      compilation<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">processAssets</span><span class="op">.</span><span class="fu">tap</span>(</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>          <span class="dt">name</span><span class="op">:</span> <span class="st">&quot;BannerReplacementPlugin&quot;</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>          <span class="dt">stage</span><span class="op">:</span> Compilation<span class="op">.</span><span class="at">PROCESS_ASSETS_STAGE_OPTIMIZE</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        (assets) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>          <span class="cf">for</span> (<span class="kw">const</span> [filename<span class="op">,</span> asset] <span class="kw">of</span> <span class="bu">Object</span><span class="op">.</span><span class="fu">entries</span>(assets)) {</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Target only JavaScript bundles</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> (<span class="op">!</span>filename<span class="op">.</span><span class="fu">endsWith</span>(<span class="st">&quot;.js&quot;</span>)) <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>            <span class="kw">const</span> originalCode <span class="op">=</span> asset<span class="op">.</span><span class="fu">source</span>()<span class="op">;</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>            <span class="kw">const</span> targetPattern <span class="op">=</span> <span class="ss">/__BUILD_DATE__/g</span><span class="op">;</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>            <span class="kw">let</span> match<span class="op">;</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>            <span class="co">// 1. Wrap the existing asset with ReplaceSource</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>            <span class="kw">const</span> replaceSource <span class="op">=</span> <span class="kw">new</span> <span class="fu">ReplaceSource</span>(asset)<span class="op">;</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>            <span class="co">// 2. Identify the character indices of all targets</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>            <span class="cf">while</span> ((match <span class="op">=</span> targetPattern<span class="op">.</span><span class="fu">exec</span>(originalCode)) <span class="op">!==</span> <span class="kw">null</span>) {</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>              <span class="kw">const</span> start <span class="op">=</span> match<span class="op">.</span><span class="at">index</span><span class="op">;</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>              <span class="kw">const</span> end <span class="op">=</span> start <span class="op">+</span> match[<span class="dv">0</span>]<span class="op">.</span><span class="at">length</span><span class="op">;</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>              <span class="kw">const</span> replacementText <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(<span class="kw">new</span> <span class="bu">Date</span>()<span class="op">.</span><span class="fu">toISOString</span>())<span class="op">;</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>              <span class="co">// 3. Queue the replacement at the exact original coordinates</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>              replaceSource<span class="op">.</span><span class="fu">replace</span>(start<span class="op">,</span> end<span class="op">,</span> replacementText)<span class="op">;</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>            }</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>            <span class="co">// 4. Update the compilation asset with the ReplaceSource instance</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>            compilation<span class="op">.</span><span class="fu">updateAsset</span>(filename<span class="op">,</span> replaceSource)<span class="op">;</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>          }</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>      )<span class="op">;</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> BannerReplacementPlugin<span class="op">;</span></span></code></pre></div>
+<h3 id="why-use-replacesource-over-raw-strings">Why Use ReplaceSource
+Over Raw Strings</h3>
+<ol type="1">
+<li><strong>Source Map Integrity</strong>: Direct string replacement
+invalidates downstream source maps because offsets shift.
+<code>ReplaceSource</code> recalculates line and column mappings
+dynamically based on applied mutations.</li>
+<li><strong>Deterministic Indexing</strong>: Because all mutation
+coordinates refer to the original source coordinates, developers can
+iterate over regular expression matches without manually offsetting
+indices for prior modifications.</li>
+<li><strong>Pipeline Compatibility</strong>: Returning a
+<code>ReplaceSource</code> instance satisfies Webpack’s internal asset
+interfaces, allowing subsequent plugins and stages (such as
+minification) to consume the asset without disruption.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

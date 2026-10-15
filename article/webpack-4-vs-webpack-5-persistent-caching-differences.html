@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack 4 vs Webpack 5: Persistent Caching Differences - webpack</title>
+    <meta name="description" content="Caching build artifacts dramatically impacts build performance in modern frontend development, and the release of Webpack 5 marked a fundamental transformation in how this is handled. While Webpack 4 relied on external plugins and fragmented loader-specif">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-4-vs-webpack-5-persistent-caching-differences">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack 4 vs Webpack 5: Persistent Caching Differences - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-4-vs-webpack-5-persistent-caching-differences" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Caching build artifacts dramatically impacts build performance in modern frontend development, and the release of Webpack 5 marked a fundamental transformation in how this is handled. While Webpack 4 relied on external plugins and fragmented loader-specif" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-4-vs-webpack-5-persistent-caching-differences">Webpack 4
+vs Webpack 5: Persistent Caching Differences</h1>
+<p>Caching build artifacts dramatically impacts build performance in
+modern frontend development, and the release of Webpack 5 marked a
+fundamental transformation in how this is handled. While Webpack 4
+relied on external plugins and fragmented loader-specific configurations
+to persist cached files across builds, Webpack 5 introduced a robust,
+built-in filesystem caching architecture. This article details the
+primary differences between Webpack 4 and Webpack 5 in terms of
+implementation, configuration, cache invalidation, and performance.</p>
+<h3 id="built-in-support-vs-third-party-dependencies">Built-in Support
+vs. Third-Party Dependencies</h3>
+<p>The most significant distinction between the two versions is native
+support:</p>
+<ul>
+<li><strong>Webpack 4:</strong> Out of the box, Webpack 4 only supported
+in-memory caching for a single continuous build process (such as when
+running the watch mode). To persist cache results across distinct CLI
+runs or CI/CD pipelines, developers had to rely on third-party solutions
+such as <code>cache-loader</code>,
+<code>hard-source-webpack-plugin</code>, or loader-specific cache
+options like <code>babel-loader?cacheDirectory</code>.</li>
+<li><strong>Webpack 5:</strong> Persistent caching is a native,
+first-class feature. By introducing disk-based serialization directly
+into the compiler core, Webpack 5 eliminates the need for external
+caching loaders and plugins, significantly reducing configuration
+complexity and maintenance overhead.</li>
+</ul>
+<h3 id="configuration-complexity">Configuration Complexity</h3>
+<p>Configuring persistent caching evolved from a fragmented approach to
+a centralized setup:</p>
+<ul>
+<li><strong>Webpack 4:</strong> Developers had to manually insert
+<code>cache-loader</code> before expensive loaders in the module rules
+array or configure caching within specific loader options. This
+decentralized approach often led to uneven caching where only certain
+steps of the pipeline were saved to disk.</li>
+<li><strong>Webpack 5:</strong> Persistent caching is managed globally
+through a single top-level configuration key. Setting
+<code>cache.type</code> to <code>'filesystem'</code> activates
+whole-build disk caching, storing module graphs, chunks, and
+intermediate compilation steps in a standardized
+<code>.cache/webpack</code> directory.</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Webpack 5 unified persistent cache configuration</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">cache</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;filesystem&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">buildDependencies</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">config</span><span class="op">:</span> [<span class="bu">__filename</span>]<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="cache-invalidation-and-staleness">Cache Invalidation and
+Staleness</h3>
+<p>Cache safety and accuracy represent another major upgrade between the
+versions:</p>
+<ul>
+<li><strong>Webpack 4:</strong> Community plugins like
+<code>hard-source-webpack-plugin</code> were notorious for cache
+staleness, frequently causing builds to fail or output outdated code
+after dependency updates or configuration changes. Resolving these
+issues routinely required manually clearing the cache directory.</li>
+<li><strong>Webpack 5:</strong> The engine uses sophisticated
+snapshotting algorithms to track file modifications, timestamps, and
+package hashes automatically. Through the <code>buildDependencies</code>
+option, Webpack 5 can also invalidate the entire cache whenever
+configuration files, environment variables, or package versions change,
+preventing stale artifacts from corrupting output.</li>
+</ul>
+<h3 id="performance-and-resource-utilization">Performance and Resource
+Utilization</h3>
+<p>The structural changes directly alter build times and resource
+consumption:</p>
+<ul>
+<li><strong>Webpack 4:</strong> Third-party caching utilities added
+significant serialization overhead and heavy memory usage. In some
+cases, running <code>hard-source-webpack-plugin</code> or multiple
+<code>cache-loader</code> instances consumed more memory than the base
+build, resulting in out-of-memory errors on large projects.</li>
+<li><strong>Webpack 5:</strong> The native serialization layer is
+optimized to stream data to and from disk efficiently. Cold builds face
+minimal overhead, while subsequent warm builds typically see build-time
+reductions of up to 90% without abnormal memory spikes.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

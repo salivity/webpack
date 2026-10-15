@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Deterministic Chunk IDs for Production Caching - webpack</title>
+    <meta name="description" content="Deterministic chunk IDs are critical in Webpack for maintaining reliable long-term browser caching across production deployments. Without them, minor code modifications can disrupt chunk identification across the entire dependency graph, causing content h">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-deterministic-chunk-i-ds-for-production-caching">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Deterministic Chunk IDs for Production Caching - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-deterministic-chunk-i-ds-for-production-caching" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Deterministic chunk IDs are critical in Webpack for maintaining reliable long-term browser caching across production deployments. Without them, minor code modifications can disrupt chunk identification across the entire dependency graph, causing content h" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-deterministic-chunk-ids-for-production-caching">Webpack
+Deterministic Chunk IDs for Production Caching</h1>
+<p>Deterministic chunk IDs are critical in Webpack for maintaining
+reliable long-term browser caching across production deployments.
+Without them, minor code modifications can disrupt chunk identification
+across the entire dependency graph, causing content hashes to change
+unnecessarily. By generating stable identifiers based on module contents
+rather than resolution order, deterministic chunk IDs preserve
+client-side caches, reduce bandwidth usage, and prevent
+deployment-related asset mismatches.</p>
+<h3 id="the-problem-with-non-deterministic-chunk-ids">The Problem with
+Non-Deterministic Chunk IDs</h3>
+<p>Historically, Webpack assigned chunk and module IDs sequentially
+based on the order in which files were resolved during the build process
+(e.g., <code>0.js</code>, <code>1.js</code>). While efficient for build
+performance, this method creates a fragile dependency tree.</p>
+<p>If a developer adds, renames, or deletes an import in one part of the
+application, the entire resolution order shifts. A chunk that had an ID
+of <code>4</code> in the previous build might become <code>5</code> in
+the next build, even if its actual source code was never touched.
+Because the chunk ID changes, the runtime code referencing that chunk
+changes, altering the final filename hash (e.g.,
+<code>chunk.5.a1b2c3.js</code>). As a result, browsers are forced to
+discard their cached assets and re-download chunks that contain
+identical logic.</p>
+<h3 id="how-deterministic-chunk-ids-solve-the-issue">How Deterministic
+Chunk IDs Solve the Issue</h3>
+<p>Setting <code>optimization.chunkIds: 'deterministic'</code> instructs
+Webpack to generate short, stable numeric identifiers derived from the
+chunk's contents and module paths rather than build order.</p>
+<p>This approach provides three distinct advantages:</p>
+<ul>
+<li><strong>Hash Stability:</strong> Because the chunk ID is generated
+deterministically, unrelated code changes will not alter IDs elsewhere
+in the dependency graph. A chunk will only change its ID and filename
+hash if its actual contents or dependencies change.</li>
+<li><strong>Efficient Long-Term Caching:</strong> Production servers can
+safely serve assets with aggressive HTTP caching headers (such as
+<code>Cache-Control: max-age=31536000, immutable</code>). Returning
+users only download the specific vendor or application bundles that were
+actively modified.</li>
+<li><strong>Minimized Runtime Failures:</strong> In distributed or
+rolling deployment environments, users on older page sessions often make
+on-demand requests for dynamically imported chunks. If IDs shift
+unpredictably between releases, those requests can return
+<code>404 Not Found</code> or execute the wrong bundle, causing
+application crashes. Deterministic IDs reduce this volatility.</li>
+</ul>
+<h3 id="implementation-in-webpack">Implementation in Webpack</h3>
+<p>In Webpack 5, deterministic chunk IDs are enabled by default when
+<code>mode</code> is set to <code>'production'</code>. However, when
+writing custom configurations or migrating legacy setups, the behavior
+can be explicitly enforced in the configuration file:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunkIds</span><span class="op">:</span> <span class="st">&#39;deterministic&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">moduleIds</span><span class="op">:</span> <span class="st">&#39;deterministic&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Pairing <code>chunkIds: 'deterministic'</code> with
+<code>moduleIds: 'deterministic'</code> ensures that internal module
+resolutions inside chunks also stay uniform, completing the isolation
+needed for truly immutable production assets.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

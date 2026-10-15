@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack file-loader: Resolving Relative Paths in CSS - webpack</title>
+    <meta name="description" content="When Webpack processes CSS files containing relative image paths, it relies on a coordinated pipeline between css-loader and file-loader to locate, emit, and rewrite those asset references. Understanding this process requires looking at how Webpack treats">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-file-loader-resolving-relative-paths-in-css">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack file-loader: Resolving Relative Paths in CSS - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-file-loader-resolving-relative-paths-in-css" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When Webpack processes CSS files containing relative image paths, it relies on a coordinated pipeline between css-loader and file-loader to locate, emit, and rewrite those asset references. Understanding this process requires looking at how Webpack treats" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-file-loader-resolving-relative-paths-in-css">Webpack
+file-loader: Resolving Relative Paths in CSS</h1>
+<p>When Webpack processes CSS files containing relative image paths, it
+relies on a coordinated pipeline between <code>css-loader</code> and
+<code>file-loader</code> to locate, emit, and rewrite those asset
+references. Understanding this process requires looking at how Webpack
+treats CSS <code>url()</code> declarations as module dependencies, how
+paths are resolved relative to the stylesheet, and how
+<code>file-loader</code> outputs the final assets and rewrites the
+generated URLs.</p>
+<h3 id="1-parsing-css-urls-via-css-loader">1. Parsing CSS URLs via
+<code>css-loader</code></h3>
+<p>The resolution process begins not in <code>file-loader</code>, but in
+<code>css-loader</code>. When Webpack encounters a stylesheet,
+<code>css-loader</code> parses the CSS abstract syntax tree (AST) and
+searches for declarations using <code>url(...)</code>.</p>
+<p>When it encounters a relative path—such as
+<code>background-image: url('./assets/icon.png')</code>—<code>css-loader</code>
+treats that path as a CommonJS or ES module dependency. Crucially,
+<code>css-loader</code> resolves this path relative to the specific CSS
+file in which the <code>url()</code> is declared, not relative to the
+entry point or root directory of your project. It translates the CSS
+statement into an internal import statement:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="pp">require</span>(<span class="st">&#39;./assets/icon.png&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<h3 id="2-module-resolution-and-file-loader-invocation">2. Module
+Resolution and <code>file-loader</code> Invocation</h3>
+<p>Webpack's enhanced module resolver then attempts to locate
+<code>./assets/icon.png</code> on the filesystem. Once the file is
+found, Webpack checks its configured module rules to determine which
+loader should handle that file extension.</p>
+<p>When configured to match image extensions, <code>file-loader</code>
+intercepts the required file. At this stage, <code>file-loader</code>
+performs two main actions:</p>
+<ol type="1">
+<li><strong>Emits the File:</strong> It copies the original binary file
+from its source directory to the configured Webpack output directory
+(such as <code>dist/</code>). During this step, it renames the file
+according to its <code>name</code> configuration, which commonly
+includes content hashes (e.g.,
+<code>[name].[contenthash].[ext]</code>).</li>
+<li><strong>Returns the Public URL:</strong> Instead of returning raw
+image data to the JavaScript bundle, <code>file-loader</code> returns a
+JavaScript module that exports a string representing the final public
+URL of the asset:</li>
+</ol>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> __webpack_public_path__ <span class="op">+</span> <span class="st">&quot;icon.5d41402abc4b2a76b9719d911017c592.png&quot;</span><span class="op">;</span></span></code></pre></div>
+<h3 id="3-rewriting-the-url-in-the-final-css">3. Rewriting the URL in
+the Final CSS</h3>
+<p>After <code>file-loader</code> processes the image, the generated
+string URL is passed back to <code>css-loader</code>. Webpack
+substitutes the original relative path inside the CSS declaration with
+this returned value.</p>
+<p>The output URL depends directly on your Webpack configuration:</p>
+<ul>
+<li><strong>Default Behavior:</strong> If no <code>publicPath</code> is
+set, <code>file-loader</code> generates a path relative to the output
+directory or the runtime public path.</li>
+<li><strong>Custom <code>publicPath</code>:</strong> If
+<code>publicPath</code> is defined (either globally in
+<code>output.publicPath</code> or locally inside
+<code>file-loader</code> options), it prefixes the emitted filename. For
+example, a <code>publicPath</code> of <code>/static/</code> results in
+<code>url('/static/icon.hash.png')</code>.</li>
+</ul>
+<h3 id="4-handling-extracted-css-vs-injected-css">4. Handling Extracted
+CSS vs. Injected CSS</h3>
+<p>The way the final path behaves in the browser depends on how the CSS
+is delivered:</p>
+<ul>
+<li><strong>With <code>style-loader</code>:</strong> The CSS is injected
+directly into <code>&lt;style&gt;</code> tags in the HTML document at
+runtime. The resolved image path will be requested relative to the HTML
+document's base URL unless an absolute <code>publicPath</code> was
+provided.</li>
+<li><strong>With <code>MiniCssExtractPlugin</code>:</strong> The CSS is
+extracted into a standalone <code>.css</code> file in the build
+directory. If the generated path is relative rather than absolute, it
+must be correct relative to the output <code>.css</code> file's
+location, which often requires configuring the <code>publicPath</code>
+option specifically within
+<code>MiniCssExtractPlugin.loader</code>.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

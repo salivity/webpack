@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Dev Server Serves Static Files - webpack</title>
+    <meta name="description" content="Webpack Dev Server serves both dynamically compiled application bundles and physical static assets during local development. While compiled bundles reside in system memory for fast access, assets like static HTML pages, favicons, or standalone images are">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-dev-server-serves-static-files">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Dev Server Serves Static Files - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-dev-server-serves-static-files" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack Dev Server serves both dynamically compiled application bundles and physical static assets during local development. While compiled bundles reside in system memory for fast access, assets like static HTML pages, favicons, or standalone images are" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-dev-server-serves-static-files">How Webpack Dev
+Server Serves Static Files</h1>
+<p>Webpack Dev Server serves both dynamically compiled application
+bundles and physical static assets during local development. While
+compiled bundles reside in system memory for fast access, assets like
+static HTML pages, favicons, or standalone images are read directly from
+the filesystem. Depending on your version of
+<code>webpack-dev-server</code>, this behavior is controlled by either
+the modern <code>static</code> option (version 4 and above) or the
+legacy <code>contentBase</code> option (version 3 and earlier).</p>
+<h2 id="how-static-asset-resolution-works">How Static Asset Resolution
+Works</h2>
+<p>When a request arrives at Webpack Dev Server, it follows an internal
+lookup sequence:</p>
+<ol type="1">
+<li><strong>In-Memory Assets:</strong> Webpack writes compiled bundles
+to virtual memory using an in-memory filesystem (such as
+<code>memfs</code>). The server first evaluates whether the incoming
+request path matches any compiled bundle located at the defined
+<code>output.publicPath</code>.</li>
+<li><strong>Static Fallback:</strong> If the requested file is not in
+memory, the internal Express server forwards the request to underlying
+static file middleware (similar to <code>express.static</code>). The
+middleware searches the directory designated by <code>static</code> (or
+<code>contentBase</code>).</li>
+<li><strong>Response or 404:</strong> If a physical file matching the
+path exists in that directory, it is served to the client. If not, the
+server either falls back via <code>historyApiFallback</code> (if enabled
+for single-page applications) or returns a <code>404 Not Found</code>
+response.</li>
+</ol>
+<h2 id="modern-configuration-the-static-option-v4">Modern Configuration:
+The <code>static</code> Option (v4+)</h2>
+<p>Starting in <code>webpack-dev-server</code> v4, the
+<code>contentBase</code> option was deprecated and replaced with the
+<code>static</code> configuration block. The <code>static</code> option
+allows developers to specify where static files should be served from
+and how the server monitors them for changes.</p>
+<h3 id="basic-string-usage">Basic String Usage</h3>
+<p>To tell the server to serve files from a single physical
+directory:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devServer</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">static</span><span class="op">:</span> path<span class="op">.</span><span class="fu">join</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;public&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="advanced-object-configuration">Advanced Object
+Configuration</h3>
+<p>The <code>static</code> property accepts an object to fine-tune asset
+delivery:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devServer</span><span class="op">:</span> {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">static</span><span class="op">:</span> {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">directory</span><span class="op">:</span> path<span class="op">.</span><span class="fu">join</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;public&#39;</span>)<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">publicPath</span><span class="op">:</span> <span class="st">&#39;/static-assets&#39;</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">serveIndex</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">watch</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<ul>
+<li><strong><code>directory</code></strong>: The absolute path to the
+directory containing static assets.</li>
+<li><strong><code>publicPath</code></strong>: The mount path or URL
+prefix from which static assets are served. In the example above, a file
+at <code>public/logo.png</code> would be accessed at
+<code>http://localhost:8080/static-assets/logo.png</code>.</li>
+<li><strong><code>serveIndex</code></strong>: Instructs the server to
+generate a directory listing if a requested path maps to a directory
+without an <code>index.html</code>.</li>
+<li><strong><code>watch</code></strong>: Tells the server to monitor the
+static directory for file modifications and trigger a browser reload
+when changes occur.</li>
+</ul>
+<h3 id="multiple-directories">Multiple Directories</h3>
+<p>You can serve static files from multiple sources by supplying an
+array of strings or configuration objects:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>devServer<span class="op">:</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">static</span><span class="op">:</span> [</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    path<span class="op">.</span><span class="fu">join</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;public&#39;</span>)<span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    path<span class="op">.</span><span class="fu">join</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;assets&#39;</span>)<span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>To completely disable serving static files from disk, set the
+property to <code>false</code>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>devServer<span class="op">:</span> {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">static</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h2
+id="legacy-configuration-the-contentbase-option-v3-and-earlier">Legacy
+Configuration: The <code>contentBase</code> Option (v3 and earlier)</h2>
+<p>In version 3 and earlier of <code>webpack-dev-server</code>, static
+file resolution was governed by <code>contentBase</code>. Although
+superseded by <code>static</code>, it handled requests in the same
+general manner.</p>
+<h3 id="syntax">Syntax</h3>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devServer</span><span class="op">:</span> {</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">contentBase</span><span class="op">:</span> path<span class="op">.</span><span class="fu">join</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;public&#39;</span>)<span class="op">,</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">contentBasePublicPath</span><span class="op">:</span> <span class="st">&#39;/serve-path&#39;</span><span class="op">,</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">watchContentBase</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<ul>
+<li><strong><code>contentBase</code></strong>: Accepted a path string,
+an array of paths, or a boolean (<code>false</code> disabled static
+serving).</li>
+<li><strong><code>contentBasePublicPath</code></strong>: Dictated the
+URL path where <code>contentBase</code> assets were mounted.</li>
+<li><strong><code>watchContentBase</code></strong>: When set to
+<code>true</code>, enabled file watching on the static directory to
+reload the page on updates.</li>
+</ul>
+<h2 id="key-differences">Key Differences</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Legacy (<code>contentBase</code>)</th>
+<th style="text-align: left;">Modern (<code>static</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Server Version</strong></td>
+<td style="text-align: left;"><code>webpack-dev-server</code> ≤ v3</td>
+<td style="text-align: left;"><code>webpack-dev-server</code> ≥ v4</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Directory Watch
+Setting</strong></td>
+<td style="text-align: left;"><code>watchContentBase: true</code></td>
+<td style="text-align: left;"><code>static: { watch: true }</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>URL Prefix Setting</strong></td>
+<td
+style="text-align: left;"><code>contentBasePublicPath: '/path'</code></td>
+<td
+style="text-align: left;"><code>static: { publicPath: '/path' }</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Structure</strong></td>
+<td style="text-align: left;">Scattered root-level properties</td>
+<td style="text-align: left;">Consolidated configuration object</td>
+</tr>
+</tbody>
+</table></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

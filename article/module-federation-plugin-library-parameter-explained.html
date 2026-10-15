@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ModuleFederationPlugin Library Parameter Explained - webpack</title>
+    <meta name="description" content="This article explains the purpose, configuration, and practical use cases of the library parameter within Webpack’s ModuleFederationPlugin. You will learn how this option defines the output format and global assignment of federated containers, ensuring pr">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/module-federation-plugin-library-parameter-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ModuleFederationPlugin Library Parameter Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/module-federation-plugin-library-parameter-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the purpose, configuration, and practical use cases of the library parameter within Webpack’s ModuleFederationPlugin. You will learn how this option defines the output format and global assignment of federated containers, ensuring pr" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="modulefederationplugin-library-parameter-explained">ModuleFederationPlugin
+Library Parameter Explained</h1>
+<p>This article explains the purpose, configuration, and practical use
+cases of the <code>library</code> parameter within Webpack’s
+<code>ModuleFederationPlugin</code>. You will learn how this option
+defines the output format and global assignment of federated containers,
+ensuring proper integration between host applications and remote
+micro-frontends.</p>
+<hr />
+<h3 id="what-is-the-library-parameter">What Is the <code>library</code>
+Parameter?</h3>
+<p>In Webpack 5, the <code>ModuleFederationPlugin</code> allows multiple
+independent builds to form a single application. When a build exposes
+modules as a remote container, it produces a container entry file
+(commonly named <code>remoteEntry.js</code>).</p>
+<p>The <code>library</code> parameter determines <strong>how this
+container is assigned, exposed, and accessed</strong> in the execution
+environment. It defines the export target and mechanism that the host
+uses to reference the remote container's interface.</p>
+<h3 id="syntax-and-structure">Syntax and Structure</h3>
+<p>The <code>library</code> parameter accepts an object specifying the
+target <code>type</code> and an optional <code>name</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;app_remote&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">library</span><span class="op">:</span> { </span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;var&#39;</span><span class="op">,</span> </span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;app_remote&#39;</span> </span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">exposes</span><span class="op">:</span> {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;./Button&#39;</span><span class="op">:</span> <span class="st">&#39;./src/Button&#39;</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<p>If the <code>name</code> within <code>library</code> is omitted,
+Webpack typically falls back to the top-level <code>name</code> provided
+in the plugin options.</p>
+<h3 id="common-library-types">Common Library Types</h3>
+<p>The <code>type</code> property defines the environment-specific
+mechanism used to expose the container:</p>
+<ul>
+<li><strong><code>var</code> (Default for script tags):</strong> Assigns
+the container to a variable in the current scope. When loaded via a
+<code>&lt;script&gt;</code> tag in a browser, it creates a global
+variable matching the specified <code>name</code>.</li>
+<li><strong><code>window</code>:</strong> Explicitly assigns the
+container object to the browser's <code>window</code> object (e.g.,
+<code>window.app_remote</code>).</li>
+<li><strong><code>global</code> / <code>globalThis</code>:</strong>
+Attaches the container to <code>globalThis</code>, making it accessible
+across diverse environments like Node.js, Web Workers, and modern
+browsers.</li>
+<li><strong><code>module</code>:</strong> Exposes the container as a
+native ECMAScript Module (ESM). This removes reliance on global
+variables and requires setting
+<code>experiments.outputModule: true</code> in your Webpack
+configuration.</li>
+<li><strong><code>assign-properties</code> / <code>this</code>:</strong>
+Attaches the exposed container properties directly to the current
+execution context.</li>
+</ul>
+<h3 id="why-the-library-parameter-matters">Why the <code>library</code>
+Parameter Matters</h3>
+<ol type="1">
+<li><strong>Host-Remote Communication:</strong> The host application
+needs a standardized way to find the remote entry once it is loaded. If
+the host expects a global variable, but the remote outputs an ES module
+without setting the appropriate <code>library.type</code>, the host will
+fail to locate the container interface.</li>
+<li><strong>Server-Side Rendering (SSR) and Node.js:</strong> Browser
+environments often rely on <code>var</code> or <code>window</code>, but
+Node.js environments lack a <code>window</code> object. Adjusting the
+<code>library</code> type to <code>commonjs-module</code>,
+<code>global</code>, or <code>module</code> enables federated code
+execution on the server.</li>
+<li><strong>Transition to Modern ES Modules:</strong> As modern web
+architecture moves away from polluting the global namespace with
+<code>window</code> objects, setting
+<code>library: { type: 'module' }</code> allows federated remotes to be
+dynamically imported using native browser <code>import()</code>
+statements.</li>
+</ol>
+<h3 id="summary">Summary</h3>
+<p>The <code>library</code> parameter in
+<code>ModuleFederationPlugin</code> acts as the bridge between how a
+remote container is bundled and how a host application consumes it.
+Configuring it correctly ensures compatibility with your target runtime,
+prevents global namespace conflicts, and allows seamless adoption of
+modern module formats.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

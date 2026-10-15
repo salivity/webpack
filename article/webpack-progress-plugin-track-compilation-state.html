@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack ProgressPlugin: Track Compilation State - webpack</title>
+    <meta name="description" content="webpack.ProgressPlugin is a built-in Webpack utility designed to report the status and progress of the compilation process in real time. This article covers what webpack.ProgressPlugin is, how it hooks into the internal build lifecycle to determine compil">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-progress-plugin-track-compilation-state">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack ProgressPlugin: Track Compilation State - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-progress-plugin-track-compilation-state" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="webpack.ProgressPlugin is a built-in Webpack utility designed to report the status and progress of the compilation process in real time. This article covers what webpack.ProgressPlugin is, how it hooks into the internal build lifecycle to determine compil" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-progressplugin-track-compilation-state">Webpack
+ProgressPlugin: Track Compilation State</h1>
+<p><code>webpack.ProgressPlugin</code> is a built-in Webpack utility
+designed to report the status and progress of the compilation process in
+real time. This article covers what <code>webpack.ProgressPlugin</code>
+is, how it hooks into the internal build lifecycle to determine
+compilation stages, and how developers can configure it to display
+custom build metrics and progress indicators in their terminal or build
+tooling.</p>
+<h3 id="what-is-webpackprogressplugin">What Is
+webpack.ProgressPlugin?</h3>
+<p><code>webpack.ProgressPlugin</code> provides feedback during
+Webpack's build execution. By default, large builds can appear stalled
+as Webpack resolves dependencies, parses Abstract Syntax Trees (ASTs),
+runs loaders, and applies optimizations. <code>ProgressPlugin</code>
+bridges this visibility gap by tapping directly into Webpack's internal
+hooks to calculate an estimated completion percentage and identify the
+current active compilation task.</p>
+<h3 id="how-progressplugin-tracks-compilation-state">How ProgressPlugin
+Tracks Compilation State</h3>
+<p>Webpack compiles assets through a sequence of internal hooks managed
+by its <code>Tapable</code> engine. <code>ProgressPlugin</code>
+intercepts these lifecycle stages to infer progress.</p>
+<ol type="1">
+<li><strong>Lifecycle Hook Attachment</strong>: When initialized, the
+plugin attaches listeners to key compiler and compilation hooks such as
+<code>beforeRun</code>, <code>run</code>,
+<code>normalModuleFactory</code>, <code>compilation</code>,
+<code>make</code>, <code>optimize</code>, and <code>emit</code>.</li>
+<li><strong>State Estimation</strong>: Webpack cannot know the exact
+number of modules in advance because dynamic imports and nested
+dependencies are discovered recursively. To overcome this,
+<code>ProgressPlugin</code> calculates an estimated completion ratio
+(from <code>0</code> to <code>1</code>) based on the current stage of
+the build pipeline (e.g., module resolution, compilation, tree shaking,
+asset emission).</li>
+<li><strong>Module Counter Tracking</strong>: As modules are resolved
+and transformed by loaders, the plugin tracks how many modules have
+finished versus how many are currently enqueued, updating the overall
+percentage continuously.</li>
+</ol>
+<h3 id="displaying-compilation-state">Displaying Compilation State</h3>
+<p>By default, when enabled through the Webpack configuration or the CLI
+flag (<code>--progress</code>), the plugin writes directly to the
+standard output (<code>stdout</code>), printing a percentage along with
+the current compilation step:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpack <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other configuration settings</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> webpack<span class="op">.</span><span class="fu">ProgressPlugin</span>()</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This renders inline updates in the terminal, such as:</p>
+<pre class="text"><code>10% building 2/2 modules 0 active
+70% building 142/150 modules 8 active .../src/components/App.js
+98% emit</code></pre>
+<h3 id="customizing-the-display-handler">Customizing the Display
+Handler</h3>
+<p><code>ProgressPlugin</code> accepts a custom handler function that
+receives the raw progress metrics. This allows developers to route
+compilation data to custom loggers, graphical interfaces, or remote
+monitoring systems.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> webpack<span class="op">.</span><span class="fu">ProgressPlugin</span>({</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">activeModules</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entries</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">modules</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">modulesCount</span><span class="op">:</span> <span class="dv">5000</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">profile</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">handler</span>(percentage<span class="op">,</span> message<span class="op">,</span> <span class="op">...</span>args) {</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> percent <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">floor</span>(percentage <span class="op">*</span> <span class="dv">100</span>)<span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="vs">`</span><span class="sc">${</span>percent<span class="sc">}</span><span class="vs">% - </span><span class="sc">${</span>message<span class="sc">}</span><span class="vs">`</span><span class="op">,</span> <span class="op">...</span>args)<span class="op">;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<p>The parameters provided to the custom handler are:</p>
+<ul>
+<li><strong>percentage</strong>: A floating-point number between
+<code>0</code> and <code>1</code> representing the overall build
+progress.</li>
+<li><strong>message</strong>: A short description of the current task
+(e.g., <code>building</code>, <code>optimizing</code>,
+<code>emitting</code>).</li>
+<li><strong>...args</strong>: Contextual details, such as the current
+module path, module count, or optimization step.</li>
+</ul>
+<h3 id="configuration-options">Configuration Options</h3>
+<p>The plugin supports several configuration flags to control the
+granularity of the displayed state:</p>
+<ul>
+<li><strong><code>activeModules</code></strong> <em>(boolean)</em>:
+Displays the file currently being processed.</li>
+<li><strong><code>entries</code></strong> <em>(boolean)</em>: Displays
+progress regarding the entry point resolution.</li>
+<li><strong><code>modules</code></strong> <em>(boolean)</em>: Displays
+the count of built modules versus total detected modules.</li>
+<li><strong><code>modulesCount</code></strong> <em>(number)</em>: Sets
+an initial minimum module count to improve percentage accuracy early in
+the build.</li>
+<li><strong><code>profile</code></strong> <em>(boolean)</em>: Collects
+execution timings for individual build steps to help identify
+performance bottlenecks.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

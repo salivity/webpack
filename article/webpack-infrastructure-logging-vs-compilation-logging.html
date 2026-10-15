@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Infrastructure Logging vs Compilation Logging - webpack</title>
+    <meta name="description" content="Webpack provides two distinct logging systems: compilation logging and infrastructure logging. While standard compilation logging focuses on the output of the build process—such as module graphs, emitted assets, bundle sizes, and module-specific errors—in">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-infrastructure-logging-vs-compilation-logging">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Infrastructure Logging vs Compilation Logging - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-infrastructure-logging-vs-compilation-logging" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack provides two distinct logging systems: compilation logging and infrastructure logging. While standard compilation logging focuses on the output of the build process—such as module graphs, emitted assets, bundle sizes, and module-specific errors—in" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-infrastructure-logging-vs-compilation-logging">Webpack
+Infrastructure Logging vs Compilation Logging</h1>
+<p>Webpack provides two distinct logging systems: compilation logging
+and infrastructure logging. While standard compilation logging focuses
+on the output of the build process—such as module graphs, emitted
+assets, bundle sizes, and module-specific errors—infrastructure logging
+exposes the internal mechanics of Webpack itself, covering lifecycle
+operations, caching behavior, and plugin system processes. Understanding
+the operational differences, configuration options, and use cases for
+each system allows developers to debug build issues more effectively and
+optimize Webpack's performance.</p>
+<h3 id="standard-compilation-logging">Standard Compilation Logging</h3>
+<p>Standard compilation logging relates directly to the transformation
+and bundling of application code. Every time a build or rebuild
+triggers, Webpack creates a <code>Compilation</code> instance that
+resolves modules, applies loaders, optimizes dependencies, and emits
+finished assets.</p>
+<p>Compilation logs detail the output of this specific build cycle. This
+includes:</p>
+<ul>
+<li>Errors and warnings originating from loaders (e.g., Babel,
+TypeScript) or syntax issues in source files.</li>
+<li>Details on emitted chunks, bundle sizes, and asset file names.</li>
+<li>Information about the module hierarchy, circular dependencies, and
+asset optimization passes.</li>
+</ul>
+<p>Developers configure compilation output using the <code>stats</code>
+option in the Webpack configuration. This controls the verbosity of
+build metrics, helping developers identify code issues, analyze bundle
+sizes, and trace module dependencies.</p>
+<h3 id="webpack-infrastructure-logging">Webpack Infrastructure
+Logging</h3>
+<p>Infrastructure logging operates at a layer above individual
+compilation cycles, capturing the behavior of the Webpack
+<code>Compiler</code> instance and the environment running it. This
+system tracks internal events that happen before, after, or
+independently of specific module bundling.</p>
+<p>Infrastructure logs provide visibility into:</p>
+<ul>
+<li>Persistent caching mechanisms (such as cache hits, misses, or
+serialization errors on the disk).</li>
+<li>Watch mode file-system triggers and event listeners.</li>
+<li>Low-level operations inside third-party plugins that register
+directly with compiler hooks.</li>
+<li>Process-level lifecycle milestones, such as compiler initialization,
+target environment resolution, and garbage collection metrics.</li>
+</ul>
+<p>Infrastructure logging is configured via the
+<code>infrastructureLogging</code> object in the Webpack configuration.
+This system can be routed to standard console outputs, custom streams,
+or external monitoring tools to trace the health and performance of the
+build toolchain.</p>
+<h3 id="key-differences">Key Differences</h3>
+<h4 id="1-scope-and-lifecycle">1. Scope and Lifecycle</h4>
+<ul>
+<li><strong>Compilation Logging:</strong> Scoped strictly to the
+creation of bundle artifacts. It resets with every incremental
+compilation triggered during watch mode.</li>
+<li><strong>Infrastructure Logging:</strong> Scoped to the lifecycle of
+the entire Webpack execution. It tracks ongoing processes that persist
+across multiple compilations, such as long-lived cache layers and
+filesystem watchers.</li>
+</ul>
+<h4 id="2-configuration-settings">2. Configuration Settings</h4>
+<ul>
+<li><strong>Compilation Logging:</strong> Governed by the
+<code>stats</code> property in <code>webpack.config.js</code> (e.g.,
+<code>stats: 'minimal'</code>,
+<code>stats: { assets: true, modules: false }</code>).</li>
+<li><strong>Infrastructure Logging:</strong> Governed by the
+<code>infrastructureLogging</code> property (e.g.,
+<code>infrastructureLogging: { level: 'verbose', debug: ['webpack/lib/Cache'] }</code>).</li>
+</ul>
+<h4 id="3-primary-use-cases">3. Primary Use Cases</h4>
+<ul>
+<li><strong>Compilation Logging:</strong> Useful for general application
+development. It helps developers resolve syntax errors, fix broken
+imports, monitor chunk distribution, and keep bundle sizes within
+designated performance budgets.</li>
+<li><strong>Infrastructure Logging:</strong> Useful for build engineers,
+plugin authors, and developers diagnosing performance regressions. It
+identifies why persistent caching fails, monitors filesystem overhead,
+and detects internal bottlenecks inside the Webpack engine.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

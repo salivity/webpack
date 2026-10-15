@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack 5 clean Option vs CleanWebpackPlugin - webpack</title>
+    <meta name="description" content="Webpack 5 introduced the built-in output.clean configuration option, providing a native mechanism to clean your build directory prior to emitting new bundles. This article explains how the native output.clean option works, how it directly compares to the">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-5-clean-option-vs-clean-webpack-plugin">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack 5 clean Option vs CleanWebpackPlugin - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-5-clean-option-vs-clean-webpack-plugin" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 introduced the built-in output.clean configuration option, providing a native mechanism to clean your build directory prior to emitting new bundles. This article explains how the native output.clean option works, how it directly compares to the" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-5-clean-option-vs-cleanwebpackplugin">Webpack 5 clean
+Option vs CleanWebpackPlugin</h1>
+<p>Webpack 5 introduced the built-in <code>output.clean</code>
+configuration option, providing a native mechanism to clean your build
+directory prior to emitting new bundles. This article explains how the
+native <code>output.clean</code> option works, how it directly compares
+to the traditionally used <code>clean-webpack-plugin</code> (often
+referenced as <code>CleanWebpackPlugin</code>), and why migrating to the
+native solution simplifies your build configuration.</p>
+<h2 id="understanding-webpack-5s-outputclean">Understanding Webpack 5's
+output.clean</h2>
+<p>In Webpack 5, the <code>output.clean</code> option handles clearing
+the output directory (defined by <code>output.path</code>) before
+generating new files. Previously, Webpack left stale assets in the
+distribution folder, which could lead to confusion or deployment of
+unused files when bundle hashes changed.</p>
+<p>Enabling it natively requires no extra packages. In its simplest
+form, it takes a boolean:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].js&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">clean</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Webpack 5 also supports advanced configurations through an
+object:</p>
+<ul>
+<li><strong><code>keep</code></strong>: A RegExp, function, or string to
+preserve specific files (e.g., <code>keep: /ignored-dir\//</code>).</li>
+<li><strong><code>dry</code></strong>: A boolean
+(<code>true</code>/<code>false</code>) to log which files would be
+removed without actually deleting them.</li>
+</ul>
+<h2 id="what-is-cleanwebpackplugin">What is CleanWebpackPlugin?</h2>
+<p>Before Webpack 5, the standard community approach to cleaning output
+folders was the third-party package <code>clean-webpack-plugin</code>.
+It hook into the Webpack compilation lifecycle via the
+<code>plugins</code> array:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { CleanWebpackPlugin } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;clean-webpack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">CleanWebpackPlugin</span>({</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">cleanStaleWebpackAssets</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">protectWebpackAssets</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This plugin provided extensive configuration options, such as glob
+pattern matching, cleaning files outside the Webpack build directory,
+and granular lifecycle hooks.</p>
+<h2 id="key-differences">Key Differences</h2>
+<h3 id="1-zero-external-dependencies">1. Zero External Dependencies</h3>
+<p>The most significant difference is that <code>output.clean</code> is
+built directly into the Webpack 5 core. Using it removes
+<code>clean-webpack-plugin</code> from your <code>package.json</code>,
+reducing dependency bloat, security audit overhead, and compatibility
+issues across minor Webpack updates.</p>
+<h3 id="2-configuration-simplicity">2. Configuration Simplicity</h3>
+<p>Configuring the native feature is concise. Instead of importing a
+plugin class and adding it to the <code>plugins</code> array, setting
+<code>output.clean: true</code> handles the vast majority of standard
+use cases.</p>
+<h3 id="3-execution-lifecycle-and-performance">3. Execution Lifecycle
+and Performance</h3>
+<p>Because <code>output.clean</code> is an internal Webpack feature, it
+integrates seamlessly with Webpack 5's file-system caching and Asset
+Modules. It only removes files created by previous builds or outdated
+assets within the designated <code>output.path</code>, minimizing
+unexpected file deletions. In contrast,
+<code>clean-webpack-plugin</code> operates as an external lifecycle
+listener and occasionally required workarounds for development servers
+or watch mode (e.g., <code>cleanStaleWebpackAssets: false</code>).</p>
+<h3 id="4-advanced-matching-and-path-boundaries">4. Advanced Matching
+and Path Boundaries</h3>
+<p>While <code>output.clean</code> covers almost all typical workflows,
+<code>clean-webpack-plugin</code> offers broader flexibility for edge
+cases:</p>
+<ul>
+<li><strong>Outside Output Paths</strong>:
+<code>clean-webpack-plugin</code> can delete files located outside of
+Webpack's <code>output.path</code> (e.g., clearing root-level temp
+folders), though this requires explicit opt-in via
+<code>dangerouslyAllowCleanPatternsOutsideProject</code>.</li>
+<li><strong>Pattern Matching</strong>: <code>CleanWebpackPlugin</code>
+uses full glob syntax for removals. Webpack 5's
+<code>output.clean</code> relies on regular expressions or predicate
+functions via the <code>keep</code> property.</li>
+</ul>
+<h2 id="which-should-you-use">Which Should You Use?</h2>
+<p>For nearly all Webpack 5 projects, the native
+<code>output.clean</code> is the recommended choice. It eliminates an
+unnecessary dependency, runs cleanly alongside modern Webpack features,
+and requires minimal configuration. <code>CleanWebpackPlugin</code>
+should only be retained if your build pipeline explicitly depends on
+cleaning directories outside the defined <code>output.path</code>.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

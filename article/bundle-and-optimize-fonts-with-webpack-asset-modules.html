@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bundle and Optimize Fonts with Webpack Asset Modules - webpack</title>
+    <meta name="description" content="Webpack 5 introduced Asset Modules, eliminating the need for legacy loaders like file-loader and url-loader to process static assets. This guide details how to configure Webpack Asset Modules to load, hash, and organize custom font files—such as WOFF2, WO">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/bundle-and-optimize-fonts-with-webpack-asset-modules">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bundle and Optimize Fonts with Webpack Asset Modules - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/bundle-and-optimize-fonts-with-webpack-asset-modules" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 introduced Asset Modules, eliminating the need for legacy loaders like file-loader and url-loader to process static assets. This guide details how to configure Webpack Asset Modules to load, hash, and organize custom font files—such as WOFF2, WO" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="bundle-and-optimize-fonts-with-webpack-asset-modules">Bundle and
+Optimize Fonts with Webpack Asset Modules</h1>
+<p>Webpack 5 introduced Asset Modules, eliminating the need for legacy
+loaders like <code>file-loader</code> and <code>url-loader</code> to
+process static assets. This guide details how to configure Webpack Asset
+Modules to load, hash, and organize custom font files—such as WOFF2,
+WOFF, TTF, and EOT—while applying best practices to optimize web font
+delivery for faster page loads.</p>
+<h2 id="understanding-webpack-asset-module-types">Understanding Webpack
+Asset Module Types</h2>
+<p>Asset Modules handle assets natively using four built-in module
+types:</p>
+<ul>
+<li><strong><code>asset/resource</code></strong>: Emits a separate file
+to the build directory and exports the URL. This is the recommended
+choice for custom web fonts.</li>
+<li><strong><code>asset/inline</code></strong>: Exports the asset as a
+Base64-encoded Data URI directly inside the bundle.</li>
+<li><strong><code>asset</code></strong>: Automatically chooses between
+emitting a file or inlining based on a default size limit (8 KB).</li>
+<li><strong><code>asset/source</code></strong>: Exports the raw source
+code of the asset.</li>
+</ul>
+<p>For fonts, <code>asset/resource</code> is preferred. Inlining fonts
+into CSS or JavaScript via <code>asset/inline</code> increases parse
+times and prevents the browser from loading fonts asynchronously and
+caching them independently.</p>
+<h2 id="configuring-webpack-for-fonts">Configuring Webpack for
+Fonts</h2>
+<p>To process font files, add a rule to the <code>module.rules</code>
+array in your <code>webpack.config.js</code> targeting common font
+extensions.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">clean</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">woff</span><span class="sc">|</span><span class="ss">woff2</span><span class="sc">|</span><span class="ss">eot</span><span class="sc">|</span><span class="ss">ttf</span><span class="sc">|</span><span class="ss">otf</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/resource&#39;</span><span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">generator</span><span class="op">:</span> {</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>          <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;fonts/[name].[contenthash][ext]&#39;</span><span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">css</span><span class="sc">$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> [<span class="st">&#39;style-loader&#39;</span><span class="op">,</span> <span class="st">&#39;css-loader&#39;</span>]<span class="op">,</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="configuration-breakdown">Configuration Breakdown</h3>
+<ul>
+<li><strong><code>test</code></strong>: A regular expression matching
+font extensions (<code>.woff</code>, <code>.woff2</code>,
+<code>.eot</code>, <code>.ttf</code>, <code>.otf</code>).</li>
+<li><strong><code>type: 'asset/resource'</code></strong>: Instructs
+Webpack to emit matching files to the output directory.</li>
+<li><strong><code>generator.filename</code></strong>: Defines the output
+path and naming convention. Using <code>[contenthash]</code> ensures
+robust cache busting when a font file is updated, while
+<code>fonts/</code> keeps the distribution folder organized.</li>
+</ul>
+<h2 id="consuming-fonts-in-css">Consuming Fonts in CSS</h2>
+<p>Once Webpack is configured, import your font files via standard CSS
+<code>@font-face</code> rules. The <code>css-loader</code> resolves
+relative file paths, and Webpack replaces them with the final hashed
+output URLs.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode css"><code class="sourceCode css"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">@font-face</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">font-family</span><span class="ch">:</span> <span class="st">&#39;CustomFont&#39;</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">src</span><span class="ch">:</span> <span class="fu">url(</span><span class="st">&#39;./fonts/CustomFont.woff2&#39;</span><span class="fu">)</span> <span class="fu">format(</span><span class="st">&#39;woff2&#39;</span><span class="fu">)</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>       <span class="fu">url(</span><span class="st">&#39;./fonts/CustomFont.woff&#39;</span><span class="fu">)</span> <span class="fu">format(</span><span class="st">&#39;woff&#39;</span><span class="fu">)</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">font-weight</span><span class="ch">:</span> <span class="dv">400</span><span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">font-style</span><span class="ch">:</span> <span class="dv">normal</span><span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">font-display</span><span class="ch">:</span> <span class="dv">swap</span><span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>body {</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">font-family</span><span class="ch">:</span> <span class="st">&#39;CustomFont&#39;</span><span class="op">,</span> <span class="dv">sans-serif</span><span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h2 id="optimization-strategies">Optimization Strategies</h2>
+<h3 id="1-prioritize-modern-formats-woff2">1. Prioritize Modern Formats
+(WOFF2)</h3>
+<p>WOFF2 offers superior compression (typically 30% smaller than
+standard WOFF and significantly smaller than TTF). Modern browsers
+widely support WOFF2. If legacy browser support (such as IE11) is not
+required, bundle only WOFF2 files to reduce build size and
+complexity.</p>
+<h3 id="2-use-font-display-swap">2. Use
+<code>font-display: swap</code></h3>
+<p>Declare <code>font-display: swap</code> inside your
+<code>@font-face</code> definitions. This tells the browser to render
+fallback text immediately while the custom font is downloading, avoiding
+the Flash of Invisible Text (FOIT).</p>
+<h3 id="3-preload-critical-fonts">3. Preload Critical Fonts</h3>
+<p>To avoid render-blocking chains where the browser discovers fonts
+late in the CSS parsing phase, preload critical font files in your
+HTML:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode html"><code class="sourceCode html"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">link</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ot">  rel</span><span class="op">=</span><span class="st">&quot;preload&quot;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ot">  href</span><span class="op">=</span><span class="st">&quot;/fonts/CustomFont.abc1234.woff2&quot;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="ot">  as</span><span class="op">=</span><span class="st">&quot;font&quot;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="ot">  type</span><span class="op">=</span><span class="st">&quot;font/woff2&quot;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="ot">  crossorigin</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="dt">/&gt;</span></span></code></pre></div>
+<p>When using <code>html-webpack-plugin</code>, the hash changes
+dynamically. You can automate font preloading using plugins such as
+<code>preload-webpack-plugin</code> or by injecting preload tags
+directly through custom HTML templates.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Serializes Module Data for Caching - webpack</title>
+    <meta name="description" content="Webpack’s persistent filesystem caching significantly speeds up build times by storing compiled module data, dependencies, and resolution snapshots to disk between runs. To handle the complex, circular data structures inherent in JavaScript module graphs">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-serializes-module-data-for-caching">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Serializes Module Data for Caching - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-serializes-module-data-for-caching" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack’s persistent filesystem caching significantly speeds up build times by storing compiled module data, dependencies, and resolution snapshots to disk between runs. To handle the complex, circular data structures inherent in JavaScript module graphs" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-serializes-module-data-for-caching">How Webpack
+Serializes Module Data for Caching</h1>
+<p>Webpack’s persistent filesystem caching significantly speeds up build
+times by storing compiled module data, dependencies, and resolution
+snapshots to disk between runs. To handle the complex, circular data
+structures inherent in JavaScript module graphs without severe
+performance penalties, Webpack avoids standard formats like JSON in
+favor of a specialized binary serialization pipeline. This article
+details the internal mechanics of how Webpack serializes in-memory
+compilation objects into disk-stored binary files and reconstructs them
+during subsequent builds.</p>
+<h2 id="the-dedicated-serialization-pipeline">The Dedicated
+Serialization Pipeline</h2>
+<p>Webpack implements its own serialization framework located within
+<code>lib/util/serialization.js</code>. Standard serialization methods
+like <code>JSON.stringify</code> cannot handle circular references,
+prototype chains, custom class instances, or raw <code>Buffer</code>
+instances. While Node's native <code>v8.serialize</code> can handle some
+of these, it lacks the fine-grained backward-compatibility controls,
+deterministic encoding, and granular caching mechanisms needed across
+varying build environments.</p>
+<p>Webpack solves this by using a stream-based binary serialization
+format. Objects are encoded as a continuous stream of primitive tokens
+(such as integers, strings, booleans, nulls, and buffers) mapped to
+distinct type markers.</p>
+<h2 id="class-registration-and-serializers">Class Registration and
+Serializers</h2>
+<p>Every object stored in the cache must be explicitly registered with
+Webpack’s serialization registry. Core classes—such as
+<code>NormalModule</code>, <code>SourceMap</code>,
+<code>Dependency</code>, and <code>ModuleGraph</code> metadata—are
+registered using
+<code>register(Constructor, request, name, serializer)</code>.</p>
+<p>The serializer contract requires two main methods:</p>
+<ul>
+<li><strong><code>serialize(obj, context)</code></strong>: Extracts
+critical state from an instance and calls
+<code>context.write(value)</code> for each property.</li>
+<li><strong><code>deserialize(context)</code></strong>: Reads primitive
+values using <code>context.read()</code> in the exact order they were
+written, instantiates the registered class, and restores its internal
+state.</li>
+</ul>
+<p>By registering class constructors alongside module paths, Webpack can
+reliably recreate proper prototypes and prototype methods during
+deserialization without relying on <code>eval</code> or unsafe object
+parsing.</p>
+<h2 id="handling-graph-cycles-and-references">Handling Graph Cycles and
+References</h2>
+<p>The Webpack module graph is inherently cyclic; modules reference
+dependencies, dependencies reference parent modules, and chunks
+reference sets of modules.</p>
+<p>To serialize these circular references without infinite recursion,
+Webpack’s serializer maintains an internal object reference table during
+a single serialization session:</p>
+<ol type="1">
+<li>When an object is serialized for the first time, it is assigned an
+incremental numeric reference ID.</li>
+<li>If the serializer encounters the same object reference again in the
+graph, it writes a back-reference marker followed by the assigned
+reference ID rather than re-serializing the entire object.</li>
+<li>During deserialization, an internal map tracks instantiated objects
+by ID. When a back-reference marker is read, the deserializer retrieves
+the existing object from the map and links it, perfectly reconstructing
+circular references in memory.</li>
+</ol>
+<h2 id="storage-via-packfilecachestrategy">Storage via
+<code>PackFileCacheStrategy</code></h2>
+<p>Serialization to disk is orchestrated by
+<code>PackFileCacheStrategy</code>. Rather than writing thousands of
+individual files for each processed module—which would overwhelm OS file
+descriptors and disk I/O—Webpack bundles serialized items into
+structured <code>.pack</code> files located within the
+<code>.cache/webpack</code> directory.</p>
+<p>The storage pipeline relies on serialization middleware:</p>
+<ul>
+<li><strong><code>BinaryMiddleware</code></strong>: Encodes high-level
+JavaScript types into tightly packed binary buffers. It uses
+variable-length integer encoding to minimize disk footprint.</li>
+<li><strong><code>FileMiddleware</code></strong>: Manages buffered file
+writing and splitting. It maintains a separate index file containing
+pointers, item keys, and byte offsets into the <code>.pack</code>
+files.</li>
+</ul>
+<p>When cache items are committed, Webpack appends new binary chunks to
+the active <code>.pack</code> file and updates the index.</p>
+<h2 id="the-deserialization-and-rehydration-workflow">The
+Deserialization and Rehydration Workflow</h2>
+<p>When a new compilation initiates with filesystem caching enabled,
+Webpack executes the reverse process:</p>
+<ol type="1">
+<li><strong>Snapshot Validation</strong>: Before touching module cache
+data, Webpack checks snapshots of build dependencies, configuration
+files, and package dependencies. If any snapshot is stale or
+invalidated, the cache is ignored.</li>
+<li><strong>Index Lookup</strong>: Webpack reads the cache index into
+memory, providing quick random access to module cache locations without
+scanning entire binary files.</li>
+<li><strong>Stream Decoding</strong>: When a cached module is requested,
+<code>FileMiddleware</code> reads the specific byte range from the
+<code>.pack</code> file. <code>BinaryMiddleware</code> decodes the
+binary stream into raw tokens.</li>
+<li><strong>Instance Rehydration</strong>: The deserializer encounters
+the registered constructor identifier, instantiates the target class,
+and invokes the class-specific <code>deserialize</code> function.</li>
+<li><strong>Graph Reconstruction</strong>: As properties are read
+sequentially, object references are resolved through the reference
+table, restoring the fully functional module object and its dependencies
+into the active compilation graph.</li>
+</ol></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack raw-loader: Loading Text and Shader Files - webpack</title>
+    <meta name="description" content="This article provides an overview of the role and mechanics of raw-loader in Webpack. It explains how this loader transforms non-JavaScript assets, such as plain text documents and GLSL shader files, into readable JavaScript strings during the build proce">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-raw-loader-loading-text-and-shader-files">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack raw-loader: Loading Text and Shader Files - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-raw-loader-loading-text-and-shader-files" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an overview of the role and mechanics of raw-loader in Webpack. It explains how this loader transforms non-JavaScript assets, such as plain text documents and GLSL shader files, into readable JavaScript strings during the build proce" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-raw-loader-loading-text-and-shader-files">Webpack
+raw-loader: Loading Text and Shader Files</h1>
+<p>This article provides an overview of the role and mechanics of
+<code>raw-loader</code> in Webpack. It explains how this loader
+transforms non-JavaScript assets, such as plain text documents and GLSL
+shader files, into readable JavaScript strings during the build process,
+along with its primary use cases and modern alternatives.</p>
+<h2 id="what-is-raw-loader">What Is raw-loader?</h2>
+<p>By default, Webpack treats imported files as JavaScript or JSON
+modules. When an application attempts to import unstructured files—such
+as <code>.txt</code>, <code>.html</code>, or 3D shader files like
+<code>.vert</code> and <code>.frag</code>—Webpack cannot parse them
+without explicit instructions.</p>
+<p>The <code>raw-loader</code> package acts as a pre-processor that
+reads the target file's raw content and exports it directly as a
+JavaScript string. When imported into an application, the module
+resolves to a UTF-8 string containing the exact contents of the source
+file.</p>
+<h2 id="loading-plain-text-files">Loading Plain Text Files</h2>
+<p>In frontend development, developers frequently need access to raw
+text files without hardcoding large text blocks into JavaScript files.
+Common scenarios include:</p>
+<ul>
+<li><strong>Markdown Files:</strong> Importing <code>.md</code> files
+for dynamic rendering via markdown parsers.</li>
+<li><strong>HTML Templates:</strong> Importing static markup templates
+for custom components or rendering engines.</li>
+<li><strong>Configuration and Data:</strong> Reading unstructured plain
+text, licenses, or CSV data directly into the application state.</li>
+</ul>
+<p>By routing these extensions through <code>raw-loader</code>, Webpack
+bundles the file contents into the output bundle, eliminating runtime
+network requests that would otherwise be required using
+<code>fetch</code> or <code>XMLHttpRequest</code>.</p>
+<h2 id="loading-shader-files-glsl">Loading Shader Files (GLSL)</h2>
+<p>In WebGL, Three.js, and Babylon.js applications, graphical
+computations rely on vertex and fragment shaders written in OpenGL
+Shading Language (GLSL). WebGL APIs require these shaders to be passed
+to the GPU compiler as plain JavaScript strings via functions like
+<code>gl.shaderSource()</code>.</p>
+<p>Storing shaders inside JavaScript template literals causes several
+issues, including lack of syntax highlighting, missing IDE
+autocompletion, and poor code organization. <code>raw-loader</code>
+solves this problem by allowing developers to write shaders in dedicated
+<code>.glsl</code>, <code>.vs</code>, or <code>.fs</code> files while
+compiling them directly into the bundle as strings.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Webpack rule configuration</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">txt</span><span class="sc">|</span><span class="ss">glsl</span><span class="sc">|</span><span class="ss">vert</span><span class="sc">|</span><span class="ss">frag</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> <span class="st">&#39;raw-loader&#39;</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Once configured, importing a shader behaves like importing any
+standard module:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> vertexShaderSource <span class="im">from</span> <span class="st">&#39;./shaders/vertex.vert&#39;</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co">// vertexShaderSource is now a string ready for WebGL</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>gl<span class="op">.</span><span class="fu">shaderSource</span>(shader<span class="op">,</span> vertexShaderSource)<span class="op">;</span></span></code></pre></div>
+<h2 id="transition-in-modern-webpack-webpack-5">Transition in Modern
+Webpack (Webpack 5)</h2>
+<p>In Webpack 5, <code>raw-loader</code> has been officially deprecated
+in favor of built-in Asset Modules. The identical functionality is now
+natively available without installing external packages by using the
+<code>asset/source</code> rule type:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">txt</span><span class="sc">|</span><span class="ss">glsl</span><span class="sc">|</span><span class="ss">vert</span><span class="sc">|</span><span class="ss">frag</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/source&#39;</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Regardless of whether you use the legacy <code>raw-loader</code> or
+Webpack 5's native <code>asset/source</code>, the fundamental role
+remains the same: treating text and shader assets as raw strings during
+compilation to maintain cleaner source code and reduce runtime I/O
+overhead.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

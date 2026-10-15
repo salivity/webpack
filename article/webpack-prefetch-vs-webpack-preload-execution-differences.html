@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>webpackPrefetch vs webpackPreload Execution Differences - webpack</title>
+    <meta name="description" content="Webpack provides two resource hints via magic comments—webpackPrefetch and webpackPreload—to optimize how dynamic imports are loaded by the browser. While both mechanisms instruct the browser to fetch JavaScript chunks in advance, they differ significantl">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-prefetch-vs-webpack-preload-execution-differences">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="webpackPrefetch vs webpackPreload Execution Differences - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-prefetch-vs-webpack-preload-execution-differences" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack provides two resource hints via magic comments—webpackPrefetch and webpackPreload—to optimize how dynamic imports are loaded by the browser. While both mechanisms instruct the browser to fetch JavaScript chunks in advance, they differ significantl" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="webpackprefetch-vs-webpackpreload-execution-differences">webpackPrefetch
+vs webpackPreload Execution Differences</h1>
+<p>Webpack provides two resource hints via magic
+comments—<code>webpackPrefetch</code> and <code>webpackPreload</code>—to
+optimize how dynamic imports are loaded by the browser. While both
+mechanisms instruct the browser to fetch JavaScript chunks in advance,
+they differ significantly in their execution timing, loading priority,
+and intended use cases. Understanding these differences ensures your
+application prioritizes critical resources without congesting network
+bandwidth.</p>
+<h2 id="how-webpackprefetch-works">How webpackPrefetch Works</h2>
+<p>When you declare <code>/* webpackPrefetch: true */</code>, Webpack
+injects a
+<code>&lt;link rel="prefetch" as="script" href="chunk.js"&gt;</code> tag
+into the document head.</p>
+<ul>
+<li><strong>Timing:</strong> The browser requests the chunk during idle
+time, after the initial page has finished loading its critical
+assets.</li>
+<li><strong>Priority:</strong> Lowest network priority. The browser
+intentionally delays fetching until bandwidth becomes available.</li>
+<li><strong>Use Case:</strong> Resources that might be needed in future
+navigations or subsequent user actions (e.g., a modal that opens on a
+button click, or the next route in a multi-step form).</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Prefetched in the background during idle time</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>button<span class="op">.</span><span class="fu">addEventListener</span>(<span class="st">&#39;click&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="im">import</span>(<span class="co">/* webpackPrefetch: true */</span> <span class="st">&#39;./HeavyModalComponent.js&#39;</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">then</span>(({ <span class="cf">default</span><span class="op">:</span> HeavyModal }) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Render modal</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<h2 id="how-webpackpreload-works">How webpackPreload Works</h2>
+<p>When you declare <code>/* webpackPreload: true */</code>, Webpack
+injects a
+<code>&lt;link rel="preload" as="script" href="chunk.js"&gt;</code> tag
+into the document head.</p>
+<ul>
+<li><strong>Timing:</strong> The chunk begins downloading immediately in
+parallel with the parent chunk, without waiting for the browser to
+become idle.</li>
+<li><strong>Priority:</strong> Medium-to-high network priority, similar
+to critical resources needed for the current view.</li>
+<li><strong>Use Case:</strong> Code split from the main bundle that is
+required for the current navigation or immediately after the parent
+chunk executes.</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Preloaded immediately alongside the current chunk</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span>(<span class="co">/* webpackPreload: true */</span> <span class="st">&#39;./CriticalChartRenderer.js&#39;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">then</span>(({ <span class="cf">default</span><span class="op">:</span> ChartRenderer }) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Render chart immediately</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span></code></pre></div>
+<h2 id="key-differences-in-execution">Key Differences in Execution</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;"><code>webpackPrefetch</code></th>
+<th style="text-align: left;"><code>webpackPreload</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>HTML Tag</strong></td>
+<td
+style="text-align: left;"><code>&lt;link rel="prefetch"&gt;</code></td>
+<td
+style="text-align: left;"><code>&lt;link rel="preload"&gt;</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Loading Phase</strong></td>
+<td style="text-align: left;">Browser idle time (future navigation)</td>
+<td style="text-align: left;">In parallel with parent (current
+navigation)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Network Priority</strong></td>
+<td style="text-align: left;">Lowest / Idle</td>
+<td style="text-align: left;">Medium / High</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Parent Chunk
+Lifecycle</strong></td>
+<td style="text-align: left;">Independent of parent loading</td>
+<td style="text-align: left;">Starts execution alongside parent
+loading</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Browser Warning</strong></td>
+<td style="text-align: left;">None if left unused</td>
+<td style="text-align: left;">Emits console warning if not used within a
+few seconds</td>
+</tr>
+</tbody>
+</table>
+<h2 id="choosing-between-the-two">Choosing Between the Two</h2>
+<p>Use <code>webpackPreload</code> sparingly. Because it contends for
+bandwidth with other critical resources on the initial load, overuse can
+degrade your page's Time to Interactive (TTI) and First Contentful Paint
+(FCP). It should be reserved for chunks that are split out for caching
+purposes but are strictly necessary for rendering the current view.</p>
+<p>Use <code>webpackPrefetch</code> for speculative loading. It is safe
+for performance because it yields entirely to critical network traffic,
+making it the ideal choice for secondary UI states, conditional
+components, and adjacent routes.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

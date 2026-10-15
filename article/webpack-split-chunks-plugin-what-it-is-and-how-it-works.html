@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack SplitChunksPlugin: What It Is and How It Works - webpack</title>
+    <meta name="description" content="This article explores the function of Webpack&#39;s SplitChunksPlugin, detailing how it optimizes web application delivery through automated code splitting. It covers how the plugin eliminates duplicate code across bundles, isolates vendor dependencies for im">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-split-chunks-plugin-what-it-is-and-how-it-works">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack SplitChunksPlugin: What It Is and How It Works - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-split-chunks-plugin-what-it-is-and-how-it-works" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores the function of Webpack&#39;s SplitChunksPlugin, detailing how it optimizes web application delivery through automated code splitting. It covers how the plugin eliminates duplicate code across bundles, isolates vendor dependencies for im" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-splitchunksplugin-what-it-is-and-how-it-works">Webpack
+SplitChunksPlugin: What It Is and How It Works</h1>
+<p>This article explores the function of Webpack's
+<code>SplitChunksPlugin</code>, detailing how it optimizes web
+application delivery through automated code splitting. It covers how the
+plugin eliminates duplicate code across bundles, isolates vendor
+dependencies for improved browser caching, and configures chunks to
+significantly reduce initial page load times and enhance overall
+performance.</p>
+<h3 id="core-purpose-of-splitchunksplugin">Core Purpose of
+SplitChunksPlugin</h3>
+<p>The <code>SplitChunksPlugin</code> is an integrated Webpack
+optimization feature that automatically splits code into separate
+bundles (chunks). Introduced in Webpack 4 to replace the older
+<code>CommonsChunkPlugin</code>, it addresses the issue of monolithic
+bundles and duplicated dependencies across multiple entry points. By
+analyzing the dependency graph, the plugin extracts common code and
+external libraries into shared files, ensuring that browsers do not
+download identical code multiple times.</p>
+<h3 id="key-functions">Key Functions</h3>
+<h4 id="1-deduplication-across-entry-points">1. Deduplication Across
+Entry Points</h4>
+<p>In multi-page applications or complex single-page apps with multiple
+entry points, different modules often import the same libraries or
+utility functions. Without chunk splitting, those shared dependencies
+would be bundled into every generated entry file. The
+<code>SplitChunksPlugin</code> identifies these overlaps and extracts
+them into a shared chunk that both entry points reference, drastically
+reducing overall bundle size.</p>
+<h4 id="2-vendor-code-isolation-and-long-term-caching">2. Vendor Code
+Isolation and Long-Term Caching</h4>
+<p>Third-party libraries located in <code>node_modules</code> (such as
+React, Vue, or Lodash) change far less frequently than custom
+application code. The <code>SplitChunksPlugin</code> allows developers
+to isolate these dependencies into a dedicated vendor chunk. Because the
+contents of this vendor chunk rarely update, client browsers can cache
+it indefinitely, only redownloading the smaller, frequently changing
+application chunks during deployments.</p>
+<h4 id="3-on-demand-and-asynchronous-splitting">3. On-Demand and
+Asynchronous Splitting</h4>
+<p>Modern web apps use dynamic <code>import()</code> statements to load
+code only when a user navigates to a specific route or triggers an
+action. The <code>SplitChunksPlugin</code> manages these dynamic splits,
+generating asynchronous chunks that are fetched on demand. It also
+automatically splits shared dependencies within these asynchronous
+chunks without blocking the critical rendering path.</p>
+<h3 id="how-splitchunksplugin-works-by-default">How SplitChunksPlugin
+Works by Default</h3>
+<p>Webpack applies the <code>SplitChunksPlugin</code> automatically out
+of the box for production builds. By default, it splits chunks based on
+specific optimization heuristics:</p>
+<ul>
+<li><strong>Chunk Type:</strong> It prioritizes asynchronous chunks by
+default (<code>chunks: 'async'</code>), though it can be configured to
+target all chunks (<code>chunks: 'all'</code>).</li>
+<li><strong>Size Thresholds:</strong> A chunk will only be split if its
+size meets a defined minimum threshold (by default, 20 KB before
+minification) to avoid the network overhead of fetching too many tiny
+files.</li>
+<li><strong>Reuse Count:</strong> Modules must be shared across a
+minimum number of chunks (typically one or more, depending on
+configuration) before being split out.</li>
+<li><strong>HTTP Request Limits:</strong> Webpack caps the maximum
+number of parallel requests for on-demand loading (default is 30) and
+initial page loads (default is 30) to avoid overloading the browser's
+connection limit.</li>
+</ul>
+<h3 id="performance-impact">Performance Impact</h3>
+<p>By separating vendor dependencies, avoiding duplicate modules, and
+enabling parallel file downloads, the <code>SplitChunksPlugin</code>
+directly improves Core Web Vitals, particularly Largest Contentful Paint
+(LCP) and Total Blocking Time (TBT). Smaller, focused bundles parse
+faster and leverage browser caching efficiently, resulting in a faster
+and more responsive user experience.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

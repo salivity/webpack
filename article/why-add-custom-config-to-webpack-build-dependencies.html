@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Add Custom Config to Webpack buildDependencies - webpack</title>
+    <meta name="description" content="Webpack 5 persistent caching dramatically reduces build times by storing compilation artifacts to disk between runs. However, for this caching mechanism to be reliable, Webpack must accurately detect when your build environment changes. Listing custom con">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/why-add-custom-config-to-webpack-build-dependencies">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Add Custom Config to Webpack buildDependencies - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/why-add-custom-config-to-webpack-build-dependencies" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 persistent caching dramatically reduces build times by storing compilation artifacts to disk between runs. However, for this caching mechanism to be reliable, Webpack must accurately detect when your build environment changes. Listing custom con" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-add-custom-config-to-webpack-builddependencies">Why Add
+Custom Config to Webpack buildDependencies</h1>
+<p>Webpack 5 persistent caching dramatically reduces build times by
+storing compilation artifacts to disk between runs. However, for this
+caching mechanism to be reliable, Webpack must accurately detect when
+your build environment changes. Listing custom configuration files under
+<code>cache.buildDependencies</code> guarantees that any modification to
+your build rules, environment settings, or custom plugins triggers an
+automatic cache invalidation, preventing corrupted outputs and stale
+builds.</p>
+<h3 id="how-webpack-persistent-caching-works">How Webpack Persistent
+Caching Works</h3>
+<p>When you enable filesystem caching using
+<code>cache.type = 'filesystem'</code>, Webpack writes compilation
+results to disk. On subsequent builds, Webpack verifies whether any
+source files or build dependencies have changed. If they remain
+untouched, Webpack reuses the cached build artifacts instead of
+recompiling assets from scratch.</p>
+<p>To determine cache validity, Webpack relies on the
+<code>cache.buildDependencies</code> object. By default, Webpack only
+registers its own source code as a build dependency. It does not
+automatically trace and watch every external configuration file,
+auxiliary module, or shared utility that informs your Webpack setup.</p>
+<h3 id="the-dangers-of-missing-custom-configuration-files">The Dangers
+of Missing Custom Configuration Files</h3>
+<p>If you split your configuration into multiple files (for example,
+<code>webpack.common.js</code>, <code>webpack.dev.js</code>, and
+<code>webpack.prod.js</code>) or import custom loader options from
+external modules, Webpack does not track these imports out of the
+box.</p>
+<p>Failing to list these custom configurations leads to critical
+issues:</p>
+<ul>
+<li><strong>Stale Builds:</strong> Modifying a rule, updating an alias,
+or tweaking a loader option in an unlisted configuration file will not
+bust the cache. Webpack will continue serving artifacts generated under
+the old configuration.</li>
+<li><strong>Inconsistent Environments:</strong> Builds executed on CI/CD
+pipelines may behave differently from local environments because of
+lingering local cache directories.</li>
+<li><strong>Wasted Debugging Time:</strong> Developers frequently
+encounter "phantom bugs" caused by out-of-sync cache entries, forcing
+them to manually delete the <code>node_modules/.cache</code> directory
+to resolve build anomalies.</li>
+</ul>
+<h3 id="implementing-cachebuilddependencies">Implementing
+<code>cache.buildDependencies</code></h3>
+<p>To resolve this, you must explicitly declare your configuration entry
+points under the <code>config</code> array within
+<code>cache.buildDependencies</code>. Webpack will resolve these files
+and all of their direct dependencies, automatically generating a cache
+hash based on their contents.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">cache</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;filesystem&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">buildDependencies</span><span class="op">:</span> {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Treat this file and any of its dependencies as build dependencies</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">config</span><span class="op">:</span> [</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="bu">__filename</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;webpack.parts.js&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;postcss.config.js&#39;</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      ]<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="what-files-should-be-included">What Files Should Be
+Included?</h3>
+<p>You should include any file that directly controls the build output.
+Recommended targets include:</p>
+<ul>
+<li><strong>Modular Webpack Configs:</strong> Base configurations,
+environment-specific overrides, and shared helper scripts.</li>
+<li><strong>External Tool Configurations:</strong> Files like
+<code>babel.config.js</code>, <code>postcss.config.js</code>, or
+<code>tsconfig.json</code> if Webpack loaders rely on them
+directly.</li>
+<li><strong>Environment Files:</strong> Files defining build-time
+environment variables or build flags that alter how loaders and plugins
+operate.</li>
+</ul>
+<p>Explicitly declaring these custom files ensures Webpack achieves
+maximum build performance without sacrificing build integrity.</p></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

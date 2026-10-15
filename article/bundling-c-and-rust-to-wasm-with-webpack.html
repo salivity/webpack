@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bundling C and Rust to Wasm with Webpack - webpack</title>
+    <meta name="description" content="Webpack can directly bundle C and Rust source code into WebAssembly (Wasm) using specialized loaders and plugins. Instead of requiring developers to manually precompile their native code via external command-line tools, Webpack’s ecosystem provides integr">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/bundling-c-and-rust-to-wasm-with-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bundling C and Rust to Wasm with Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/bundling-c-and-rust-to-wasm-with-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack can directly bundle C and Rust source code into WebAssembly (Wasm) using specialized loaders and plugins. Instead of requiring developers to manually precompile their native code via external command-line tools, Webpack’s ecosystem provides integr" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="bundling-c-and-rust-to-wasm-with-webpack">Bundling C and Rust to
+Wasm with Webpack</h1>
+<p>Webpack can directly bundle C and Rust source code into WebAssembly
+(Wasm) using specialized loaders and plugins. Instead of requiring
+developers to manually precompile their native code via external
+command-line tools, Webpack’s ecosystem provides integrations that
+invoke compilers like <code>rustc</code>/<code>cargo</code> and
+Emscripten (<code>emcc</code>) during the build process. This article
+explains how Webpack handles native source compilation, the key loaders
+and plugins available, and how Webpack 5’s native WebAssembly
+architecture integrates with them.</p>
+<h3 id="how-webpack-handles-c-and-rust">How Webpack Handles C and
+Rust</h3>
+<p>Webpack natively understands JavaScript and, with Webpack 5,
+precompiled WebAssembly files (<code>.wasm</code>) via the
+<code>experiments.asyncWebAssembly</code> flag. However, it cannot parse
+raw <code>.rs</code>, <code>.c</code>, or <code>.cpp</code> files on its
+own.</p>
+<p>To bridge this gap, specialized loaders and plugins intercept these
+source files, trigger the appropriate native compiler under the hood,
+output a <code>.wasm</code> binary along with JavaScript binding glue,
+and feed the resulting artifacts directly into the Webpack dependency
+graph.</p>
+<h3 id="compiling-rust-directly-with-webpack">Compiling Rust Directly
+with Webpack</h3>
+<p>The most mature ecosystem for native code bundling in Webpack exists
+for Rust. Developers have two primary approaches:</p>
+<ol type="1">
+<li><strong><code>@wasm-tool/wasm-pack-plugin</code></strong>: This is
+the recommended approach for Rust projects. Rather than acting as a
+standard loader, it is a Webpack plugin that watches your Cargo project
+directory, runs <code>wasm-pack build</code> automatically whenever
+native files change, and exposes the generated package directly to your
+JavaScript imports.</li>
+<li><strong><code>rust-wasm-loader</code></strong>: A traditional loader
+that hooks directly into Webpack's module resolution pipeline. It takes
+<code>.rs</code> entry files, compiles them using the Rust toolchain,
+and outputs the binary and bindings.</li>
+</ol>
+<p>When configured alongside
+<code>experiments: { asyncWebAssembly: true }</code>, you can import
+functions directly from Rust files inside JavaScript modules using
+standard ES module syntax:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { add } <span class="im">from</span> <span class="st">&#39;./src/lib.rs&#39;</span><span class="op">;</span></span></code></pre></div>
+<h3 id="compiling-c-and-c-with-webpack">Compiling C and C++ with
+Webpack</h3>
+<p>Compiling C and C++ within Webpack relies on the Emscripten
+toolchain. While less common than precompiling to static Wasm binaries,
+several loaders automate this workflow:</p>
+<ul>
+<li><strong><code>cpp-wasm-loader</code> /
+<code>emscripten-wasm-loader</code></strong>: These loaders take C or
+C++ source files, invoke <code>emcc</code> in a child process, and emit
+both the WebAssembly module and the runtime glue code needed to
+initialize Emscripten's virtual file system and memory heap.</li>
+<li><strong>Custom Shell / Execution Loaders</strong>: Because modern
+Emscripten toolchains update frequently, many teams configure custom
+Webpack build steps or loaders (such as running <code>emcc</code>
+through a file-watching pipeline) to maintain full control over compiler
+flags, optimization levels, and memory configurations.</li>
+</ul>
+<h3 id="configuration-requirements-and-considerations">Configuration
+Requirements and Considerations</h3>
+<p>To bundle native code compiled directly to Wasm in Webpack 5, your
+configuration must support asynchronous WebAssembly:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">experiments</span><span class="op">:</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">asyncWebAssembly</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">rs</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> [{ <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;rust-wasm-loader&#39;</span> }]</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>While bundling native source files directly speeds up rapid
+prototyping, it introduces important architectural trade-offs:</p>
+<ul>
+<li><strong>Toolchain Dependency</strong>: The host machine running the
+Webpack build must have native toolchains (Rust/Cargo or
+Emscripten/LLVM) installed and accessible in the system path.</li>
+<li><strong>Build Performance</strong>: Compiling native
+languages—especially C++ templates or large Rust dependency trees—takes
+significantly longer than compiling JavaScript. In production CI/CD
+pipelines, precompiling code into <code>.wasm</code> modules prior to
+running Webpack is often preferred to keep bundling times fast.</li>
+</ul></article>
+        <div id="comments-container"></div>
+        <script>
+            const utterancesScript = document.createElement('script');
+            utterancesScript.setAttribute('src', 'https://utteranc.es/client.js');
+            utterancesScript.setAttribute('repo', 'salivity/webpack'); 
+            utterancesScript.setAttribute('issue-term', 'pathname'); 
+            const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            utterancesScript.setAttribute('theme', currentTheme === 'dark' ? 'github-dark' : 'github-light'); 
+            utterancesScript.setAttribute('crossorigin', 'anonymous');
+            utterancesScript.async = true;
+            document.getElementById('comments-container').appendChild(utterancesScript);
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>
