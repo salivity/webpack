@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Compiler vs Compilation Hooks Explained - webpack</title>
+    <meta name="description" content="Webpack&#39;s plugin architecture relies on the Tapable library, exposing two core objects that define its build lifecycle: the Compiler and the Compilation. The primary difference between their hooks is their scope and lifespan: Compiler hooks represent the">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-compiler-vs-compilation-hooks-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Compiler vs Compilation Hooks Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-compiler-vs-compilation-hooks-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack&#39;s plugin architecture relies on the Tapable library, exposing two core objects that define its build lifecycle: the Compiler and the Compilation. The primary difference between their hooks is their scope and lifespan: Compiler hooks represent the" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-compiler-vs-compilation-hooks-explained">Webpack
+Compiler vs Compilation Hooks Explained</h1>
+<p>Webpack's plugin architecture relies on the Tapable library, exposing
+two core objects that define its build lifecycle: the
+<code>Compiler</code> and the <code>Compilation</code>. The primary
+difference between their hooks is their scope and lifespan:
+<code>Compiler</code> hooks represent the entire Webpack runtime,
+managing global configuration and high-level build states, while
+<code>Compilation</code> hooks represent a single build cycle, managing
+the dependency graph, modules, and chunk generation. Understanding the
+distinct roles of these hooks is essential for creating custom plugins
+and controlling asset processing.</p>
+<h3 id="the-compiler-and-its-hooks">The Compiler and Its Hooks</h3>
+<p>The <code>Compiler</code> instance is created once when Webpack
+starts. It maintains all global settings, options, loaders, and plugins
+across the entire lifecycle of the Webpack process.</p>
+<p>Key characteristics of the <code>Compiler</code>:</p>
+<ul>
+<li><strong>Lifespan:</strong> Runs from the moment Webpack boots until
+it exits. In watch mode, a single <code>Compiler</code> instance
+persists throughout the process.</li>
+<li><strong>Scope:</strong> Handles operations external to the
+dependency graph, such as reading configuration, initializing watchers,
+emitting files to disk, and reporting build completion.</li>
+<li><strong>Common Hooks:</strong>
+<ul>
+<li><code>environment</code> / <code>afterEnvironment</code>: Triggered
+right after the configuration and environment are initialized.</li>
+<li><code>run</code> / <code>watchRun</code>: Fired before Webpack
+begins reading modules or compiling.</li>
+<li><code>compile</code>: Fired immediately before a new compilation
+cycle begins, passing <code>compilationParams</code>.</li>
+<li><code>emit</code>: Executed right before Webpack writes compiled
+assets to the output directory.</li>
+<li><code>done</code>: Triggered when the entire build process finishes
+and stats are ready.</li>
+</ul></li>
+</ul>
+<p>Use <code>Compiler</code> hooks when you need to inspect high-level
+configuration, interact with the file system before or after a build, or
+respond to process termination.</p>
+<h3 id="the-compilation-and-its-hooks">The Compilation and Its
+Hooks</h3>
+<p>A <code>Compilation</code> instance is created by the
+<code>Compiler</code> whenever Webpack processes your source files. It
+contains the state of the dependency tree, individual modules, chunks,
+and rendered assets for a specific build.</p>
+<p>Key characteristics of the <code>Compilation</code>:</p>
+<ul>
+<li><strong>Lifespan:</strong> Transient. A new <code>Compilation</code>
+object is generated every time code changes during watch mode or hot
+module replacement (HMR).</li>
+<li><strong>Scope:</strong> Handles the transformation of source code,
+module resolution, optimization passes, and chunk graph
+construction.</li>
+<li><strong>Common Hooks:</strong>
+<ul>
+<li><code>buildModule</code>: Triggered before an individual module is
+built.</li>
+<li><code>succeedModule</code>: Fired when a module has been
+successfully parsed and loaded.</li>
+<li><code>seal</code>: Fired when the compilation stops receiving new
+modules and begins organizing them into chunks.</li>
+<li><code>optimizeModules</code> / <code>optimizeChunks</code>:
+Triggered during internal tree-shaking and minification optimization
+passes.</li>
+<li><code>processAssets</code>: The standard hook for modifying, adding,
+or deleting generated output assets before emission.</li>
+</ul></li>
+</ul>
+<p>Use <code>Compilation</code> hooks when your plugin needs to analyze
+individual source files, modify the dependency tree, alter chunk
+composition, or transform output asset contents.</p>
+<h3 id="core-differences-at-a-glance">Core Differences at a Glance</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Compiler Hooks</th>
+<th style="text-align: left;">Compilation Hooks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Instance Count</strong></td>
+<td style="text-align: left;">Singleton per Webpack run</td>
+<td style="text-align: left;">One per build or re-compile cycle</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Watch Mode</strong></td>
+<td style="text-align: left;">Persists across file changes</td>
+<td style="text-align: left;">Destroyed and recreated on every
+change</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Primary Focus</strong></td>
+<td style="text-align: left;">Build orchestration, environment, file
+I/O</td>
+<td style="text-align: left;">Dependency graphs, modules, chunks,
+assets</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Data Handled</strong></td>
+<td style="text-align: left;">Global options, file systems, final
+outputs</td>
+<td style="text-align: left;">Source files, ASTs, intermediate
+representations</td>
+</tr>
+</tbody>
+</table>
+<h3 id="connecting-the-two-in-a-plugin">Connecting the Two in a
+Plugin</h3>
+<p>In standard Webpack plugin development, you access
+<code>Compilation</code> hooks by tapping into the <code>Compiler</code>
+first. The <code>Compiler</code> provides a hook called
+<code>thisCompilation</code> or <code>compilation</code>, which exposes
+the fresh <code>Compilation</code> instance to your plugin logic:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ExamplePlugin {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(compiler) {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Compiler Hook: Runs at the start of the entire process</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">run</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&#39;ExamplePlugin&#39;</span><span class="op">,</span> (compilerInstance) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;Build process starting...&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Compiler Hook: Accessing the Compilation instance</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">compilation</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&#39;ExamplePlugin&#39;</span><span class="op">,</span> (compilation) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Compilation Hook: Runs whenever assets are processed</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>      compilation<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">processAssets</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&#39;ExamplePlugin&#39;</span><span class="op">,</span> (assets) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;Processing assets for this build pass.&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      })<span class="op">;</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> ExamplePlugin<span class="op">;</span></span></code></pre></div>
+<p>As a general rule, use <code>Compiler</code> hooks for macro-level
+tasks like setting up services or moving files, and use
+<code>Compilation</code> hooks for micro-level operations like code
+transformation, dependency analysis, and asset manipulation.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-compiler-vs-compilation-hooks-explained';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

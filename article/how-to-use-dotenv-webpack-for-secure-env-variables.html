@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Use dotenv-webpack for Secure Env Variables - webpack</title>
+    <meta name="description" content="Managing configuration data across different environments is a critical aspect of modern web development. This article explains how to set up and use dotenv-webpack to inject variables from a .env file into a Webpack bundle, while detailing the security p">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-to-use-dotenv-webpack-for-secure-env-variables">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Use dotenv-webpack for Secure Env Variables - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-to-use-dotenv-webpack-for-secure-env-variables" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Managing configuration data across different environments is a critical aspect of modern web development. This article explains how to set up and use dotenv-webpack to inject variables from a .env file into a Webpack bundle, while detailing the security p" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-use-dotenv-webpack-for-secure-env-variables">How to Use
+dotenv-webpack for Secure Env Variables</h1>
+<p>Managing configuration data across different environments is a
+critical aspect of modern web development. This article explains how to
+set up and use <code>dotenv-webpack</code> to inject variables from a
+<code>.env</code> file into a Webpack bundle, while detailing the
+security practices necessary to avoid exposing sensitive credentials in
+client-side code.</p>
+<h3 id="the-security-reality-of-client-side-bundles">The Security
+Reality of Client-Side Bundles</h3>
+<p>Before writing any configuration, you must understand how Webpack
+handles environment variables. Webpack compiles code to run in a
+browser. Any variable injected into the bundle via
+<code>dotenv-webpack</code> will be converted into plain text in the
+final JavaScript output.</p>
+<p>Therefore, you must <strong>never</strong> expose sensitive backend
+secrets—such as database passwords, private encryption keys, or
+privileged API secrets—using <code>dotenv-webpack</code>. Use this tool
+exclusively for public configuration data, such as public API endpoints,
+analytics IDs, or feature flags.</p>
+<h3 id="1-installation">1. Installation</h3>
+<p>Install the package as a development dependency:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install dotenv-webpack <span class="at">--save-dev</span></span></code></pre></div>
+<p>or with Yarn:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">yarn</span> add dotenv-webpack <span class="at">--dev</span></span></code></pre></div>
+<h3 id="2-basic-configuration">2. Basic Configuration</h3>
+<p>To use the plugin, import it into your <code>webpack.config.js</code>
+file and add it to the <code>plugins</code> array.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> Dotenv <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;dotenv-webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... rest of your Webpack configuration</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">Dotenv</span>()</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>By default, this looks for a <code>.env</code> file in the root
+directory and replaces references to
+<code>process.env.VARIABLE_NAME</code> in your source code with the
+actual values defined in that file.</p>
+<h3 id="3-securing-and-validating-variables-with-options">3. Securing
+and Validating Variables with Options</h3>
+<p>To maintain a secure and reliable setup, use the configuration
+options provided by <code>dotenv-webpack</code>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> Dotenv <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;dotenv-webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">Dotenv</span>({</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">path</span><span class="op">:</span> <span class="st">&#39;./.env&#39;</span><span class="op">,</span> <span class="co">// Path to your .env file</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">safe</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span>     <span class="co">// Loads .env.example to verify .env has all required keys</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">systemvars</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span> <span class="co">// Set to true only if you need to load system environment variables</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">silent</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span>  <span class="co">// Suppress warnings</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">defaults</span><span class="op">:</span> <span class="kw">false</span> <span class="co">// Load .env.defaults if it exists</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h4 id="key-security-options">Key Security Options:</h4>
+<ul>
+<li><strong><code>safe: true</code></strong>: When enabled, the plugin
+checks your <code>.env</code> against a <code>.env.example</code> file.
+If any required variables are missing, the build fails immediately. This
+prevents broken production deployments caused by missing
+configuration.</li>
+<li><strong><code>systemvars: false</code></strong>: Setting this to
+<code>false</code> prevents the plugin from accidentally exposing local
+system environment variables (such as OS credentials or global machine
+tokens) to your bundle. Keep this <code>false</code> unless your CI/CD
+pipeline injects variables directly as system environment
+variables.</li>
+</ul>
+<h3 id="4-setting-up-environment-files">4. Setting Up Environment
+Files</h3>
+<p>Create a <code>.env</code> file for your local values:</p>
+<pre class="env"><code>API_BASE_URL=https://api.example.com
+PUBLIC_ANALYTICS_ID=UA-12345678-1</code></pre>
+<p>Create a <code>.env.example</code> file to commit to your version
+control system:</p>
+<pre class="env"><code>API_BASE_URL=
+PUBLIC_ANALYTICS_ID=</code></pre>
+<p>Add your actual <code>.env</code> file to your
+<code>.gitignore</code> to prevent leaking local settings or
+developer-specific tokens:</p>
+<pre class="gitignore"><code>.env
+.env.local</code></pre>
+<h3 id="5-accessing-variables-in-your-source-code">5. Accessing
+Variables in Your Source Code</h3>
+<p>In your application files, reference the variables directly off
+<code>process.env</code>:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> apiEndpoint <span class="op">=</span> <span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">API_BASE_URL</span><span class="op">;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">fetchData</span>() {</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="fu">fetch</span>(<span class="vs">`</span><span class="sc">${</span>apiEndpoint<span class="sc">}</span><span class="vs">/items`</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">then</span>(response <span class="kw">=&gt;</span> response<span class="op">.</span><span class="fu">json</span>())<span class="op">;</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>During the build process, <code>dotenv-webpack</code> locates exact
+string occurrences like <code>process.env.API_BASE_URL</code> and
+replaces them directly with the string literal (e.g.,
+<code>'https://api.example.com'</code>). Variables defined in
+<code>.env</code> that are not explicitly referenced in your code will
+be omitted, keeping unused keys out of the final bundle.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-to-use-dotenv-webpack-for-secure-env-variables';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

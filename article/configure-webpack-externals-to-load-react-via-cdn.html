@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configure Webpack Externals to Load React via CDN - webpack</title>
+    <meta name="description" content="Configuring Webpack externals allows you to exclude heavy libraries like React and ReactDOM from your compiled JavaScript bundle, opting instead to load them through a Content Delivery Network (CDN). This approach reduces overall bundle size, speeds up bu">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/configure-webpack-externals-to-load-react-via-cdn">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Configure Webpack Externals to Load React via CDN - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/configure-webpack-externals-to-load-react-via-cdn" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Configuring Webpack externals allows you to exclude heavy libraries like React and ReactDOM from your compiled JavaScript bundle, opting instead to load them through a Content Delivery Network (CDN). This approach reduces overall bundle size, speeds up bu" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="configure-webpack-externals-to-load-react-via-cdn">Configure
+Webpack Externals to Load React via CDN</h1>
+<p>Configuring Webpack externals allows you to exclude heavy libraries
+like React and ReactDOM from your compiled JavaScript bundle, opting
+instead to load them through a Content Delivery Network (CDN). This
+approach reduces overall bundle size, speeds up build times, and
+leverages browser caching across different sites using the same CDN
+assets. This guide explains how to define the <code>externals</code>
+property in your Webpack configuration, include the necessary CDN script
+tags in your HTML, and maintain standard import syntax within your
+application code.</p>
+<h3 id="1-update-the-webpack-configuration">1. Update the Webpack
+Configuration</h3>
+<p>Open your <code>webpack.config.js</code> file and add the
+<code>externals</code> property to the exported configuration object.
+The <code>externals</code> field maps the module name used in your
+<code>import</code> statements to the global variable exposed by the
+external script.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other webpack settings</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">externals</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">react</span><span class="op">:</span> <span class="st">&#39;React&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;react-dom&#39;</span><span class="op">:</span> <span class="st">&#39;ReactDOM&#39;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>In this configuration:</p>
+<ul>
+<li><code>react</code> and <code>'react-dom'</code> refer to the module
+names used in statements like
+<code>import React from 'react'</code>.</li>
+<li><code>'React'</code> and <code>'ReactDOM'</code> refer to the global
+variables that the CDN-provided scripts attach to the browser's
+<code>window</code> object.</li>
+</ul>
+<h3 id="2-include-cdn-scripts-in-your-html">2. Include CDN Scripts in
+Your HTML</h3>
+<p>Because Webpack no longer packages React into your bundle, you must
+include the libraries via <code>&lt;script&gt;</code> tags in your HTML
+file before your bundle executes.</p>
+<p>If you are using a static <code>index.html</code> or managing it with
+<code>HtmlWebpackPlugin</code>, include the scripts in the
+<code>&lt;head&gt;</code> or at the end of the
+<code>&lt;body&gt;</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode html"><code class="sourceCode html"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;!DOCTYPE</span> html<span class="dt">&gt;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">html</span><span class="ot"> lang</span><span class="op">=</span><span class="st">&quot;en&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">head</span><span class="dt">&gt;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">meta</span><span class="ot"> charset</span><span class="op">=</span><span class="st">&quot;UTF-8&quot;</span><span class="dt">&gt;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">title</span><span class="dt">&gt;</span>React App<span class="dt">&lt;/</span><span class="kw">title</span><span class="dt">&gt;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">head</span><span class="dt">&gt;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">body</span><span class="dt">&gt;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">div</span><span class="ot"> id</span><span class="op">=</span><span class="st">&quot;root&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">div</span><span class="dt">&gt;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="co">&lt;!-- CDN scripts must load before your application bundle --&gt;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">script</span><span class="ot"> crossorigin src</span><span class="op">=</span><span class="st">&quot;https://unpkg.com/react@18/umd/react.production.min.js&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">script</span><span class="dt">&gt;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">script</span><span class="ot"> crossorigin src</span><span class="op">=</span><span class="st">&quot;https://unpkg.com/react-dom@18/umd/react-dom.production.min.js&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">script</span><span class="dt">&gt;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>  <span class="co">&lt;!-- Your bundled output --&gt;</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&lt;</span><span class="kw">script</span><span class="ot"> src</span><span class="op">=</span><span class="st">&quot;dist/bundle.js&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">script</span><span class="dt">&gt;</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">body</span><span class="dt">&gt;</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;/</span><span class="kw">html</span><span class="dt">&gt;</span></span></code></pre></div>
+<h3 id="3-write-code-using-standard-import-syntax">3. Write Code Using
+Standard Import Syntax</h3>
+<p>You do not need to change how you write your React code. Continue
+using standard ES module import statements. Webpack will automatically
+route these imports to the global variables specified in your
+configuration.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> React <span class="im">from</span> <span class="st">&#39;react&#39;</span><span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { createRoot } <span class="im">from</span> <span class="st">&#39;react-dom/client&#39;</span><span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> App <span class="op">=</span> () <span class="kw">=&gt;</span> <span class="op">&lt;</span>h1<span class="op">&gt;</span>Loaded <span class="im">from</span> CDN<span class="op">&lt;/</span>h1<span class="op">&gt;;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> container <span class="op">=</span> <span class="bu">document</span><span class="op">.</span><span class="fu">getElementById</span>(<span class="st">&#39;root&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> <span class="bu">root</span> <span class="op">=</span> <span class="fu">createRoot</span>(container)<span class="op">;</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="bu">root</span><span class="op">.</span><span class="fu">render</span>(<span class="op">&lt;</span>App <span class="op">/&gt;</span>)<span class="op">;</span></span></code></pre></div>
+<h3 id="key-considerations">Key Considerations</h3>
+<ul>
+<li><strong>Loading Order:</strong> Ensure the CDN
+<code>&lt;script&gt;</code> tags execute before your application bundle;
+otherwise, your application will fail at runtime with reference errors
+(e.g., <code>React is not defined</code>).</li>
+<li><strong>Environment Matching:</strong> Use development CDN builds
+during local development to preserve React's warnings and debugging
+tools, and switch to minified production builds for deployment.</li>
+<li><strong>Fallback Handling:</strong> If high availability is
+critical, implement a fallback mechanism in your HTML to load local
+copies of the libraries if the CDN fails to respond.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/configure-webpack-externals-to-load-react-via-cdn';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

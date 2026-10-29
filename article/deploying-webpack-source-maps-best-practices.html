@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deploying Webpack Source Maps: Best Practices - webpack</title>
+    <meta name="description" content="Webpack source maps are critical for translating minified, bundled production code back into readable source code for debugging, but leaving them publicly accessible exposes proprietary logic, internal APIs, and architectural vulnerabilities. This guide o">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/deploying-webpack-source-maps-best-practices">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Deploying Webpack Source Maps: Best Practices - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/deploying-webpack-source-maps-best-practices" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack source maps are critical for translating minified, bundled production code back into readable source code for debugging, but leaving them publicly accessible exposes proprietary logic, internal APIs, and architectural vulnerabilities. This guide o" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="deploying-webpack-source-maps-best-practices">Deploying Webpack
+Source Maps: Best Practices</h1>
+<p>Webpack source maps are critical for translating minified, bundled
+production code back into readable source code for debugging, but
+leaving them publicly accessible exposes proprietary logic, internal
+APIs, and architectural vulnerabilities. This guide outlines the
+recommended Webpack configuration types, file permissions, web server
+access controls, and deployment strategies needed to secure source maps
+in production environments.</p>
+<h3 id="1-webpack-configuration-for-production">1. Webpack Configuration
+for Production</h3>
+<p>The first step in securing source maps is generating them without
+publicly announcing their location in your client-side bundles.</p>
+<ul>
+<li><strong><code>hidden-source-map</code>:</strong> Generates standard
+<code>.map</code> files but omits the <code>//# sourceMappingURL=</code>
+comment from the bundled JavaScript files. This prevents browsers from
+automatically fetching source maps, while still allowing
+error-monitoring services (like Sentry, Datadog, or Bugsnag) to map
+stack traces if the files are uploaded directly.</li>
+<li><strong><code>nosources-source-map</code>:</strong> Generates source
+maps that map lines and columns back to original filenames without
+including the original source code content inside the map.</li>
+<li><strong>Avoid <code>eval</code> or inline options:</strong> Options
+like <code>eval-source-map</code> or <code>inline-source-map</code>
+embed source maps directly into the production code, instantly exposing
+your original source files to anyone using browser developer tools.</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devtool</span><span class="op">:</span> <span class="st">&#39;hidden-source-map&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other configurations</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="2-file-system-permissions">2. File System Permissions</h3>
+<p>If source maps are deployed alongside your static assets on a
+Linux/Unix server, adhere to the principle of least privilege:</p>
+<ul>
+<li><strong>File Permissions:</strong> Set <code>.map</code> files to
+standard secure read permissions (e.g., <code>chmod 640</code> or
+<code>chmod 644</code>). The files should be owned by the deployment
+user and readable by the web server process (e.g., <code>www-data</code>
+or <code>nginx</code>).</li>
+<li><strong>Directory Permissions:</strong> Ensure directories
+containing assets have standard directory execution and read permissions
+(e.g., <code>chmod 755</code>).</li>
+<li>File permissions alone will not prevent external users from
+accessing files if the web server is configured to serve them; access
+must be restricted at the web server or network layer.</li>
+</ul>
+<h3 id="3-web-server-access-controls">3. Web Server Access Controls</h3>
+<p>If source map files must reside on the same server as production
+bundles, explicitly block public HTTP access to them.</p>
+<h4 id="nginx">Nginx</h4>
+<p>Block all requests ending in <code>.map</code> or restrict access to
+an internal corporate network:</p>
+<pre class="nginx"><code># Deny all external access to .map files
+location ~* \.map$ {
+    deny all;
+    return 404;
+}
+
+# Alternatively: Allow only internal IPs / VPN
+location ~* \.map$ {
+    allow 192.168.1.0/24;
+    deny all;
+}</code></pre>
+<h4 id="apache">Apache</h4>
+<p>Add a rule in your <code>.htaccess</code> or virtual host
+configuration:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode apache"><code class="sourceCode apache"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">&lt;FilesMatch</span><span class="at"> &quot;\.map$&quot;</span><span class="fu">&gt;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    Require<span class="st"> all denied</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">&lt;/FilesMatch&gt;</span></span></code></pre></div>
+<h3 id="4-recommended-deployment-workflows">4. Recommended Deployment
+Workflows</h3>
+<p>The most secure deployment approach is to prevent source maps from
+ever reaching public web servers or CDNs.</p>
+<h4 id="option-a-upload-to-error-monitoring-and-discard">Option A:
+Upload to Error Monitoring and Discard</h4>
+<ol type="1">
+<li><p>Build the production application using
+<code>hidden-source-map</code>.</p></li>
+<li><p>Use CI/CD plugins (such as Sentry Webpack Plugin or Datadog CLI)
+to upload the generated <code>.map</code> files directly to your
+error-tracking platform.</p></li>
+<li><p>Run a build step to delete all <code>.map</code> files before
+uploading the static assets to your public web server, S3 bucket, or
+CDN:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">find</span> ./dist <span class="at">-name</span> <span class="st">&quot;*.map&quot;</span> <span class="at">-type</span> f <span class="at">-delete</span></span></code></pre></div></li>
+</ol>
+<h4 id="option-b-private-source-map-server">Option B: Private Source Map
+Server</h4>
+<p>If internal developers need to debug live production environments
+using browser developer tools:</p>
+<ol type="1">
+<li>Build assets using <code>hidden-source-map</code> so public users
+are not directed to any map URLs.</li>
+<li>Deploy <code>.map</code> files to an isolated, authenticated server
+accessible only via VPN or corporate SSO.</li>
+<li>Configure the browser’s developer tools to map resource URLs to the
+secure internal source map endpoint manually when debugging.</li>
+</ol></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/deploying-webpack-source-maps-best-practices';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

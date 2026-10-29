@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bypass SSL Errors in Webpack Dev Server Proxy - webpack</title>
+    <meta name="description" content="When developing locally against backend services that use self-signed or invalid HTTPS certificates, Webpack Dev Server will block proxy requests by default due to strict SSL validation. This article explains the exact configuration options needed within">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/bypass-ssl-errors-in-webpack-dev-server-proxy">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bypass SSL Errors in Webpack Dev Server Proxy - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/bypass-ssl-errors-in-webpack-dev-server-proxy" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When developing locally against backend services that use self-signed or invalid HTTPS certificates, Webpack Dev Server will block proxy requests by default due to strict SSL validation. This article explains the exact configuration options needed within" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="bypass-ssl-errors-in-webpack-dev-server-proxy">Bypass SSL Errors
+in Webpack Dev Server Proxy</h1>
+<p>When developing locally against backend services that use self-signed
+or invalid HTTPS certificates, Webpack Dev Server will block proxy
+requests by default due to strict SSL validation. This article explains
+the exact configuration options needed within your
+<code>webpack.config.js</code> file to bypass these certificate errors
+safely during development.</p>
+<h3 id="the-secure-setting">The <code>secure</code> Setting</h3>
+<p>The primary setting to ignore SSL certificate validation errors is
+<code>secure: false</code>.</p>
+<p>Webpack Dev Server relies on <code>http-proxy-middleware</code> under
+the hood. By default, its <code>secure</code> flag is set to
+<code>true</code>, which enforces valid SSL certificates. Setting this
+value to <code>false</code> instructs the proxy to accept backend
+servers with self-signed, expired, or untrusted certificates.</p>
+<h3 id="configuration-example">Configuration Example</h3>
+<p>Add <code>secure: false</code> directly to the proxy target
+configuration inside your <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other webpack settings</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devServer</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">proxy</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="st">&#39;/api&#39;</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;https://localhost:5001&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">secure</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">changeOrigin</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>For Webpack Dev Server version 5 (and version 4 arrays syntax), the
+structure looks like this:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other webpack settings</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devServer</span><span class="op">:</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">proxy</span><span class="op">:</span> [</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">context</span><span class="op">:</span> [<span class="st">&#39;/api&#39;</span>]<span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;https://localhost:5001&#39;</span><span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">secure</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">changeOrigin</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="key-options-explained">Key Options Explained</h3>
+<ul>
+<li><strong><code>secure: false</code></strong>: Disables the
+verification of the target server's SSL certificate. This prevents
+<code>UNABLE_TO_VERIFY_LEAF_SIGNATURE</code>,
+<code>DEPTH_ZERO_SELF_SIGNED_CERT</code>, and other standard Node.js TLS
+rejection errors.</li>
+<li><strong><code>changeOrigin: true</code></strong>: While not strictly
+required for SSL bypassing, this option changes the host header of the
+request to match the target URL. This is frequently required by backends
+operating over HTTPS to prevent virtual host routing issues.</li>
+</ul>
+<h3 id="environment-level-alternative">Environment-Level
+Alternative</h3>
+<p>If you encounter issues before the proxy middleware handles the
+connection, you can configure Node.js directly to ignore all TLS
+certificate errors by setting an environment variable before starting
+Webpack:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="va">NODE_TLS_REJECT_UNAUTHORIZED</span><span class="op">=</span>0 <span class="ex">webpack</span> serve</span></code></pre></div>
+<p>While effective, using <code>secure: false</code> inside
+<code>devServer.proxy</code> is the recommended approach, as it confines
+the insecure behavior exclusively to the proxied requests rather than
+the entire Node.js runtime.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/bypass-ssl-errors-in-webpack-dev-server-proxy';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

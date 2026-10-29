@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack ES5 Target: Fix Arrow Functions and Const - webpack</title>
+    <meta name="description" content="Webpack 5 generates modern ECMAScript 6+ syntax, such as arrow functions and const declarations, inside its runtime boilerplate by default. Even when loaders like Babel transpile your application code, this runtime wrapper code can break legacy environmen">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-es-5-target-fix-arrow-functions-and-const">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack ES5 Target: Fix Arrow Functions and Const - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-es-5-target-fix-arrow-functions-and-const" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 generates modern ECMAScript 6+ syntax, such as arrow functions and const declarations, inside its runtime boilerplate by default. Even when loaders like Babel transpile your application code, this runtime wrapper code can break legacy environmen" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-es5-target-fix-arrow-functions-and-const">Webpack ES5
+Target: Fix Arrow Functions and Const</h1>
+<p>Webpack 5 generates modern ECMAScript 6+ syntax, such as arrow
+functions and <code>const</code> declarations, inside its runtime
+boilerplate by default. Even when loaders like Babel transpile your
+application code, this runtime wrapper code can break legacy
+environments like Internet Explorer 11. Configuring
+<code>target: ['web', 'es5']</code> resolves this issue by instructing
+Webpack's internal template generators to fall back to ES5-compliant
+primitives, replacing arrow functions with regular function expressions
+and <code>const</code> declarations with <code>var</code>.</p>
+<h3 id="the-cause-transpilers-vs-webpack-runtime">The Cause: Transpilers
+vs. Webpack Runtime</h3>
+<p>Loaders such as <code>babel-loader</code> or <code>ts-loader</code>
+only transpile the modules defined in your application's source code.
+They do not process the runtime glue code that Webpack injects to manage
+module loading, chunk resolution, and scoping.</p>
+<p>In Webpack 5, the build engine assumes modern browser environments by
+default to produce smaller and faster runtime bundles. Consequently, the
+runtime templates use:</p>
+<ul>
+<li>Arrow functions: <code>() =&gt; { ... }</code></li>
+<li>Block-scoped variable declarations: <code>const</code> and
+<code>let</code></li>
+<li>Shorthand object notation and destructuring</li>
+</ul>
+<p>When targeting older browsers, these constructs result in immediate
+<code>SyntaxError</code> exceptions before any application code
+executes.</p>
+<h3 id="how-target-web-es5-fixes-the-output">How
+<code>target: ['web', 'es5']</code> Fixes the Output</h3>
+<p>Setting <code>target: ['web', 'es5']</code> provides Webpack with
+explicit instructions about both the platform (<code>web</code>) and the
+ECMAScript specification limit (<code>es5</code>).</p>
+<p>Webpack uses this target array to configure its internal
+<code>output.environment</code> options automatically. The
+<code>output.environment</code> object contains a set of boolean flags
+that dictate what features the runtime generator is allowed to emit:</p>
+<ul>
+<li><code>arrowFunction</code>: Controls whether arrow functions can be
+generated.</li>
+<li><code>const</code>: Controls whether <code>const</code> and
+<code>let</code> can be generated.</li>
+<li><code>destructuring</code>: Controls destructuring assignment
+generation.</li>
+<li><code>forOf</code>: Controls <code>for...of</code> loop
+generation.</li>
+<li><code>dynamicImport</code>: Controls modern dynamic
+<code>import()</code> emission.</li>
+</ul>
+<p>When <code>es5</code> is passed in the <code>target</code> array,
+Webpack sets these environment flags to <code>false</code>.</p>
+<h3 id="the-resulting-runtime-transformation">The Resulting Runtime
+Transformation</h3>
+<p>With the <code>es5</code> target active, Webpack swaps its modern
+code generation templates for legacy-compatible alternatives:</p>
+<ol type="1">
+<li><strong>Arrow Functions to Standard Functions:</strong> Webpack
+replaces <code>(() =&gt; { ... })()</code> wrappers and helper callbacks
+with standard <code>(function() { ... })()</code>.</li>
+<li><strong><code>const</code> and <code>let</code> to
+<code>var</code>:</strong> Runtime variable assignments that store
+module caches, chunk manifests, and export definitions are declared
+strictly using <code>var</code>.</li>
+</ol>
+<h3 id="configuration">Configuration</h3>
+<p>To apply this behavior, update your
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> [<span class="st">&#39;web&#39;</span><span class="op">,</span> <span class="st">&#39;es5&#39;</span>]<span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> <span class="bu">__dirname</span> <span class="op">+</span> <span class="st">&#39;/dist&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Loaders and plugins follow...</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Alternatively, you can manually define
+<code>output.environment</code> if you only need to restrict specific
+syntax features while keeping a single string target:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;web&#39;</span><span class="op">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">environment</span><span class="op">:</span> {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">arrowFunction</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Using <code>target: ['web', 'es5']</code> is the recommended
+shorthand, as it ensures all runtime output flags simultaneously adhere
+to the ES5 standard.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-es-5-target-fix-arrow-functions-and-const';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

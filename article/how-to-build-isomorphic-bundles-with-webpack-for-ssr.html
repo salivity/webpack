@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Build Isomorphic Bundles with Webpack for SSR - webpack</title>
+    <meta name="description" content="Creating an isomorphic (universal) JavaScript bundle with Webpack allows the same codebase to run in both Node.js for server-side rendering (SSR) and client browsers for hydration. Because the execution environments differ significantly, achieving this re">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-to-build-isomorphic-bundles-with-webpack-for-ssr">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Build Isomorphic Bundles with Webpack for SSR - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-to-build-isomorphic-bundles-with-webpack-for-ssr" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Creating an isomorphic (universal) JavaScript bundle with Webpack allows the same codebase to run in both Node.js for server-side rendering (SSR) and client browsers for hydration. Because the execution environments differ significantly, achieving this re" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-build-isomorphic-bundles-with-webpack-for-ssr">How to
+Build Isomorphic Bundles with Webpack for SSR</h1>
+<p>Creating an isomorphic (universal) JavaScript bundle with Webpack
+allows the same codebase to run in both Node.js for server-side
+rendering (SSR) and client browsers for hydration. Because the execution
+environments differ significantly, achieving this requires a dual-target
+build system rather than a single unified bundle. This guide explains
+how to configure Webpack to output optimized, server-ready and
+client-ready bundles using multi-compiler configurations, runtime
+targets, dependency externalization, and environment branching.</p>
+<h2 id="the-dual-configuration-approach">The Dual-Configuration
+Approach</h2>
+<p>True isomorphic applications require two separate Webpack
+configurations executed in tandem: one targeting the browser and one
+targeting Node.js. Running both configurations allows shared application
+logic while catering to the distinct runtime capabilities of each
+platform.</p>
+<p>To implement this, export an array containing both configuration
+objects from your <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> clientConfig <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;client&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;web&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/client.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist/client&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].js&#39;</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">publicPath</span><span class="op">:</span> <span class="st">&#39;/static/&#39;</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Loaders and plugins...</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> serverConfig <span class="op">=</span> {</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;server&#39;</span><span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;node&#39;</span><span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/server.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist/server&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;server.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="dt">library</span><span class="op">:</span> {</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>      <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;commonjs2&#39;</span><span class="op">,</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Loaders and plugins...</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> [clientConfig<span class="op">,</span> serverConfig]<span class="op">;</span></span></code></pre></div>
+<h2 id="configuring-the-server-bundle">Configuring the Server
+Bundle</h2>
+<p>The server configuration requires specific settings to run natively
+in Node.js without bundling unnecessary runtime polyfills.</p>
+<h3 id="set-the-target">Set the Target</h3>
+<p>Set <code>target: 'node'</code> in the server configuration. This
+instructs Webpack to retain Node.js built-in modules (like
+<code>fs</code>, <code>path</code>, and <code>http</code>) as native
+require statements instead of attempting to polyfill them with
+browser-safe equivalents.</p>
+<h3 id="externalize-dependencies">Externalize Dependencies</h3>
+<p>Bundling <code>node_modules</code> into a server bundle bloats build
+times and can break modules that rely on native C++ bindings or dynamic
+runtime paths. Use <code>webpack-node-externals</code> to prevent
+third-party packages from being packaged into the server output:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> nodeExternals <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack-node-externals&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> serverConfig <span class="op">=</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;node&#39;</span><span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">externals</span><span class="op">:</span> [<span class="fu">nodeExternals</span>()]<span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This ensures that third-party packages are loaded via Node's native
+module resolution at runtime.</p>
+<h3 id="define-the-output-format">Define the Output Format</h3>
+<p>Configure the output library format so the server runtime can require
+or import the compiled application:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>output<span class="op">:</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist/server&#39;</span>)<span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;server.js&#39;</span><span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">library</span><span class="op">:</span> {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;commonjs2&#39;</span><span class="op">,</span> <span class="co">// Exports module.exports</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>If targeting Node with ES Modules enabled, use
+<code>output.module: true</code> and configure
+<code>experiments.outputModule: true</code>.</p>
+<h2 id="managing-assets-and-non-javascript-imports">Managing Assets and
+Non-JavaScript Imports</h2>
+<p>Isomorphic code often imports CSS, images, and fonts directly into
+component files. While the client requires these assets, the server only
+needs the raw markup.</p>
+<h3 id="stylesheets">Stylesheets</h3>
+<p>On the client, stylesheets are processed using
+<code>css-loader</code> combined with
+<code>MiniCssExtractPlugin.loader</code> or <code>style-loader</code>.
+On the server, DOM manipulation is unavailable, and generating CSS files
+is redundant. Use <code>css-loader</code> with an export-only
+configuration or ignore styling altogether:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Server config rule</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">css</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;css-loader&#39;</span><span class="op">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">options</span><span class="op">:</span> {</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">modules</span><span class="op">:</span> {</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">exportOnlyLocals</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> <span class="co">// Retains CSS module class names without outputting raw CSS</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="static-assets">Static Assets</h3>
+<p>For static assets like images, ensure asset file paths resolve
+consistently across both builds. Use Webpack 5 Asset Modules:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">png</span><span class="sc">|</span><span class="ss">jpe</span><span class="sc">?</span><span class="ss">g</span><span class="sc">|</span><span class="ss">gif</span><span class="sc">|</span><span class="ss">svg</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/resource&#39;</span><span class="op">,</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">generator</span><span class="op">:</span> {</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">emit</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span> <span class="co">// Prevents server build from writing duplicate asset files</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">publicPath</span><span class="op">:</span> <span class="st">&#39;/static/&#39;</span><span class="op">,</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h2 id="handling-environment-specific-logic">Handling
+Environment-Specific Logic</h2>
+<p>To execute code conditionally depending on whether it runs during SSR
+or client hydration, use the <code>DefinePlugin</code> to inject
+compile-time flags:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">// In clientConfig plugins</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> webpack<span class="op">.</span><span class="fu">DefinePlugin</span>({</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;process.env.IS_SERVER&#39;</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(<span class="kw">false</span>)<span class="op">,</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co">// In serverConfig plugins</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> webpack<span class="op">.</span><span class="fu">DefinePlugin</span>({</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;process.env.IS_SERVER&#39;</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(<span class="kw">true</span>)<span class="op">,</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p>Within your shared codebase, guard browser-only APIs
+(<code>window</code>, <code>document</code>, <code>localStorage</code>)
+with these compile-time flags to prevent runtime crashes during server
+execution:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="op">!</span><span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">IS_SERVER</span>) {</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="bu">window</span><span class="op">.</span><span class="fu">addEventListener</span>(<span class="st">&#39;resize&#39;</span><span class="op">,</span> handleResize)<span class="op">;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>During compilation, Webpack eliminates dead branches via
+tree-shaking, keeping both bundles lean, functional, and fully
+isomorphic.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-to-build-isomorphic-bundles-with-webpack-for-ssr';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

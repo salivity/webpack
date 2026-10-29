@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PurgeCSS Webpack Plugin Dynamic DOM Element Risks - webpack</title>
+    <meta name="description" content="The purgecss-webpack-plugin is a popular tool for reducing bundle size by stripping unused CSS rules at build time; however, running it against dynamically rendered DOM elements introduces significant risks to application stability. Because PurgeCSS analy">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/purge-css-webpack-plugin-dynamic-dom-element-risks">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="PurgeCSS Webpack Plugin Dynamic DOM Element Risks - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/purge-css-webpack-plugin-dynamic-dom-element-risks" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The purgecss-webpack-plugin is a popular tool for reducing bundle size by stripping unused CSS rules at build time; however, running it against dynamically rendered DOM elements introduces significant risks to application stability. Because PurgeCSS analy" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="purgecss-webpack-plugin-dynamic-dom-element-risks">PurgeCSS
+Webpack Plugin Dynamic DOM Element Risks</h1>
+<p>The <code>purgecss-webpack-plugin</code> is a popular tool for
+reducing bundle size by stripping unused CSS rules at build time;
+however, running it against dynamically rendered DOM elements introduces
+significant risks to application stability. Because PurgeCSS analyzes
+code statically during the compilation phase, it cannot naturally
+predict classes generated or applied at runtime through dynamic
+JavaScript. This discrepancy can result in missing styles, broken user
+interfaces, and silent production failures that bypass standard unit
+testing.</p>
+<h3
+id="accidental-class-stripping-through-string-concatenation">Accidental
+Class Stripping Through String Concatenation</h3>
+<p>PurgeCSS uses regular expressions (extractors) to scan source files
+for class names. When classes are constructed dynamically—such as
+template literals or string concatenation (e.g.,
+<code>class="alert-" + type</code> or <code>btn-${variant}</code>)—the
+extractor sees the fragment, not the full selector. Consequently, rules
+like <code>.alert-warning</code> or <code>.btn-primary</code> are
+flagged as unused and stripped from the final production stylesheet,
+leaving the rendered element unstyled.</p>
+<h3 id="failures-with-runtime-and-third-party-injections">Failures with
+Runtime and Third-Party Injections</h3>
+<p>Dynamic elements frequently originate from third-party scripts,
+external APIs, or runtime template systems. Common examples include:</p>
+<ul>
+<li>Modal dialogs or tooltips injected directly into the
+<code>document.body</code>.</li>
+<li>Embedded widgets, payment gateways, or chat tools that supply their
+own DOM markup relying on global CSS.</li>
+<li>Content fetched via a headless CMS containing arbitrary HTML tags
+and classes.</li>
+</ul>
+<p>Because these elements do not exist in the local source code scanned
+by the Webpack build pipeline, PurgeCSS will purge all associated CSS
+rules, breaking the layout and functionality of these components.</p>
+<h3 id="false-positives-in-state-driven-frameworks">False Positives in
+State-Driven Frameworks</h3>
+<p>Modern frontend frameworks like React, Vue, and Angular rely heavily
+on dynamic state to alter the DOM. If state-driven transitions,
+animations, or conditional classes are determined through complex
+runtime logic, lookups, or imported data dictionaries, PurgeCSS might
+fail to match the selector. For instance, dynamically toggling an
+<code>.is-active</code> or <code>.dropdown-open</code> class based on an
+event listener can fail in production if the keyword was never parsed as
+a complete token in the static templates.</p>
+<h3 id="silent-failures-and-production-regressions">Silent Failures and
+Production Regressions</h3>
+<p>Unlike JavaScript syntax errors or module resolution failures,
+missing CSS does not throw compilation or runtime errors. The Webpack
+build completes successfully, and continuous integration pipelines
+typically pass. The failure only becomes apparent visually when a user
+triggers a specific dynamic state in production. Without comprehensive
+visual regression testing, tracking down which dynamic classes were
+pruned can be time-consuming and difficult to debug.</p>
+<h3 id="mitigating-the-risks">Mitigating the Risks</h3>
+<p>To safely use <code>purgecss-webpack-plugin</code> with dynamic
+elements, developers must proactively configure safeguards:</p>
+<ul>
+<li><strong>Safelisting:</strong> Explicitly define dynamic classes in
+the <code>safelist</code> configuration option, using exact strings,
+regular expressions, or deep safelists to protect target selectors.</li>
+<li><strong>Write Complete Class Names:</strong> Avoid string
+concatenation in components; write out the full class names within maps
+or conditionals (e.g., use an object mapping
+<code>{ success: 'btn-success', danger: 'btn-danger' }</code> instead of
+dynamic interpolation).</li>
+<li><strong>Custom Extractors:</strong> Implement custom extractors that
+better understand the syntax of your specific templating language or
+dynamic UI libraries.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/purge-css-webpack-plugin-dynamic-dom-element-risks';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Multi-Compiler Mode for Concurrent Builds - webpack</title>
+    <meta name="description" content="Webpack&#39;s multi-compiler mode allows developers to define and run multiple build targets—such as client, server, modern, and legacy bundles—within a single project. This article explains how Webpack&#39;s multi-compiler functionality operates, how to configur">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-multi-compiler-mode-for-concurrent-builds">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Multi-Compiler Mode for Concurrent Builds - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-multi-compiler-mode-for-concurrent-builds" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack&#39;s multi-compiler mode allows developers to define and run multiple build targets—such as client, server, modern, and legacy bundles—within a single project. This article explains how Webpack&#39;s multi-compiler functionality operates, how to configur" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-multi-compiler-mode-for-concurrent-builds">Webpack
+Multi-Compiler Mode for Concurrent Builds</h1>
+<p>Webpack's multi-compiler mode allows developers to define and run
+multiple build targets—such as client, server, modern, and legacy
+bundles—within a single project. This article explains how Webpack's
+multi-compiler functionality operates, how to configure multiple build
+configurations in a single file, and how to execute them concurrently to
+reduce overall build times.</p>
+<h2 id="defining-multiple-configurations">Defining Multiple
+Configurations</h2>
+<p>Webpack natively supports multi-compiler mode by allowing
+<code>webpack.config.js</code> to export an array of configuration
+objects instead of a single configuration object.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> clientConfig <span class="op">=</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;client&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;web&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/client.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist/client&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> serverConfig <span class="op">=</span> {</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;server&#39;</span><span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;node&#39;</span><span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/server.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist/server&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> [clientConfig<span class="op">,</span> serverConfig]<span class="op">;</span></span></code></pre></div>
+<p>Assigning a <code>name</code> property to each configuration improves
+logging clarity and allows specific configurations to be targeted via
+the command line using <code>--config-name</code>.</p>
+<h2 id="concurrency-in-standard-webpack">Concurrency in Standard
+Webpack</h2>
+<p>When passing an array of configurations to the Webpack CLI
+(<code>npx webpack</code>), Webpack instantiates a
+<code>MultiCompiler</code>. In Webpack 5, the <code>MultiCompiler</code>
+processes individual configurations in parallel when executed via the
+Node.js API or standard CLI.</p>
+<p>However, because Node.js operates on a single main thread,
+CPU-intensive tasks—such as Babel transpilation, TypeScript type
+checking, or minification—can still block execution, preventing true
+hardware-level parallelism.</p>
+<h2 id="achieving-true-parallel-execution">Achieving True Parallel
+Execution</h2>
+<p>To maximize hardware utilization and achieve process-level
+concurrency across multiple configurations, choose one of the following
+approaches:</p>
+<h3 id="1-using-parallel-webpack">1. Using
+<code>parallel-webpack</code></h3>
+<p>The <code>parallel-webpack</code> package distributes each
+configuration across separate worker processes, allowing multi-core CPUs
+to compile all configurations concurrently without main-thread
+blocking.</p>
+<p>Install the package:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install parallel-webpack <span class="at">--save-dev</span></span></code></pre></div>
+<p>Run the build:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npx</span> parallel-webpack</span></code></pre></div>
+<p>You can control the concurrency level using the
+<code>--max-spawns</code> argument:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npx</span> parallel-webpack <span class="at">--max-spawns</span> 4</span></code></pre></div>
+<h3 id="2-using-the-webpack-nodejs-api-with-worker-threads">2. Using the
+Webpack Node.js API with Worker Threads</h3>
+<p>If you control your build via a custom Node.js script, you can
+leverage Node’s <code>worker_threads</code> or
+<code>child_process</code> modules to spawn a distinct Webpack instance
+per configuration:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// build.js</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { <span class="bu">Worker</span> } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;worker_threads&#39;</span>)<span class="op">;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> configs <span class="op">=</span> [<span class="st">&#39;client&#39;</span><span class="op">,</span> <span class="st">&#39;server&#39;</span>]<span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>configs<span class="op">.</span><span class="fu">forEach</span>((target) <span class="kw">=&gt;</span> {</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> worker <span class="op">=</span> <span class="kw">new</span> <span class="bu">Worker</span>(<span class="st">&#39;./run-compiler.js&#39;</span><span class="op">,</span> {</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">workerData</span><span class="op">:</span> { target }<span class="op">,</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  worker<span class="op">.</span><span class="fu">on</span>(<span class="st">&#39;message&#39;</span><span class="op">,</span> (msg) <span class="kw">=&gt;</span> <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="vs">`[</span><span class="sc">${</span>target<span class="sc">}</span><span class="vs">]: </span><span class="sc">${</span>msg<span class="sc">}</span><span class="vs">`</span>))<span class="op">;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  worker<span class="op">.</span><span class="fu">on</span>(<span class="st">&#39;error&#39;</span><span class="op">,</span> (err) <span class="kw">=&gt;</span> <span class="bu">console</span><span class="op">.</span><span class="fu">error</span>(<span class="vs">`[</span><span class="sc">${</span>target<span class="sc">}</span><span class="vs">] Error:`</span><span class="op">,</span> err))<span class="op">;</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p>Inside <code>run-compiler.js</code>, run <code>webpack()</code> on
+the targeted configuration independently.</p>
+<h2 id="best-practices-for-multi-compiler-builds">Best Practices for
+Multi-Compiler Builds</h2>
+<ul>
+<li><strong>Distinct Output Paths</strong>: Ensure each configuration
+outputs to a separate directory or uses unique file names to avoid write
+collisions.</li>
+<li><strong>Persistent Caching</strong>: Configure
+<code>cache: { type: 'filesystem' }</code> on each configuration.
+Webpack ensures caches do not conflict if the configurations have
+distinct <code>name</code> properties.</li>
+<li><strong>Avoid Inter-Config Dependencies</strong>: Multi-compiler
+tasks execute independently; do not design one configuration to rely on
+the output of another within the same build step.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-multi-compiler-mode-for-concurrent-builds';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

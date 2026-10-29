@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>strictlyVersioned in Webpack Module Federation - webpack</title>
+    <meta name="description" content="Webpack Module Federation allows independent applications to share common dependencies at runtime to avoid duplicate bundle downloads. In this architecture, version management is critical to ensure compatibility across micro-frontends. The strictlyVersion">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/strictly-versioned-in-webpack-module-federation">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="strictlyVersioned in Webpack Module Federation - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/strictly-versioned-in-webpack-module-federation" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack Module Federation allows independent applications to share common dependencies at runtime to avoid duplicate bundle downloads. In this architecture, version management is critical to ensure compatibility across micro-frontends. The strictlyVersion" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="strictlyversioned-in-webpack-module-federation">strictlyVersioned in
+Webpack Module Federation</h1>
+<p>Webpack Module Federation allows independent applications to share
+common dependencies at runtime to avoid duplicate bundle downloads. In
+this architecture, version management is critical to ensure
+compatibility across micro-frontends. The <code>strictlyVersioned</code>
+concept—implemented in Webpack configuration via the
+<code>strictVersion</code> property within the <code>shared</code>
+object—controls whether Webpack strictly enforces shared package version
+requirements or allows fallback versions when semantic mismatches
+occur.</p>
+<h3 id="the-problem-with-default-dependency-sharing">The Problem with
+Default Dependency Sharing</h3>
+<p>By default, Webpack Module Federation uses a flexible approach when
+resolving shared dependencies between host and remote containers. If a
+host requires <code>lodash@^4.17.0</code> and a remote provides
+<code>lodash@^4.16.0</code>, Webpack logs a console warning about the
+version mismatch, but it still executes using the available instance to
+prevent the application from crashing.</p>
+<p>While this default behavior prioritizes runtime availability, it
+introduces risks when libraries contain breaking changes, internal state
+incompatibilities, or breaking API modifications across minor or patch
+releases.</p>
+<h3 id="how-strictversion-works">How <code>strictVersion</code>
+Works</h3>
+<p>Setting <code>strictVersion: true</code> changes how Webpack resolves
+mismatched versions. Instead of issuing a warning and continuing
+execution with an incompatible version, Webpack immediately rejects the
+mismatched shared package and throws a runtime error.</p>
+<p>When <code>strictVersion: true</code> is enabled:</p>
+<ul>
+<li><strong>Compatible Versions:</strong> If the remote or host provides
+a version matching the defined <code>requiredVersion</code> range, it is
+shared normally.</li>
+<li><strong>Incompatible Versions:</strong> If no compatible version is
+found in the shared scope, Webpack throws a runtime error (e.g.,
+<code>Unsatisfied version ... from ... of shared singleton module ...</code>).
+It will not fall back to an out-of-range shared instance.</li>
+<li><strong>Local Fallback:</strong> If the consuming application has
+bundled its own fallback copy of the dependency (and
+<code>singleton</code> is not set to <code>true</code>), it will load
+its local bundle instead of using the incompatible shared module.</li>
+</ul>
+<h3 id="configuration-example">Configuration Example</h3>
+<p>The setting is applied within the <code>ModuleFederationPlugin</code>
+configuration under the <code>shared</code> property:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { ModuleFederationPlugin } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">.</span><span class="at">container</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> deps <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;./package.json&#39;</span>)<span class="op">.</span><span class="at">dependencies</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;host_app&#39;</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">remotes</span><span class="op">:</span> {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">remote_app</span><span class="op">:</span> <span class="st">&#39;remote_app@http://localhost:3001/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>      <span class="dt">shared</span><span class="op">:</span> {</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">react</span><span class="op">:</span> {</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>          <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>          <span class="dt">strictVersion</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>          <span class="dt">requiredVersion</span><span class="op">:</span> deps<span class="op">.</span><span class="at">react</span><span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="st">&#39;react-dom&#39;</span><span class="op">:</span> {</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>          <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>          <span class="dt">strictVersion</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>          <span class="dt">requiredVersion</span><span class="op">:</span> deps[<span class="st">&#39;react-dom&#39;</span>]<span class="op">,</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="when-to-use-strict-versioning">When to Use Strict
+Versioning</h3>
+<p>Enforcing strict versioning is particularly useful in specific
+architectural scenarios:</p>
+<ul>
+<li><strong>Stateful Libraries and Contexts:</strong> Libraries like
+React, React Router, or state management stores can break entirely if
+multiple versions or incompatible minor versions attempt to interact
+within the same runtime tree.</li>
+<li><strong>Strict Public APIs:</strong> When an internal library or
+design system frequently introduces breaking changes without proper
+semver safeguards, enabling strict checking prevents silent failures and
+corrupted UI states.</li>
+<li><strong>Preventing Undetected Drift:</strong> In large teams where
+independent applications deploy at different intervals, strict
+versioning surfaces compatibility issues immediately in testing
+environments rather than silently producing edge-case bugs in
+production.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/strictly-versioned-in-webpack-module-federation';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

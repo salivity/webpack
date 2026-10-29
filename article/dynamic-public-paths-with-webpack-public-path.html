@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Public Paths with \_\_webpack\_public\_path\_\_ - webpack</title>
+    <meta name="description" content="Webpack allows developers to determine the base path for loading assets and asynchronous chunks at runtime rather than build time. By leveraging the internal free variable webpackpublicpath, applications can adapt their asset resolution dynamically based">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/dynamic-public-paths-with-webpack-public-path">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Dynamic Public Paths with \_\_webpack\_public\_path\_\_ - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/dynamic-public-paths-with-webpack-public-path" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack allows developers to determine the base path for loading assets and asynchronous chunks at runtime rather than build time. By leveraging the internal free variable webpackpublicpath, applications can adapt their asset resolution dynamically based" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="dynamic-public-paths-with-__webpack_public_path__">Dynamic
+Public Paths with __webpack_public_path__</h1>
+<p>Webpack allows developers to determine the base path for loading
+assets and asynchronous chunks at runtime rather than build time. By
+leveraging the internal free variable
+<code>__webpack_public_path__</code>, applications can adapt their asset
+resolution dynamically based on host environments, dynamic Content
+Delivery Networks (CDNs), or server-injected variables. This article
+covers how Webpack manages runtime paths, how to implement
+<code>__webpack_public_path__</code> properly, and the critical rules
+regarding module evaluation order.</p>
+<h2 id="the-static-public-path-limitation">The Static Public Path
+Limitation</h2>
+<p>In standard Webpack configurations, the
+<code>output.publicPath</code> option determines the target directory
+path where output files (such as dynamic imports, images, and split
+chunks) are hosted:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">publicPath</span><span class="op">:</span> <span class="st">&#39;https://cdn.example.com/assets/&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This approach compiles a hardcoded URL directly into the generated
+bundles. If the same build artifacts must be deployed across varying
+domains, multi-tenant subpaths, or regional CDNs, rebuilding the
+application for each target environment becomes inefficient.</p>
+<h2 id="how-__webpack_public_path__-works">How
+<code>__webpack_public_path__</code> Works</h2>
+<p>Webpack includes an internal runtime variable—historically referred
+to as <code>__webpack_require__.p</code>—that prepends the base path to
+any dynamically requested resource.</p>
+<p>The <code>__webpack_public_path__</code> variable is a
+Webpack-specific global variable exposed to the application code. When
+Webpack parses this token, it rewrites the assignment directly to the
+internal runtime property <code>__webpack_require__.p</code>. Changing
+this variable at runtime immediately updates the URL prefix used for
+subsequent on-demand chunk loading (e.g., via <code>import()</code>) and
+asset module resolutions.</p>
+<h2 id="implementation-guide">Implementation Guide</h2>
+<p>To use <code>__webpack_public_path__</code>, assign a string
+representing the desired base path before any asynchronous code or
+assets are resolved.</p>
+<h3 id="1-create-a-dedicated-path-module">1. Create a Dedicated Path
+Module</h3>
+<p>Create a file responsible for resolving and assigning the dynamic
+path. This file should execute before anything else in the application
+lifecycle.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// src/public-path.js</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>__webpack_public_path__ <span class="op">=</span> <span class="bu">window</span><span class="op">.</span><span class="at">ASSET_HOST</span> <span class="op">||</span> <span class="st">&#39;/default-assets/&#39;</span><span class="op">;</span></span></code></pre></div>
+<p>In this pattern, the server can render a global
+<code>window.ASSET_HOST</code> configuration variable directly into the
+HTML template, allowing the frontend bundle to adapt instantly.</p>
+<h3 id="2-import-the-module-at-the-root-entry">2. Import the Module at
+the Root Entry</h3>
+<p>Import the public path definition at the very top of your
+application's entry point:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// src/index.js</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="st">&#39;./public-path&#39;</span><span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="st">&#39;./app&#39;</span><span class="op">;</span></span></code></pre></div>
+<h2 id="handling-es-module-import-hoisting">Handling ES Module Import
+Hoisting</h2>
+<p>A common pitfall with <code>__webpack_public_path__</code> involves
+ES Module (ESM) import hoisting. In standard JavaScript, all static
+<code>import</code> declarations are hoisted to the top of the file,
+evaluating imported modules before inline code runs.</p>
+<p>If <code>__webpack_public_path__</code> is assigned inside the main
+file alongside static imports that immediately trigger chunk loads, the
+assignment may execute too late:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Problematic implementation</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { dynamicFeature } <span class="im">from</span> <span class="st">&#39;./feature&#39;</span><span class="op">;</span> <span class="co">// May evaluate before path is set</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>__webpack_public_path__ <span class="op">=</span> <span class="bu">window</span><span class="op">.</span><span class="at">DYNAMIC_CDN</span><span class="op">;</span> </span></code></pre></div>
+<h3
+id="the-solution-separate-entry-points-or-pure-side-effect-imports">The
+Solution: Separate Entry Points or Pure Side-Effect Imports</h3>
+<p>To guarantee that the path assignment happens before any chunk
+requests:</p>
+<ol type="1">
+<li><strong>Top-Level Side-Effect Import:</strong> Place the assignment
+in an isolated file (e.g., <code>public-path.js</code>) and import it as
+the first line of your main entry file, as shown in the implementation
+guide.</li>
+<li><strong>Webpack Entry Configuration:</strong> Define the path module
+as an entry array item in <code>webpack.config.js</code>, ensuring it
+runs first:</li>
+</ol>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> [<span class="st">&#39;./src/public-path.js&#39;</span><span class="op">,</span> <span class="st">&#39;./src/index.js&#39;</span>]<span class="op">,</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h2 id="combining-with-outputpublicpath-auto">Combining with
+<code>output.publicPath: 'auto'</code></h2>
+<p>In modern versions of Webpack (v5+), you can also set
+<code>output.publicPath: 'auto'</code>. This instructs Webpack to infer
+the public path automatically from the <code>currentScript</code>,
+<code>document.baseURI</code>, or the relative path of the executing
+bundle.</p>
+<p>However, setting <code>__webpack_public_path__</code> explicitly
+overrides the automated resolution, giving complete programmatic control
+when automatic detection is insufficient, such as in environments
+without a DOM or when delegating asset delivery to external CDNs.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/dynamic-public-paths-with-webpack-public-path';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

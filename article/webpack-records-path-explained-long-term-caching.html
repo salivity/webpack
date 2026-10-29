@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack recordsPath Explained: Long-Term Caching - webpack</title>
+    <meta name="description" content="Webpack&#39;s recordsPath configuration option provides a mechanism to persist module and chunk identities across separate compilation runs by saving their state into a JSON file. Historically, this feature was an essential tool for achieving long-term browse">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-records-path-explained-long-term-caching">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack recordsPath Explained: Long-Term Caching - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-records-path-explained-long-term-caching" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack&#39;s recordsPath configuration option provides a mechanism to persist module and chunk identities across separate compilation runs by saving their state into a JSON file. Historically, this feature was an essential tool for achieving long-term browse" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-recordspath-explained-long-term-caching">Webpack
+recordsPath Explained: Long-Term Caching</h1>
+<p>Webpack's <code>recordsPath</code> configuration option provides a
+mechanism to persist module and chunk identities across separate
+compilation runs by saving their state into a JSON file. Historically,
+this feature was an essential tool for achieving long-term browser
+caching in production environments, as it prevented Webpack from
+renumbering internal module IDs whenever dependencies changed. This
+article explains what <code>recordsPath</code> does, why it was
+historically vital for caching, and how modern Webpack configurations
+have evolved past the need for it.</p>
+<h3 id="what-is-recordspath">What is recordsPath?</h3>
+<p>In Webpack, <code>recordsPath</code> is a configuration property that
+accepts an absolute file path pointing to a JSON file. During the build
+process, Webpack uses this file to track and store metadata about the
+build, primarily:</p>
+<ul>
+<li><strong>Module IDs</strong>: Numerical identifiers assigned to
+individual source files and dependencies.</li>
+<li><strong>Chunk IDs</strong>: Identifiers assigned to split bundles or
+entry points.</li>
+</ul>
+<p>When a build starts, Webpack reads the existing file specified by
+<code>recordsPath</code> (or <code>recordsInputPath</code>). It uses
+those stored identifiers for modules and chunks that already exist, and
+it writes the updated state back to the file (or
+<code>recordsOutputPath</code>) when the build finishes.</p>
+<h3 id="the-historical-caching-problem">The Historical Caching
+Problem</h3>
+<p>In early versions of Webpack (v1 through v3), Webpack assigned module
+and chunk IDs using simple incrementing integers (e.g., <code>0</code>,
+<code>1</code>, <code>2</code>, ...). These integers were directly
+embedded in the compiled JavaScript bundle files and the Webpack
+bootstrap runtime.</p>
+<p>This approach created a major problem for HTTP caching:</p>
+<ol type="1">
+<li>If a developer added a new import or rearranged imports, the
+sequential assignment of module IDs shifted.</li>
+<li>Even if a bundle's source code remained unchanged, its internal
+module IDs—or the IDs of external chunks it referenced—would
+change.</li>
+<li>This shift altered the compiled bundle's content, changing its
+cryptographic content hash (e.g., <code>app.a1b2c3.js</code> became
+<code>app.d4e5f6.js</code>).</li>
+<li>End users' browsers were forced to re-download scripts that had no
+real business logic changes, defeating the purpose of long-term asset
+caching.</li>
+</ol>
+<h3 id="how-recordspath-solved-the-caching-issue">How recordsPath Solved
+the Caching Issue</h3>
+<p>By defining a <code>recordsPath</code>, developers could maintain a
+stateful history between builds.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js (historical usage)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">recordsPath</span><span class="op">:</span> path<span class="op">.</span><span class="fu">join</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;webpack-records.json&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When building updates:</p>
+<ol type="1">
+<li>Webpack inspected <code>webpack-records.json</code>.</li>
+<li>Any module previously mapped to an ID retained that exact ID,
+regardless of where new modules were inserted.</li>
+<li>Only newly introduced modules received new sequential IDs appended
+to the list.</li>
+<li>Because existing module and chunk IDs remained constant, the
+compiled output for untouched files remained byte-for-byte
+identical.</li>
+<li>As a result, the generated file hashes did not change, allowing
+browsers and CDNs to serve cached assets without re-fetching.</li>
+</ol>
+<h3 id="why-recordspath-fell-out-of-favor">Why recordsPath Fell Out of
+Favor</h3>
+<p>While effective locally, using <code>recordsPath</code> in automated
+Continuous Integration and Continuous Deployment (CI/CD) pipelines
+proved difficult:</p>
+<ul>
+<li><strong>State Management</strong>: It required persisting the
+<code>records.json</code> file across ephemeral build environments (like
+Docker containers or CI workers) via storage buckets or git
+commits.</li>
+<li><strong>Concurrency</strong>: Parallel builds on different branches
+could lead to conflicting records or race conditions.</li>
+</ul>
+<p>To resolve these operational hurdles, Webpack introduced
+deterministic hashing methods:</p>
+<ul>
+<li><strong>Webpack 3/4</strong>: Introduced
+<code>HashedModuleIdsPlugin</code> (and later
+<code>NamedModulesPlugin</code>), which derived module IDs from the
+relative path of the file rather than a sequential counter.</li>
+<li><strong>Webpack 5</strong>: Introduced native deterministic ID
+generation via <code>optimization.moduleIds: 'deterministic'</code> and
+<code>optimization.chunkIds: 'deterministic'</code>. These settings
+generate short, stable hashes based on filenames by default in
+production.</li>
+</ul>
+<p>Modern deterministic IDs achieve the exact same caching benefits that
+<code>recordsPath</code> once provided, but they do so completely
+statelessly without requiring a persistent tracking file between
+builds.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-records-path-explained-long-term-caching';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

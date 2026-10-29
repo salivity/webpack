@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deterministic Module and Chunk IDs in Webpack - webpack</title>
+    <meta name="description" content="In Webpack, deterministic module and chunk IDs provide a reliable mechanism for long-term browser caching by generating predictable, short numeric identifiers based on module resource paths and chunk contents. This article explains how Webpack generates t">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/deterministic-module-and-chunk-i-ds-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Deterministic Module and Chunk IDs in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/deterministic-module-and-chunk-i-ds-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Webpack, deterministic module and chunk IDs provide a reliable mechanism for long-term browser caching by generating predictable, short numeric identifiers based on module resource paths and chunk contents. This article explains how Webpack generates t" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="deterministic-module-and-chunk-ids-in-webpack">Deterministic
+Module and Chunk IDs in Webpack</h1>
+<p>In Webpack, deterministic module and chunk IDs provide a reliable
+mechanism for long-term browser caching by generating predictable, short
+numeric identifiers based on module resource paths and chunk contents.
+This article explains how Webpack generates these deterministic IDs, the
+problems solved by shifting away from sequential integers, and how the
+underlying hashing algorithms balance collision avoidance with minimal
+bundle size overhead.</p>
+<h3 id="the-problem-with-sequential-ids">The Problem with Sequential
+IDs</h3>
+<p>By default in earlier versions of Webpack, modules and chunks were
+assigned incremental integer IDs (such as <code>0</code>,
+<code>1</code>, <code>2</code>) based on the order of resolution. When a
+new module was introduced or an existing one removed, the entire
+resolution order shifted.</p>
+<p>This behavior caused a cascading invalidation issue: even if a vendor
+chunk's code remained identical, its assigned chunk ID or the internal
+module IDs referenced inside it could change. Consequently, the output
+hash of the bundle changed, forcing clients to re-download unchanged
+assets and negating the benefits of long-term browser caching.</p>
+<h3 id="how-deterministic-module-ids-work">How Deterministic Module IDs
+Work</h3>
+<p>When <code>optimization.moduleIds</code> is set to
+<code>'deterministic'</code> (the default setting in Webpack 5 for
+production mode), Webpack assigns short numeric IDs that remain constant
+across builds, provided the module itself has not changed.</p>
+<ol type="1">
+<li><strong>Path Normalization:</strong> Webpack takes the module's
+resolved file path and normalizes it relative to the project root
+(<code>context</code>). This ensures that builds generated across
+different machines or CI environments produce identical inputs for the
+hashing step.</li>
+<li><strong>Hashing the Identifier:</strong> The relative path is passed
+through an internal hashing algorithm (typically based on a variant of
+MurmurHash3 or Xxhash).</li>
+<li><strong>Truncation and Collision Handling:</strong> Webpack
+truncates the hash to a compact integer—usually 3 to 4 digits—to keep
+the generated runtime overhead minimal. If a collision occurs where two
+distinct modules generate the same shortened hash, Webpack increments
+the ID for one of the modules until a unique value is found.</li>
+</ol>
+<p>Because the ID is derived from the module's stable path rather than
+compilation order, adding or removing other modules in the dependency
+graph does not alter the ID of untouched modules.</p>
+<h3 id="how-deterministic-chunk-ids-work">How Deterministic Chunk IDs
+Work</h3>
+<p>Similar to module IDs, chunk IDs can fluctuate if based on natural
+ordering. With <code>optimization.chunkIds: 'deterministic'</code> (also
+default in production), Webpack generates deterministic identifiers for
+chunks:</p>
+<ol type="1">
+<li><strong>Context Extraction:</strong> Webpack examines the chunk's
+constituent modules and its entry points or structural roles within the
+dependency graph.</li>
+<li><strong>Hash Computation:</strong> A hash is derived using the
+identities of the modules contained in the chunk or the chunk's unique
+name/structure.</li>
+<li><strong>Short Numerical ID Generation:</strong> The computed value
+is mapped to a small numeric ID. As with modules, this process includes
+collision-resolution logic to ensure that every emitted chunk retains a
+unique identifier without relying on arbitrary array indexes.</li>
+</ol>
+<h3 id="configuration">Configuration</h3>
+<p>In modern Webpack configurations, these settings are enabled out of
+the box when <code>mode</code> is set to <code>'production'</code>.
+However, they can be explicitly defined in
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">moduleIds</span><span class="op">:</span> <span class="st">&#39;deterministic&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunkIds</span><span class="op">:</span> <span class="st">&#39;deterministic&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="summary-of-benefits">Summary of Benefits</h3>
+<ul>
+<li><strong>Cache Stability:</strong> Changes to one part of an
+application do not invalidate unrelated chunks, preserving vendor and
+split-chunk caching in client browsers.</li>
+<li><strong>Smaller Footprint than Named IDs:</strong> While
+<code>named</code> module and chunk IDs also provide determinism, they
+use full string paths that increase bundle size. Deterministic IDs yield
+tiny numbers (e.g., <code>314</code>, <code>802</code>), achieving
+optimal stability with negligible byte overhead.</li>
+<li><strong>Reproducible Builds:</strong> Builds executed on different
+environments or at different times produce identical asset outputs as
+long as the source files remain unchanged.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/deterministic-module-and-chunk-i-ds-in-webpack';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

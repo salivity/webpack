@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Leaks in Custom Webpack Plugins and Loaders - webpack</title>
+    <meta name="description" content="Custom Webpack plugins and loaders can easily introduce memory leaks, especially during persistent development workflows using watch mode or Webpack Dev Server. Because Webpack runs as a long-lived Node.js process during continuous builds, retaining unnec">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/memory-leaks-in-custom-webpack-plugins-and-loaders">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Memory Leaks in Custom Webpack Plugins and Loaders - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/memory-leaks-in-custom-webpack-plugins-and-loaders" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Custom Webpack plugins and loaders can easily introduce memory leaks, especially during persistent development workflows using watch mode or Webpack Dev Server. Because Webpack runs as a long-lived Node.js process during continuous builds, retaining unnec" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="memory-leaks-in-custom-webpack-plugins-and-loaders">Memory Leaks
+in Custom Webpack Plugins and Loaders</h1>
+<p>Custom Webpack plugins and loaders can easily introduce memory leaks,
+especially during persistent development workflows using watch mode or
+Webpack Dev Server. Because Webpack runs as a long-lived Node.js process
+during continuous builds, retaining unnecessary references across
+incremental compilations prevents the V8 garbage collector from
+reclaiming memory. This article highlights the most common memory leak
+vectors in custom plugins and loaders—including unbounded caching,
+improper state retention across compilations, dangling event listeners,
+and child compiler misuse—and provides direct strategies to prevent
+them.</p>
+<h2 id="1-module-level-and-global-caching-without-eviction">1.
+Module-Level and Global Caching Without Eviction</h2>
+<p>Loaders and plugins are often written to process thousands of files,
+leading developers to implement custom in-memory caches to speed up
+expensive tasks like AST generation or transpilation.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Problematic pattern in a custom loader</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> cache <span class="op">=</span> <span class="kw">new</span> <span class="bu">Map</span>()<span class="op">;</span> <span class="co">// Persists across all compilations in the Node process</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> <span class="kw">function</span>(source) {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="op">!</span>cache<span class="op">.</span><span class="fu">has</span>(<span class="kw">this</span><span class="op">.</span><span class="at">resourcePath</span>)) {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    cache<span class="op">.</span><span class="fu">set</span>(<span class="kw">this</span><span class="op">.</span><span class="at">resourcePath</span><span class="op">,</span> <span class="fu">heavyComputation</span>(source))<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> cache<span class="op">.</span><span class="fu">get</span>(<span class="kw">this</span><span class="op">.</span><span class="at">resourcePath</span>)<span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When a module-level <code>Map</code> or plain object stores data
+keyed by file paths, deleted or modified files leave stale records
+behind. Over multiple rebuilds, these caches grow indefinitely.</p>
+<p><strong>Solution:</strong></p>
+<ul>
+<li>Rely on Webpack's native caching infrastructure
+(<code>compiler.cache</code> or <code>this.cacheable()</code>).</li>
+<li>If a custom cache is mandatory, use an LRU (Least Recently Used)
+cache with strict item or byte limits, or use a <code>WeakMap</code>
+when mapping memory to object references.</li>
+</ul>
+<h2 id="2-retaining-compilation-references-in-plugin-instances">2.
+Retaining <code>compilation</code> References in Plugin Instances</h2>
+<p>A Webpack <code>Compiler</code> runs for the lifetime of the process,
+while a <code>Compilation</code> represents a single build iteration. A
+common bug involves storing the <code>compilation</code> object directly
+on the plugin instance.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> LeakPlugin {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(compiler) {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">compilation</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&#39;LeakPlugin&#39;</span><span class="op">,</span> (compilation) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Memory leak: Storing compilation on the persistent compiler/plugin scope</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      <span class="kw">this</span><span class="op">.</span><span class="at">compilation</span> <span class="op">=</span> compilation<span class="op">;</span> </span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>The <code>compilation</code> object contains the entire dependency
+graph, ASTs, source maps, and module instances. Holding a reference to
+it on the plugin instance keeps the entire previous build's graph alive
+in memory indefinitely.</p>
+<p><strong>Solution:</strong></p>
+<ul>
+<li>Pass the <code>compilation</code> instance directly into local
+function arguments.</li>
+<li>Scope compilation-specific state to the hook's execution boundary
+instead of storing it on class properties.</li>
+</ul>
+<h2 id="3-dangling-event-listeners-and-hook-accumulation">3. Dangling
+Event Listeners and Hook Accumulation</h2>
+<p>When custom plugins tap into global event emitters—such as Node's
+<code>process</code>, external file watchers, or persistent Webpack
+hooks—without cleaning them up, listeners accumulate on every
+rebuild.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> ListenerLeakPlugin {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(compiler) {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">thisCompilation</span><span class="op">.</span><span class="fu">tap</span>(<span class="st">&#39;ListenerLeakPlugin&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      <span class="co">// This listener is added again on every single incremental build</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>      <span class="bu">process</span><span class="op">.</span><span class="fu">on</span>(<span class="st">&#39;SIGINT&#39;</span><span class="op">,</span> <span class="kw">this</span><span class="op">.</span><span class="at">handleInterrupt</span>)<span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Every repeated compilation registers a duplicate listener holding
+references to its surrounding closure, preventing garbage
+collection.</p>
+<p><strong>Solution:</strong></p>
+<ul>
+<li>Attach persistent or process-level listeners inside
+<code>compiler.hooks.initialize</code> or the <code>apply</code> method
+directly, ensuring they run only once.</li>
+<li>Unsubscribe any per-compilation listeners using lifecycle hooks like
+<code>compiler.hooks.failed</code> and
+<code>compiler.hooks.done</code>.</li>
+</ul>
+<h2 id="4-neglected-loader-callbacks-and-closure-traps">4. Neglected
+Loader Callbacks and Closure Traps</h2>
+<p>In asynchronous loaders, memory leaks occur when asynchronous
+operations fail to resolve or when variables are trapped in unresolved
+closures.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> <span class="kw">function</span>(source) {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> callback <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="fu">async</span>()<span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">heavyProcessing</span>(source<span class="op">,</span> (err<span class="op">,</span> result) <span class="kw">=&gt;</span> {</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (err) {</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>      <span class="co">// If the callback is not invoked here, Webpack retains the execution context</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>      <span class="bu">console</span><span class="op">.</span><span class="fu">error</span>(err)<span class="op">;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span><span class="op">;</span> </span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">callback</span>(<span class="kw">null</span><span class="op">,</span> result)<span class="op">;</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>If an asynchronous pathway encounters an unhandled error branch or
+timeout and fails to call <code>callback()</code>, Webpack maintains
+internal references to the loader context and the source buffers
+awaiting completion.</p>
+<p><strong>Solution:</strong></p>
+<ul>
+<li>Always guarantee that <code>this.async()</code> callbacks are
+invoked exactly once across all execution branches, including error
+cases.</li>
+<li>Avoid binding large buffers to closures that outlive the
+transformation phase.</li>
+</ul>
+<h2 id="5-mismanaged-child-compilers">5. Mismanaged Child Compilers</h2>
+<p>Plugins that extract assets or preprocess HTML often create child
+compilers via <code>compilation.createChildCompiler()</code>. Child
+compilers instantiate new module graphs and independent plugin
+pipelines.</p>
+<p>If a child compiler is initialized on every run of <code>make</code>
+or <code>thisCompilation</code> without explicit cleanup or caching, it
+duplicates parts of the compilation ecosystem in memory.</p>
+<p><strong>Solution:</strong></p>
+<ul>
+<li>Restrict child compilation creation to instances where module
+dependencies have actually changed.</li>
+<li>Ensure all child compiler assets are copied to the parent
+compilation and unneeded references to the child instance are cleared at
+the end of the hook.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/memory-leaks-in-custom-webpack-plugins-and-loaders';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

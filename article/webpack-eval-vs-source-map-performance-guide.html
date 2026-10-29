@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Eval vs Source Map: Performance Guide - webpack</title>
+    <meta name="description" content="Choosing between eval source maps and standard source-map in Webpack involves balancing build speed, rebuild efficiency, bundle size, and runtime performance. While eval-based configurations significantly accelerate compilation and Hot Module Replacement">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-eval-vs-source-map-performance-guide">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Eval vs Source Map: Performance Guide - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-eval-vs-source-map-performance-guide" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Choosing between eval source maps and standard source-map in Webpack involves balancing build speed, rebuild efficiency, bundle size, and runtime performance. While eval-based configurations significantly accelerate compilation and Hot Module Replacement" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-eval-vs-source-map-performance-guide">Webpack Eval vs
+Source Map: Performance Guide</h1>
+<p>Choosing between <code>eval</code> source maps and standard
+<code>source-map</code> in Webpack involves balancing build speed,
+rebuild efficiency, bundle size, and runtime performance. While
+<code>eval</code>-based configurations significantly accelerate
+compilation and Hot Module Replacement (HMR) during development, they
+introduce notable memory and execution overhead at runtime. Conversely,
+traditional <code>source-map</code> options yield production-ready,
+clean JavaScript bundles and precise debugging at the expense of
+substantially slower initial builds and incremental rebuild times.</p>
+<h2 id="how-they-work-under-the-hood">How They Work Under the Hood</h2>
+<h3 id="eval-source-maps">Eval Source Maps</h3>
+<p>Options like <code>eval</code> or <code>eval-source-map</code> wrap
+each compiled module in an <code>eval()</code> string alongside a
+<code>//# sourceURL</code> or an inlined base64-encoded SourceMap.</p>
+<p>Because each module is isolated inside its own <code>eval()</code>
+call, Webpack can update individual modules without recalculating
+mappings for the entire chunk or regenerating external files.</p>
+<h3 id="standard-source-maps">Standard Source Maps</h3>
+<p>The <code>source-map</code> option generates a separate
+<code>.map</code> file alongside each output JavaScript bundle.</p>
+<p>Webpack parses the complete Abstract Syntax Tree (AST), generates
+mappings for all modules, and creates an independent source map file
+containing line-and-column-level references to the original source
+code.</p>
+<h2 id="build-and-rebuild-performance">Build and Rebuild
+Performance</h2>
+<h3 id="initial-build-time">Initial Build Time</h3>
+<ul>
+<li><strong><code>eval</code> / <code>eval-source-map</code>:</strong>
+Moderately fast to very fast. Webpack avoids generating external files
+and managing cross-file mapping tables, which reduces processing time
+during compilation.</li>
+<li><strong><code>source-map</code>:</strong> The slowest option.
+Webpack must calculate precise mappings across entire concatenated
+chunks and write external <code>.map</code> files to disk.</li>
+</ul>
+<h3 id="rebuild-speed-watch-mode--hmr">Rebuild Speed (Watch Mode &amp;
+HMR)</h3>
+<ul>
+<li><strong><code>eval</code> / <code>eval-source-map</code>:</strong>
+Extremely fast. During incremental changes, Webpack only re-evaluates
+the modified module. The rest of the bundle cache remains untouched,
+making Hot Module Replacement almost instantaneous.</li>
+<li><strong><code>source-map</code>:</strong> Slow. Modifying a single
+line often requires regenerating the complete source map for the entire
+chunk, leading to noticeable delays during iterative development.</li>
+</ul>
+<h2 id="runtime-and-memory-implications">Runtime and Memory
+Implications</h2>
+<h3 id="bundle-size-and-memory-footprint">Bundle Size and Memory
+Footprint</h3>
+<ul>
+<li><strong><code>eval</code>:</strong> Drastically inflates bundle size
+because every module includes stringified code and embedded mapping
+metadata. Browser memory usage increases significantly, as the
+JavaScript engine must maintain multiple execution contexts for each
+<code>eval()</code> call.</li>
+<li><strong><code>source-map</code>:</strong> Leaves the primary
+JavaScript bundle completely clean, containing only a small comment URL
+at the end pointing to the external map file. Browser memory consumption
+remains minimal until developer tools are opened and the
+<code>.map</code> file is explicitly fetched.</li>
+</ul>
+<h3 id="execution-speed-and-jit-optimization">Execution Speed and JIT
+Optimization</h3>
+<ul>
+<li><strong><code>eval</code>:</strong> Impairs runtime execution speed.
+Modern JavaScript engines struggle to apply Just-In-Time (JIT)
+optimizations to code executed inside <code>eval()</code>.</li>
+<li><strong><code>source-map</code>:</strong> Does not affect runtime
+execution. The browser executes standard, optimized code paths without
+intermediate string parsing.</li>
+</ul>
+<h2 id="security-and-production-suitability">Security and Production
+Suitability</h2>
+<ul>
+<li><strong>Content Security Policy (CSP):</strong> <code>eval</code>
+strategies require the <code>unsafe-eval</code> directive in your CSP,
+creating significant security vulnerabilities. They are strictly
+intended for local development.</li>
+<li><strong>Production Deployment:</strong> Standard
+<code>source-map</code> (or <code>hidden-source-map</code>) is the
+standard choice for production. It allows error tracking tools like
+Sentry or Datadog to resolve stack traces without exposing source code
+directly to end users or compromising security policies.</li>
+</ul>
+<h2 id="summary-comparison">Summary Comparison</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Metric</th>
+<th style="text-align: left;"><code>eval-source-map</code></th>
+<th style="text-align: left;"><code>source-map</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Initial Build</strong></td>
+<td style="text-align: left;">Fast</td>
+<td style="text-align: left;">Slowest</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Rebuild Speed</strong></td>
+<td style="text-align: left;">Fastest</td>
+<td style="text-align: left;">Slow</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Runtime Execution</strong></td>
+<td style="text-align: left;">Slower (prevents JIT)</td>
+<td style="text-align: left;">Native / Optimized</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Bundle Size</strong></td>
+<td style="text-align: left;">Very Large</td>
+<td style="text-align: left;">Minimal (separate file)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Memory Usage</strong></td>
+<td style="text-align: left;">High</td>
+<td style="text-align: left;">Low</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Recommended
+Environment</strong></td>
+<td style="text-align: left;">Development</td>
+<td style="text-align: left;">Production</td>
+</tr>
+</tbody>
+</table></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-eval-vs-source-map-performance-guide';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

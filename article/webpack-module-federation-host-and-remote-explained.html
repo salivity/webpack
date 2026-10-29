@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Module Federation: Host and Remote Explained - webpack</title>
+    <meta name="description" content="Webpack Module Federation revolutionizes micro-frontend architectures by enabling multiple independent builds to share code dynamically at runtime. At the center of this mechanism are two primary roles: the host and the remote. This article explains the t">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-module-federation-host-and-remote-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Module Federation: Host and Remote Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-module-federation-host-and-remote-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack Module Federation revolutionizes micro-frontend architectures by enabling multiple independent builds to share code dynamically at runtime. At the center of this mechanism are two primary roles: the host and the remote. This article explains the t" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-module-federation-host-and-remote-explained">Webpack
+Module Federation: Host and Remote Explained</h1>
+<p>Webpack Module Federation revolutionizes micro-frontend architectures
+by enabling multiple independent builds to share code dynamically at
+runtime. At the center of this mechanism are two primary roles: the
+<strong>host</strong> and the <strong>remote</strong>. This article
+explains the technical functions of host and remote containers, how they
+interact during execution, how they handle shared dependencies, and how
+an application can seamlessly operate as both.</p>
+<h3 id="the-remote-role-the-provider">The Remote Role: The Provider</h3>
+<p>A remote is an independent Webpack build that acts as a code
+provider. It exposes specific modules—such as UI components, utility
+functions, or entire sub-applications—so other builds can consume them
+over the network.</p>
+<p>In the <code>ModuleFederationPlugin</code> configuration, a remote
+specifies:</p>
+<ul>
+<li><strong><code>name</code></strong>: A unique identifier used to
+create a global namespace at runtime.</li>
+<li><strong><code>filename</code></strong>: The entry manifest file
+(commonly <code>remoteEntry.js</code>) that defines the manifest of
+exposed modules and available shared dependencies.</li>
+<li><strong><code>exposes</code></strong>: An object mapping public
+paths to local files, declaring which modules are available for external
+use.</li>
+</ul>
+<p>When a remote is built, it produces standard bundles alongside the
+<code>remoteEntry.js</code> file. The remote does not need to know which
+host will consume it; it simply serves its assets via a standard web
+server or CDN.</p>
+<h3 id="the-host-role-the-consumer">The Host Role: The Consumer</h3>
+<p>A host is an application build that acts as the entry point or shell
+for the user. Its primary responsibility is consuming modules provided
+by one or more remotes at runtime.</p>
+<p>In the <code>ModuleFederationPlugin</code> configuration, a host
+specifies:</p>
+<ul>
+<li><strong><code>remotes</code></strong>: A key-value mapping that
+pairs an internal alias with the remote's identifier and entry URL
+(e.g.,
+<code>remoteApp: 'remoteApp@https://cdn.example.com/remoteEntry.js'</code>).</li>
+</ul>
+<p>At runtime, the host dynamically loads the remote's
+<code>remoteEntry.js</code> manifest. Once fetched, the host can import
+remote components using standard dynamic import syntax
+(<code>import('remoteApp/Button')</code>) as if the code were located in
+its local <code>node_modules</code>.</p>
+<h3 id="the-runtime-interaction-lifecycle">The Runtime Interaction
+Lifecycle</h3>
+<p>The interaction between a host and a remote occurs in several
+distinct steps:</p>
+<ol type="1">
+<li><strong>Initialization</strong>: The host application starts and
+initiates the loading of the remote entry script defined in its
+configuration.</li>
+<li><strong>Container Registration</strong>: The downloaded
+<code>remoteEntry.js</code> initializes a container interface on the
+global scope, making the remote's exposed module registry
+available.</li>
+<li><strong>Scope Sharing</strong>: The host and remote negotiate
+dependencies through a global shared scope.</li>
+<li><strong>Module Execution</strong>: When the host triggers a dynamic
+import for an exposed module, the remote container fetches the
+corresponding JavaScript chunk, executes it, and passes the resulting
+exports back to the host application.</li>
+</ol>
+<h3 id="managing-shared-dependencies">Managing Shared Dependencies</h3>
+<p>Both hosts and remotes can define a <code>shared</code> configuration
+property. This allows them to avoid downloading duplicate libraries
+(such as React, Vue, or utility libraries) across micro-frontend
+boundaries.</p>
+<p>During the runtime handshake, the host and remote compare the
+versions declared in their shared configurations:</p>
+<ul>
+<li>If semantic versioning requirements match, only a single instance of
+the library is downloaded and shared across both containers.</li>
+<li>Flags such as <code>singleton: true</code> ensure only one instance
+is ever loaded into memory, which is critical for libraries that rely on
+internal state or context providers.</li>
+<li>The <code>requiredVersion</code> property prevents execution if a
+compatible version cannot be resolved.</li>
+</ul>
+<h3 id="bidirectional-hosts-the-dual-role">Bidirectional Hosts: The Dual
+Role</h3>
+<p>The distinction between a host and a remote is not mutually
+exclusive. An application can simultaneously serve as both a host and a
+remote (known as a bidirectional host or omnidirectional host).</p>
+<p>In this scenario, the build specifies both the <code>remotes</code>
+and <code>exposes</code> configurations within its
+<code>ModuleFederationPlugin</code> options. It can consume components
+from an upstream service while exposing its own components to downstream
+applications, enabling fully decentralized micro-frontend
+topologies.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-module-federation-host-and-remote-explained';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

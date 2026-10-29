@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two Webpack Bundles Using the Same Global Namespace - webpack</title>
+    <meta name="description" content="When two independent Webpack bundles execute on the same web page using an identical global namespace, they inevitably collide at runtime. This conflict leads to chunk loading failures, module ID collisions, broken asynchronous imports, and corrupted appl">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/two-webpack-bundles-using-the-same-global-namespace">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Two Webpack Bundles Using the Same Global Namespace - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/two-webpack-bundles-using-the-same-global-namespace" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When two independent Webpack bundles execute on the same web page using an identical global namespace, they inevitably collide at runtime. This conflict leads to chunk loading failures, module ID collisions, broken asynchronous imports, and corrupted appl" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="two-webpack-bundles-using-the-same-global-namespace">Two Webpack
+Bundles Using the Same Global Namespace</h1>
+<p>When two independent Webpack bundles execute on the same web page
+using an identical global namespace, they inevitably collide at runtime.
+This conflict leads to chunk loading failures, module ID collisions,
+broken asynchronous imports, and corrupted application state. Because
+Webpack relies on global variables to coordinate dynamic loading and
+expose exports, sharing a namespace causes one bundle to unintentionally
+hijack or overwrite the execution context of the other.</p>
+<h3 id="the-mechanism-of-the-collision">The Mechanism of the
+Collision</h3>
+<p>By default, Webpack uses a global array to manage asynchronous chunk
+loading and module resolution. In Webpack 5, this is governed by
+<code>output.chunkLoadingGlobal</code> (which defaults to
+<code>webpackChunk</code> combined with the project name), whereas
+Webpack 4 used <code>output.jsonpFunction</code> (defaulting to
+<code>webpackJsonp</code>). Additionally, bundles configured to export
+APIs globally share properties assigned through
+<code>output.library.name</code>.</p>
+<p>When a bundle initializes, it checks the global scope (usually
+<code>window</code>) for its designated namespace. If the namespace does
+not exist, Webpack initializes it as an array and overrides its
+<code>.push()</code> method with its own runtime resolver. If two
+separate bundles target the same variable—such as
+<code>window.webpackChunk</code> or a shared
+<code>window.MyApp</code>—the following issues occur:</p>
+<h3 id="1-chunk-id-collisions-and-deserialization-failures">1. Chunk ID
+Collisions and Deserialization Failures</h3>
+<p>Webpack identifies code-split chunks using numeric or deterministic
+string IDs (like <code>0.js</code>, <code>1.js</code>, or generated
+hashes). When Bundle A requests chunk <code>1</code>, it pushes
+<code>[ [1], { ...modules } ]</code> into the global array.</p>
+<p>If Bundle B also has a chunk labeled <code>1</code>, both runtimes
+listen to pushes on the exact same array. Bundle A's runtime may
+intercept and execute Bundle B's chunk, or mark chunk <code>1</code> as
+resolved before Bundle A's actual code arrives. This leads to immediate
+runtime errors such as
+<code>TypeError: Cannot read properties of undefined</code> or
+<code>Loading chunk failed</code>.</p>
+<h3 id="2-runtime-interceptor-hijacking">2. Runtime Interceptor
+Hijacking</h3>
+<p>The first bundle to load sets up an internal monkey-patched
+<code>.push()</code> implementation on the global chunk array. When the
+second bundle loads, it either wraps or overwrites this
+<code>.push()</code> handler with its own runtime logic.</p>
+<p>Because the second bundle's runtime does not contain the internal
+module registry of the first bundle, any subsequent asynchronous chunks
+loaded by Bundle A will be processed by Bundle B's resolver. This causes
+missed module registrations, unhandled promises, and silent execution
+failures.</p>
+<h3 id="3-global-library-overwrites">3. Global Library Overwrites</h3>
+<p>If the bundles are exposed as libraries using identical
+<code>output.library</code> configurations, execution order determines
+survival:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Bundle A execution</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">window</span><span class="op">.</span><span class="at">MyLibrary</span> <span class="op">=</span> { <span class="dt">featureA</span><span class="op">:</span> <span class="kw">function</span>() { <span class="op">...</span> } }<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Bundle B execution</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="bu">window</span><span class="op">.</span><span class="at">MyLibrary</span> <span class="op">=</span> { <span class="dt">featureB</span><span class="op">:</span> <span class="kw">function</span>() { <span class="op">...</span> } }<span class="op">;</span></span></code></pre></div>
+<p>The second bundle entirely replaces the object reference of the
+first. Any host code or scripts relying on
+<code>MyLibrary.featureA</code> will fail immediately upon attempting to
+invoke the overwritten methods.</p>
+<h3 id="how-to-prevent-global-namespace-collisions">How to Prevent
+Global Namespace Collisions</h3>
+<p>To safely run multiple independent Webpack applications on a single
+page, each bundle must have isolated runtime identifiers:</p>
+<ul>
+<li><strong>Configure <code>output.uniqueName</code>:</strong> In
+Webpack 5, set a distinct <code>output.uniqueName</code> in
+<code>webpack.config.js</code> for each project. Webpack uses this
+string to derive unique values for chunk loading registries
+automatically.</li>
+<li><strong>Isolate Chunk Loading Arrays:</strong> Explicitly define
+unique values for <code>output.chunkLoadingGlobal</code> (Webpack 5) or
+<code>output.jsonpFunction</code> (Webpack 4) to ensure dynamic import
+queues do not overlap.</li>
+<li><strong>Namespace Library Exports:</strong> Ensure
+<code>output.library.name</code> is unique, or compile bundles as native
+ES modules (<code>output.library.type: 'module'</code>) to bypass the
+global window object entirely.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/two-webpack-bundles-using-the-same-global-namespace';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

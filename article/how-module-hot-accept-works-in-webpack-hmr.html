@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How module.hot.accept Works in Webpack HMR - webpack</title>
+    <meta name="description" content="In Webpack’s Hot Module Replacement (HMR) system, module.hot.accept() is the essential API method used to declare update boundaries for modified code. This article provides a focused look at how module.hot.accept() operates, detailing its role in intercep">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-module-hot-accept-works-in-webpack-hmr">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How module.hot.accept Works in Webpack HMR - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-module-hot-accept-works-in-webpack-hmr" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Webpack’s Hot Module Replacement (HMR) system, module.hot.accept() is the essential API method used to declare update boundaries for modified code. This article provides a focused look at how module.hot.accept() operates, detailing its role in intercep" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-modulehotaccept-works-in-webpack-hmr">How module.hot.accept
+Works in Webpack HMR</h1>
+<p>In Webpack’s Hot Module Replacement (HMR) system,
+<code>module.hot.accept()</code> is the essential API method used to
+declare update boundaries for modified code. This article provides a
+focused look at how <code>module.hot.accept()</code> operates, detailing
+its role in intercepting module updates, executing custom replacement
+logic, and preventing unnecessary full-page browser reloads while
+maintaining application state.</p>
+<h3 id="the-core-purpose-of-modulehotaccept">The Core Purpose of
+module.hot.accept()</h3>
+<p>Hot Module Replacement exchanges, adds, or removes modules while an
+application is running without reloading the entire page. By default,
+when a file changes, Webpack does not know how to handle the update on
+its own.</p>
+<p>The <code>module.hot.accept()</code> function serves as an explicit
+instruction telling Webpack's HMR runtime: <em>"This module (or its
+specified dependencies) knows how to update itself. Do not bubble the
+update up to the root or trigger a full page refresh."</em></p>
+<h3 id="how-module-update-bubbling-works">How Module Update Bubbling
+Works</h3>
+<p>When a file is modified during development, the HMR runtime sends an
+update to the browser. The runtime traverses the dependency tree from
+the modified module upward toward the entry point:</p>
+<ol type="1">
+<li>Webpack checks if the modified file contains a
+<code>module.hot.accept()</code> call.</li>
+<li>If it does not, the update "bubbles" up to the parent modules that
+imported it.</li>
+<li>The runtime checks those parents for an accept handler that covers
+the modified dependency.</li>
+<li>If the update bubbles all the way to the root entry point without
+encountering an accept handler, the HMR process fails, and Webpack falls
+back to a full browser reload.</li>
+</ol>
+<h3 id="syntax-and-implementation-patterns">Syntax and Implementation
+Patterns</h3>
+<p><code>module.hot.accept()</code> is typically used in two distinct
+ways:</p>
+<h4 id="1-self-accepting-modules">1. Self-Accepting Modules</h4>
+<p>A module can accept its own updates. This is common in leaf modules
+such as UI components or CSS/style loaders where re-executing the file
+is sufficient to reflect the change.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Inside a module (e.g., component.js)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">function</span> <span class="fu">render</span>() {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="bu">document</span><span class="op">.</span><span class="fu">getElementById</span>(<span class="st">&#39;root&#39;</span>)<span class="op">.</span><span class="at">innerHTML</span> <span class="op">=</span> <span class="st">&#39;Updated content&#39;</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">render</span>()<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (module<span class="op">.</span><span class="at">hot</span>) {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  module<span class="op">.</span><span class="at">hot</span><span class="op">.</span><span class="fu">accept</span>()<span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>When <code>module.hot.accept()</code> is called with no arguments,
+Webpack re-executes this specific module when it changes, without
+notifying parent modules.</p>
+<h4 id="2-accepting-dependencies">2. Accepting Dependencies</h4>
+<p>A parent module can explicitly declare that it handles updates for
+one or more of its child dependencies by passing the path and an update
+callback.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { renderHeader } <span class="im">from</span> <span class="st">&#39;./header.js&#39;</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">renderHeader</span>()<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (module<span class="op">.</span><span class="at">hot</span>) {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  module<span class="op">.</span><span class="at">hot</span><span class="op">.</span><span class="fu">accept</span>(<span class="st">&#39;./header.js&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Logic to re-render or patch the component with the new code</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">renderHeader</span>()<span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>In this pattern:</p>
+<ul>
+<li><strong>First parameter:</strong> A string (or array of strings)
+representing the module request paths to monitor.</li>
+<li><strong>Second parameter:</strong> A callback function triggered
+immediately after the updated dependency has been fetched and evaluated
+by the runtime.</li>
+<li><strong>Third parameter (optional):</strong> An error-handling
+callback that manages exceptions thrown during the update process.</li>
+</ul>
+<h3 id="state-preservation">State Preservation</h3>
+<p>By controlling updates via <code>module.hot.accept()</code>,
+developers can write cleanup and re-initialization logic to swap
+functionality in memory. This preserves runtime state—such as user
+inputs, scroll positions, or state store data—drastically speeding up
+the development feedback loop.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-module-hot-accept-works-in-webpack-hmr';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

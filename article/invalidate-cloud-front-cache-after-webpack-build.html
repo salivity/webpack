@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invalidate CloudFront Cache After Webpack Build - webpack</title>
+    <meta name="description" content="Deploying modern web applications requires an efficient cache management strategy so users immediately receive the latest code without stale resource interference. This guide outlines how to automatically trigger an Amazon CloudFront cache invalidation di">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/invalidate-cloud-front-cache-after-webpack-build">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Invalidate CloudFront Cache After Webpack Build - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/invalidate-cloud-front-cache-after-webpack-build" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Deploying modern web applications requires an efficient cache management strategy so users immediately receive the latest code without stale resource interference. This guide outlines how to automatically trigger an Amazon CloudFront cache invalidation di" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="invalidate-cloudfront-cache-after-webpack-build">Invalidate
+CloudFront Cache After Webpack Build</h1>
+<p>Deploying modern web applications requires an efficient cache
+management strategy so users immediately receive the latest code without
+stale resource interference. This guide outlines how to automatically
+trigger an Amazon CloudFront cache invalidation directly following a
+Webpack production build and deployment. By combining Webpack's content
+hashing capabilities with automated invalidation scripts or CI/CD
+automation, you can ensure instant updates for HTML entry points while
+keeping CloudFront costs and build times minimal.</p>
+<h3 id="1-optimize-webpack-output-first-cache-busting">1. Optimize
+Webpack Output First (Cache Busting)</h3>
+<p>Before invalidating caches, configure Webpack to append content
+hashes to generated filenames. Since immutable assets (JS, CSS, images)
+receive unique names with each change, you only need to invalidate entry
+files like <code>index.html</code>.</p>
+<p>In your <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].js&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunkFilename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].chunk.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">clean</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Because hashed files are unique, they can be cached indefinitely on
+CloudFront and the browser. Only the non-hashed entry file
+(<code>/index.html</code>) requires invalidation upon deployment.</p>
+<h3 id="2-method-a-automated-invalidation-via-cicd-recommended">2.
+Method A: Automated Invalidation via CI/CD (Recommended)</h3>
+<p>The most reliable approach executes the invalidation step immediately
+after assets are synchronized to your storage backend (such as Amazon
+S3) within your deployment pipeline.</p>
+<p>Using the AWS CLI in your pipeline (such as GitHub Actions, GitLab
+CI, or Bitbucket Pipelines):</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Build the Webpack application</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> run build</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Sync hashed assets with aggressive caching</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="ex">aws</span> s3 sync dist/ s3://your-bucket-name/ <span class="dt">\</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--exclude</span> <span class="st">&quot;index.html&quot;</span> <span class="dt">\</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--cache-control</span> <span class="st">&quot;max-age=31536000,immutable&quot;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Sync index.html with no-cache headers</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="ex">aws</span> s3 sync dist/ s3://your-bucket-name/ <span class="dt">\</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">--exclude</span> <span class="st">&quot;*&quot;</span> <span class="dt">\</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">--include</span> <span class="st">&quot;index.html&quot;</span> <span class="dt">\</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">--cache-control</span> <span class="st">&quot;no-cache, no-store, must-revalidate&quot;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. Invalidate only the entry path</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="ex">aws</span> cloudfront create-invalidation <span class="dt">\</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">--distribution-id</span> YOUR_DISTRIBUTION_ID <span class="dt">\</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">--paths</span> <span class="st">&quot;/index.html&quot;</span></span></code></pre></div>
+<h3 id="3-method-b-using-a-post-build-nodejs-script">3. Method B: Using
+a Post-Build Node.js Script</h3>
+<p>If your deployment is driven via npm scripts rather than a CI system,
+you can use the AWS SDK for JavaScript
+(<code>@aws-sdk/client-cloudfront</code>) to programmatically request
+invalidations.</p>
+<p>Install the AWS SDK client:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">--save-dev</span> @aws-sdk/client-cloudfront</span></code></pre></div>
+<p>Create an invalidation script named
+<code>invalidate-cdn.mjs</code>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { CloudFrontClient<span class="op">,</span> CreateInvalidationCommand } <span class="im">from</span> <span class="st">&quot;@aws-sdk/client-cloudfront&quot;</span><span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> client <span class="op">=</span> <span class="kw">new</span> <span class="fu">CloudFrontClient</span>({ <span class="dt">region</span><span class="op">:</span> <span class="st">&quot;us-east-1&quot;</span> })<span class="op">;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="kw">async</span> <span class="kw">function</span> <span class="fu">invalidate</span>() {</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> params <span class="op">=</span> {</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">DistributionId</span><span class="op">:</span> <span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">CLOUDFRONT_DISTRIBUTION_ID</span><span class="op">,</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">InvalidationBatch</span><span class="op">:</span> {</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">CallerReference</span><span class="op">:</span> <span class="vs">`build-</span><span class="sc">${</span><span class="bu">Date</span><span class="op">.</span><span class="fu">now</span>()<span class="sc">}</span><span class="vs">`</span><span class="op">,</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">Paths</span><span class="op">:</span> {</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Quantity</span><span class="op">:</span> <span class="dv">1</span><span class="op">,</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">Items</span><span class="op">:</span> [<span class="st">&quot;/index.html&quot;</span>]<span class="op">,</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  }<span class="op">;</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>  <span class="cf">try</span> {</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> command <span class="op">=</span> <span class="kw">new</span> <span class="fu">CreateInvalidationCommand</span>(params)<span class="op">;</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> response <span class="op">=</span> <span class="cf">await</span> client<span class="op">.</span><span class="fu">send</span>(command)<span class="op">;</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="vs">`CloudFront Invalidation created: </span><span class="sc">${</span>response<span class="op">.</span><span class="at">Invalidation</span><span class="op">.</span><span class="at">Id</span><span class="sc">}</span><span class="vs">`</span>)<span class="op">;</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">catch</span> (error) {</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">error</span>(<span class="st">&quot;CloudFront Invalidation failed:&quot;</span><span class="op">,</span> error)<span class="op">;</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    <span class="bu">process</span><span class="op">.</span><span class="fu">exit</span>(<span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a><span class="fu">invalidate</span>()<span class="op">;</span></span></code></pre></div>
+<p>Chain the script in your <code>package.json</code>:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;scripts&quot;</span><span class="er">:</span> <span class="fu">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;build&quot;</span><span class="fu">:</span> <span class="st">&quot;webpack --mode production&quot;</span><span class="fu">,</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;deploy&quot;</span><span class="fu">:</span> <span class="st">&quot;npm run build &amp;&amp; aws s3 sync dist/ s3://your-bucket-name &amp;&amp; node invalidate-cdn.mjs&quot;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h3 id="4-method-c-webpack-custom-plugin-integration">4. Method C:
+Webpack Custom Plugin Integration</h3>
+<p>You can execute the invalidation directly within the Webpack
+compilation cycle by leveraging compiler hooks.</p>
+<p>In your <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { CloudFrontClient<span class="op">,</span> CreateInvalidationCommand } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&quot;@aws-sdk/client-cloudfront&quot;</span>)<span class="op">;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> CloudFrontInvalidationPlugin {</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">constructor</span>(options) {</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">this</span><span class="op">.</span><span class="at">options</span> <span class="op">=</span> options<span class="op">;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(compiler) {</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Run after assets have been emitted to the output directory</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">afterEmit</span><span class="op">.</span><span class="fu">tapPromise</span>(<span class="st">&#39;CloudFrontInvalidationPlugin&#39;</span><span class="op">,</span> <span class="kw">async</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">NODE_ENV</span> <span class="op">!==</span> <span class="st">&#39;production&#39;</span>) <span class="cf">return</span><span class="op">;</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> client <span class="op">=</span> <span class="kw">new</span> <span class="fu">CloudFrontClient</span>({ <span class="dt">region</span><span class="op">:</span> <span class="st">&quot;us-east-1&quot;</span> })<span class="op">;</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> command <span class="op">=</span> <span class="kw">new</span> <span class="fu">CreateInvalidationCommand</span>({</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">DistributionId</span><span class="op">:</span> <span class="kw">this</span><span class="op">.</span><span class="at">options</span><span class="op">.</span><span class="at">distributionId</span><span class="op">,</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>        <span class="dt">InvalidationBatch</span><span class="op">:</span> {</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>          <span class="dt">CallerReference</span><span class="op">:</span> <span class="vs">`webpack-</span><span class="sc">${</span><span class="bu">Date</span><span class="op">.</span><span class="fu">now</span>()<span class="sc">}</span><span class="vs">`</span><span class="op">,</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>          <span class="dt">Paths</span><span class="op">:</span> {</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>            <span class="dt">Quantity</span><span class="op">:</span> <span class="kw">this</span><span class="op">.</span><span class="at">options</span><span class="op">.</span><span class="at">paths</span><span class="op">.</span><span class="at">length</span><span class="op">,</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>            <span class="dt">Items</span><span class="op">:</span> <span class="kw">this</span><span class="op">.</span><span class="at">options</span><span class="op">.</span><span class="at">paths</span><span class="op">,</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>      })<span class="op">;</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>      <span class="cf">await</span> client<span class="op">.</span><span class="fu">send</span>(command)<span class="op">;</span></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>      <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;Successfully triggered CloudFront invalidation.&#39;</span>)<span class="op">;</span></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other Webpack settings</span></span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">CloudFrontInvalidationPlugin</span>({</span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>      <span class="dt">distributionId</span><span class="op">:</span> <span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">CLOUDFRONT_DISTRIBUTION_ID</span><span class="op">,</span></span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>      <span class="dt">paths</span><span class="op">:</span> [<span class="st">&#39;/index.html&#39;</span>]<span class="op">,</span></span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="best-practices-for-cloudfront-invalidations">Best Practices for
+CloudFront Invalidations</h3>
+<ul>
+<li><strong>Invalidate Specific Files, Not Wildcards:</strong> Avoid
+using <code>/*</code> because it drops cached assets across all edge
+locations, degrading performance and increasing AWS origin load. Target
+only <code>/index.html</code> or <code>/service-worker.js</code>.</li>
+<li><strong>Manage CloudFront Costs:</strong> AWS provides the first
+1,000 invalidation paths per month for free, with fees applied per path
+afterward. Restricting invalidation solely to entry files keeps you
+within free allowances.</li>
+<li><strong>IAM Permissions:</strong> Ensure the execution identity
+(CI/CD role or local IAM user) is strictly assigned the
+<code>cloudfront:CreateInvalidation</code> permission for your target
+distribution ARN.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/invalidate-cloud-front-cache-after-webpack-build';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack ModuleFederationPlugin Configuration Guide - webpack</title>
+    <meta name="description" content="This article provides an overview of Webpack&#39;s container.ModuleFederationPlugin, detailing its purpose in modern JavaScript development and breaking down its core configuration options. You will learn how this plugin enables micro-frontend architectures t">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-module-federation-plugin-configuration-guide">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack ModuleFederationPlugin Configuration Guide - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-module-federation-plugin-configuration-guide" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an overview of Webpack&#39;s container.ModuleFederationPlugin, detailing its purpose in modern JavaScript development and breaking down its core configuration options. You will learn how this plugin enables micro-frontend architectures t" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-modulefederationplugin-configuration-guide">Webpack
+ModuleFederationPlugin Configuration Guide</h1>
+<p>This article provides an overview of Webpack's
+<code>container.ModuleFederationPlugin</code>, detailing its purpose in
+modern JavaScript development and breaking down its core configuration
+options. You will learn how this plugin enables micro-frontend
+architectures through runtime code sharing, along with how to configure
+settings such as <code>name</code>, <code>filename</code>,
+<code>exposes</code>, <code>remotes</code>, and <code>shared</code> to
+orchestrate distributed applications effectively.</p>
+<h2 id="what-is-containermodulefederationplugin">What is
+container.ModuleFederationPlugin?</h2>
+<p><code>container.ModuleFederationPlugin</code> is a built-in feature
+introduced in Webpack 5 that allows multiple separate Webpack builds to
+work together seamlessly at runtime. Often referred to simply as Module
+Federation, it serves as an architectural foundation for
+micro-frontends.</p>
+<p>Unlike traditional package-based sharing—where shared code must be
+built, published to a registry (like npm), and re-bundled by the host
+application—Module Federation dynamically loads code from independent
+deployments over the network. Applications can act as "hosts" (consuming
+external code), "remotes" (exposing code to others), or both
+simultaneously (bi-directional sharing), without needing to rebuild or
+redeploy the consuming systems.</p>
+<h2 id="core-configuration-options">Core Configuration Options</h2>
+<p>To use the plugin, import it from Webpack and include it in the
+<code>plugins</code> array of your <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { ModuleFederationPlugin } <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">.</span><span class="at">container</span><span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="co">// configuration options go here</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>The plugin relies on several critical configuration properties to
+manage how components and modules are exposed, consumed, and shared.</p>
+<h3 id="1-name">1. <code>name</code></h3>
+<ul>
+<li><strong>Type:</strong> <code>string</code></li>
+<li><strong>Description:</strong> Defines the unique identity of the
+current container. When other applications import from this build, they
+will reference this name. The name is also exposed as a global variable
+in the browser runtime (unless another library target is defined).</li>
+</ul>
+<h3 id="2-filename">2. <code>filename</code></h3>
+<ul>
+<li><strong>Type:</strong> <code>string</code> (Optional for pure host
+applications)</li>
+<li><strong>Description:</strong> Specifies the output file name for the
+remote entry manifest (commonly <code>remoteEntry.js</code>). This entry
+file contains the manifest of exposed modules and metadata required by
+host applications to resolve dependencies at runtime.</li>
+</ul>
+<h3 id="3-exposes">3. <code>exposes</code></h3>
+<ul>
+<li><strong>Type:</strong> <code>object</code></li>
+<li><strong>Description:</strong> Defines the list of modules that this
+container makes available to external applications. The keys represent
+the path or alias by which the host will request the module, and the
+values point to the local file path.</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>exposes<span class="op">:</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;./Button&#39;</span><span class="op">:</span> <span class="st">&#39;./src/components/Button.jsx&#39;</span><span class="op">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;./Navigation&#39;</span><span class="op">:</span> <span class="st">&#39;./src/components/Navigation.jsx&#39;</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="4-remotes">4. <code>remotes</code></h3>
+<ul>
+<li><strong>Type:</strong> <code>object</code></li>
+<li><strong>Description:</strong> Defines the external containers that
+this application consumes. The key represents the local alias used in
+your import statements, and the value defines the remote container's
+global scope name and the URL of its <code>remoteEntry.js</code>
+file.</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>remotes<span class="op">:</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">authApp</span><span class="op">:</span> <span class="st">&#39;authApp@https://auth.example.com/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">dashboardApp</span><span class="op">:</span> <span class="st">&#39;dashboardApp@https://dashboard.example.com/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>With this configuration, your application can consume components
+using standard dynamic or static imports:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> RemoteButton <span class="im">from</span> <span class="st">&#39;authApp/Button&#39;</span><span class="op">;</span></span></code></pre></div>
+<h3 id="5-shared">5. <code>shared</code></h3>
+<ul>
+<li><strong>Type:</strong> <code>array</code> | <code>object</code></li>
+<li><strong>Description:</strong> Configures libraries and dependencies
+that should be shared across the host and remotes to prevent users from
+downloading duplicate vendor code (e.g., React, Lodash).</li>
+</ul>
+<p>The <code>shared</code> property can be configured as a simple list
+of package names or as an object with advanced controls:</p>
+<ul>
+<li><strong><code>singleton</code> (<code>boolean</code>):</strong>
+Ensures that only one instance of the shared library is loaded across
+all containers. This is essential for libraries that rely on a single
+global state, such as <code>react</code> or <code>react-dom</code>.</li>
+<li><strong><code>requiredVersion</code> (<code>string</code>):</strong>
+Sets the semver version requirement. It usually references your
+<code>package.json</code> dependencies (e.g.,
+<code>dependencies['react']</code>).</li>
+<li><strong><code>strictVersion</code> (<code>boolean</code>):</strong>
+When set to <code>true</code>, Webpack rejects the shared module if the
+version does not strictly match <code>requiredVersion</code>, instead of
+falling back to loading a local copy.</li>
+<li><strong><code>eager</code> (<code>boolean</code>):</strong> When
+<code>true</code>, forces the shared module to be included directly in
+the initial chunk rather than loaded asynchronously. This is rarely
+needed and can disable code-splitting benefits, but it is useful for
+specific bootstrap entry strategies.</li>
+</ul>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>shared<span class="op">:</span> {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">react</span><span class="op">:</span> {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">requiredVersion</span><span class="op">:</span> <span class="st">&#39;^18.2.0&#39;</span><span class="op">,</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;react-dom&#39;</span><span class="op">:</span> {</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">requiredVersion</span><span class="op">:</span> <span class="st">&#39;^18.2.0&#39;</span><span class="op">,</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h2 id="summary-of-operation">Summary of Operation</h2>
+<p>When configured, <code>container.ModuleFederationPlugin</code>
+negotiates shared dependencies at runtime using the generated
+<code>remoteEntry.js</code> files. If a remote requires a version of a
+library that the host has already loaded, it reuses that instance. If
+the remote requires an unprovided or incompatible dependency, it fetches
+its own copy. This allows distinct development teams to deploy
+applications independently while maintaining shared runtime performance
+and modularity.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-module-federation-plugin-configuration-guide';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

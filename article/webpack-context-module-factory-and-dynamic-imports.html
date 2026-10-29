@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack ContextModuleFactory and Dynamic Imports - webpack</title>
+    <meta name="description" content="This article explains the purpose of Webpack&#39;s ContextModuleFactory and details its internal process for handling dynamic directory imports. It breaks down how dynamic imports containing variable expressions are identified, how the compilation environment">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-context-module-factory-and-dynamic-imports">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack ContextModuleFactory and Dynamic Imports - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-context-module-factory-and-dynamic-imports" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains the purpose of Webpack&#39;s ContextModuleFactory and details its internal process for handling dynamic directory imports. It breaks down how dynamic imports containing variable expressions are identified, how the compilation environment" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-contextmodulefactory-and-dynamic-imports">Webpack
+ContextModuleFactory and Dynamic Imports</h1>
+<p>This article explains the purpose of Webpack's
+<code>ContextModuleFactory</code> and details its internal process for
+handling dynamic directory imports. It breaks down how dynamic imports
+containing variable expressions are identified, how the compilation
+environment scans the file system, and how Webpack produces a
+<code>ContextModule</code> map that enables dynamic runtime dependency
+resolution without knowing the exact file path at build time.</p>
+<h3 id="what-is-contextmodulefactory">What is ContextModuleFactory?</h3>
+<p><code>ContextModuleFactory</code> is an internal Webpack class
+responsible for generating <code>ContextModule</code> instances. In a
+typical build, Webpack resolves static module paths (such as
+<code>import './utils.js'</code>) directly via the standard
+<code>NormalModuleFactory</code>. However, when an import statement
+includes a dynamic expression—such as
+<code>import(</code>./locales/${lang}.json<code>)</code>—Webpack cannot
+determine the exact target file during compilation.</p>
+<p>Instead of failing, Webpack delegates the request to the
+<code>ContextModuleFactory</code>. This factory evaluates the static
+parts of the path, inspects the local file system, and bundles all
+potentially matching files into a single context module.</p>
+<h3 id="how-dynamic-directory-imports-are-processed">How Dynamic
+Directory Imports Are Processed</h3>
+<p>The conversion of a dynamic import expression into a bundle-ready
+<code>ContextModule</code> follows a multi-step pipeline inside
+Webpack:</p>
+<h4 id="1-parsing-and-context-dependency-creation">1. Parsing and
+Context Dependency Creation</h4>
+<p>During the Abstract Syntax Tree (AST) parsing phase, Webpack’s
+<code>JavascriptParser</code> encounters an import statement containing
+dynamic expressions (e.g.,
+<code>require('./assets/' + name + '.png')</code> or
+<code>import(</code>./pages/${route}<code>)</code>).</p>
+<p>Because the argument is not a single string literal, the parser
+cannot generate a standard <code>NormalModuleFactory</code> dependency.
+Instead, it extracts:</p>
+<ul>
+<li><strong>The prefix (base directory):</strong> The static leading
+part of the path (e.g., <code>./pages/</code>).</li>
+<li><strong>The dynamic segment:</strong> The variable part of the
+expression.</li>
+<li><strong>The postfix (extension/suffix):</strong> The static trailing
+part of the path, if present (e.g., <code>.vue</code> or
+<code>.json</code>).</li>
+</ul>
+<p>The parser packages this data into a <code>ContextDependency</code>
+(such as <code>ImportContextDependency</code> or
+<code>RequireContextDependency</code>) and attaches it to the module
+graph.</p>
+<h4 id="2-factory-delegation-and-context-resolution">2. Factory
+Delegation and Context Resolution</h4>
+<p>The compilation engine passes the <code>ContextDependency</code> to
+<code>ContextModuleFactory</code>. The factory performs resolution on
+the base directory using Webpack's enhanced resolver:</p>
+<ul>
+<li>It verifies that the specified base directory exists on disk.</li>
+<li>It applies Webpack configuration rules, such as path aliases or
+custom module directories.</li>
+<li>It determines the dynamic import mode (<code>lazy</code>,
+<code>lazy-once</code>, <code>eager</code>, or <code>sync</code>).</li>
+</ul>
+<h4 id="3-regular-expression-generation">3. Regular Expression
+Generation</h4>
+<p><code>ContextModuleFactory</code> constructs a regular expression
+based on the dynamic segment and the postfix. For an import such as
+<code>./components/${name}.jsx</code>, it generates a regular expression
+that resembles:</p>
+<pre class="regex"><code>^\.\/.*\.jsx$</code></pre>
+<p>This pattern matches any file within the resolved directory that
+meets the structural constraints of the original import expression.</p>
+<h4 id="4-directory-traversal-and-file-matching">4. Directory Traversal
+and File Matching</h4>
+<p>Once the directory path and regular expression are established,
+<code>ContextModuleFactory</code> reads the target directory using the
+file system interface (<code>fs.readdir</code> or Webpack's cached input
+file system).</p>
+<p>It recursively traverses subdirectories (unless recursive behavior is
+explicitly disabled in a <code>require.context</code> call) and tests
+each encountered file path against the generated regular expression.
+Every matching file is converted into an entry in an internal mapping
+table, linking the relative request string to the absolute file
+path.</p>
+<h4 id="5-contextmodule-creation">5. ContextModule Creation</h4>
+<p>Using the collected map of matching files,
+<code>ContextModuleFactory</code> instantiates a
+<code>ContextModule</code>. The <code>ContextModule</code>
+encapsulates:</p>
+<ul>
+<li>The base directory path.</li>
+<li>The matching regular expression.</li>
+<li>The import mode (e.g., <code>lazy</code> for asynchronous chunk
+generation per file, or <code>sync</code> to bundle them in the current
+chunk).</li>
+<li>The resolved map of all eligible dependencies.</li>
+</ul>
+<p>Each resolved file in this map is then queued for compilation through
+the standard module pipeline, ensuring loaders and standard
+transformations are applied to all potential matches.</p>
+<h3 id="runtime-execution">Runtime Execution</h3>
+<p>At runtime, the generated <code>ContextModule</code> acts as an
+internal module registry. It exports a function that accepts the
+resolved dynamic string (such as the value of <code>${lang}.json</code>)
+and searches its internal map for the corresponding module ID:</p>
+<ul>
+<li>If the key exists in the map, Webpack executes the corresponding
+module and returns the exports (or returns a Promise resolving to the
+module, depending on the import mode).</li>
+<li>If the dynamic value does not match any file discovered during the
+build-time directory scan, Webpack throws a runtime error indicating
+that the module could not be found.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-context-module-factory-and-dynamic-imports';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

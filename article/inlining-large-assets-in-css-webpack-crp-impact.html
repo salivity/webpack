@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inlining Large Assets in CSS: Webpack CRP Impact - webpack</title>
+    <meta name="description" content="Inlining large assets into CSS using Webpack significantly increases stylesheet file size, which directly degrades Critical Rendering Path (CRP) metrics. While converting images or fonts to Base64 strings eliminates secondary HTTP requests, CSS is inheren">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/inlining-large-assets-in-css-webpack-crp-impact">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Inlining Large Assets in CSS: Webpack CRP Impact - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/inlining-large-assets-in-css-webpack-crp-impact" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Inlining large assets into CSS using Webpack significantly increases stylesheet file size, which directly degrades Critical Rendering Path (CRP) metrics. While converting images or fonts to Base64 strings eliminates secondary HTTP requests, CSS is inheren" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="inlining-large-assets-in-css-webpack-crp-impact">Inlining Large
+Assets in CSS: Webpack CRP Impact</h1>
+<p>Inlining large assets into CSS using Webpack significantly increases
+stylesheet file size, which directly degrades Critical Rendering Path
+(CRP) metrics. While converting images or fonts to Base64 strings
+eliminates secondary HTTP requests, CSS is inherently a render-blocking
+resource. Bloating your CSS bundles delays CSS Object Model (CSSOM)
+construction, resulting in severe penalties to Core Web Vitals such as
+First Contentful Paint (FCP) and Largest Contentful Paint (LCP).</p>
+<h3 id="webpack-asset-inlining-and-payload-inflation">Webpack Asset
+Inlining and Payload Inflation</h3>
+<p>Webpack 5 achieves asset inlining using <code>asset/inline</code> (or
+<code>url-loader</code> in Webpack 4), which serializes binary assets
+into Base64-encoded Data URIs directly inside CSS rules. Base64 encoding
+expands raw binary data sizes by roughly 33%. When applied to large
+assets like background images or web fonts, this overhead drastically
+inflates the total byte weight of the generated <code>.css</code>
+bundle.</p>
+<h3 id="impact-on-critical-rendering-path-metrics">Impact on Critical
+Rendering Path Metrics</h3>
+<p>Because web browsers pause page rendering until all external
+stylesheets in the document head are downloaded and parsed, inlining
+large assets creates distinct performance bottlenecks across key
+metrics:</p>
+<ul>
+<li><strong>First Contentful Paint (FCP):</strong> The browser cannot
+construct the render tree without the CSSOM. Increasing the CSS payload
+size increases the download duration over the network, keeping the
+screen blank for longer and severely delaying FCP.</li>
+<li><strong>Largest Contentful Paint (LCP):</strong> When an inlined
+image is meant to be the primary visual element (like a hero image),
+inlining it does not improve LCP. The browser must wait to parse the
+entire massive stylesheet before it can identify and render that asset.
+Conversely, keeping the CSS lean allows the browser's preload scanner to
+discover external image URLs concurrently.</li>
+<li><strong>Total Blocking Time (TBT) and Main Thread
+Execution:</strong> Decoding massive Base64 strings requires significant
+CPU time. Parsing multi-megabyte stylesheets locks the main browser
+thread, delaying subsequent JavaScript execution and degrading page
+responsiveness.</li>
+</ul>
+<h3 id="caching-and-delivery-inefficiencies">Caching and Delivery
+Inefficiencies</h3>
+<p>Inlining binds the lifecycle of static media to your presentation
+styles. Any minor change to a CSS rule invalidates the entire cached
+bundle, forcing returning users to re-download all embedded images and
+fonts. Additionally, assets served separately benefit from HTTP/2 and
+HTTP/3 multiplexing, where multiple resources can be fetched
+concurrently via non-blocking streams without stalling the initial
+render.</p>
+<h3 id="recommended-webpack-configuration">Recommended Webpack
+Configuration</h3>
+<p>To protect the critical rendering path, set strict size thresholds
+using Webpack's native Asset Modules. Configure rules to inline only
+tiny assets (such as SVGs or icons under 4 KB) where the cost of an HTTP
+round-trip outweighs the byte overhead, and emit larger files as
+external resources:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">png</span><span class="sc">|</span><span class="ss">jpe</span><span class="sc">?</span><span class="ss">g</span><span class="sc">|</span><span class="ss">gif</span><span class="sc">|</span><span class="ss">svg</span><span class="sc">|</span><span class="ss">woff2</span><span class="sc">?)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">parser</span><span class="op">:</span> {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>          <span class="dt">dataUrlCondition</span><span class="op">:</span> {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>            <span class="dt">maxSize</span><span class="op">:</span> <span class="dv">4</span> <span class="op">*</span> <span class="dv">1024</span><span class="op">,</span> <span class="co">// Inline only assets smaller than 4 KB</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Offloading large files using <code>asset/resource</code> keeps
+critical CSS lightweight, accelerates CSSOM generation, and allows the
+browser to parallelize resource loading effectively.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/inlining-large-assets-in-css-webpack-crp-impact';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

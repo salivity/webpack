@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack 5 Cache Busting with Package Lockfiles - webpack</title>
+    <meta name="description" content="Webpack 5 introduced persistent filesystem caching to drastically reduce build times, but using cached assets when dependencies change can lead to runtime errors. To prevent this, Webpack automatically invalidates—or &quot;busts&quot;—its cache whenever package loc">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-5-cache-busting-with-package-lockfiles">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack 5 Cache Busting with Package Lockfiles - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-5-cache-busting-with-package-lockfiles" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 introduced persistent filesystem caching to drastically reduce build times, but using cached assets when dependencies change can lead to runtime errors. To prevent this, Webpack automatically invalidates—or &quot;busts&quot;—its cache whenever package loc" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-5-cache-busting-with-package-lockfiles">Webpack 5 Cache
+Busting with Package Lockfiles</h1>
+<p>Webpack 5 introduced persistent filesystem caching to drastically
+reduce build times, but using cached assets when dependencies change can
+lead to runtime errors. To prevent this, Webpack automatically
+invalidates—or "busts"—its cache whenever package lockfiles are
+modified. This article explains the underlying mechanism, detailing how
+Webpack 5 tracks lockfile changes using build dependencies,
+snapshotting, and hash comparisons to ensure stale cache artifacts are
+discarded safely.</p>
+<h3 id="the-role-of-persistent-filesystem-caching">The Role of
+Persistent Filesystem Caching</h3>
+<p>In Webpack 5, setting <code>cache.type = 'filesystem'</code> writes
+compilation artifacts to disk (typically inside the
+<code>node_modules/.cache/webpack</code> directory). Instead of
+recompiling every module, Webpack reuses these stored records between
+builds. However, persistent caching requires a reliable invalidation
+strategy; if a third-party library changes in <code>node_modules</code>,
+Webpack must know that the previously compiled modules may no longer be
+valid.</p>
+<h3 id="build-dependencies-and-lockfile-tracking">Build Dependencies and
+Lockfile Tracking</h3>
+<p>Webpack addresses this through its
+<code>cache.buildDependencies</code> configuration. Build dependencies
+are external files that alter the build outcome if changed. By default
+or via common configuration conventions, tools register the project's
+build configuration files and package lockfiles (such as
+<code>package-lock.json</code>, <code>yarn.lock</code>, or
+<code>pnpm-lock.yaml</code>) as primary build dependencies.</p>
+<p>When configured as follows:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">cache</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;filesystem&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">buildDependencies</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">config</span><span class="op">:</span> [<span class="bu">__filename</span>]<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">lockfile</span><span class="op">:</span> [<span class="st">&#39;package-lock.json&#39;</span>]</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Webpack registers these files into its dependency tracking system
+during the compilation initialization phase.</p>
+<h3 id="snapshot-generation-and-hash-storage">Snapshot Generation and
+Hash Storage</h3>
+<p>When Webpack writes to the filesystem cache, it creates a "snapshot"
+of the environment using the <code>snapshot</code> configuration rules
+(such as <code>snapshot.buildDependencies</code>). For every tracked
+lockfile, Webpack calculates a cryptographic hash and records file
+system metadata (such as timestamps and file sizes). This snapshot data
+is serialized and stored alongside the cached compilation graph.</p>
+<p>Because lockfiles explicitly record the exact resolved versions,
+integrity hashes, and tree structure of all installed
+<code>node_modules</code>, any installation, upgrade, or removal of a
+package updates the lockfile's contents.</p>
+<h3 id="the-invalidation-lifecycle">The Invalidation Lifecycle</h3>
+<p>During the startup phase of subsequent builds, Webpack executes the
+following check:</p>
+<ol type="1">
+<li><strong>Resolution:</strong> Webpack locates the snapshot metadata
+stored inside the cache directory.</li>
+<li><strong>Comparison:</strong> Webpack inspects the files defined in
+<code>buildDependencies</code>, including the lockfile, and compares
+their current state against the stored snapshot. Depending on snapshot
+settings, it checks either the file modification timestamp
+(<code>mtime</code>) or the content hash.</li>
+<li><strong>Mismatch Detection:</strong> If <code>npm install</code>,
+<code>yarn add</code>, or an update has modified the lockfile, the
+computed hash or timestamp will not match the snapshot.</li>
+<li><strong>Cache Eviction:</strong> Upon detecting the mismatch,
+Webpack marks the entire filesystem cache as invalid. It discards the
+existing cached compilation packfiles and performs a clean build from
+scratch, writing a brand-new cache entry with an updated snapshot of the
+lockfile.</li>
+</ol></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-5-cache-busting-with-package-lockfiles';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

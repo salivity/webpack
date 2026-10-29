@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Inject Environment Variables with Webpack DefinePlugin - webpack</title>
+    <meta name="description" content="Webpack&#39;s DefinePlugin allows you to inject compile-time constants directly into your application code, serving as the standard mechanism for passing environment variables from your build system into your client-side JavaScript bundles. This guide explain">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-to-inject-environment-variables-with-webpack-define-plugin">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Inject Environment Variables with Webpack DefinePlugin - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-to-inject-environment-variables-with-webpack-define-plugin" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack&#39;s DefinePlugin allows you to inject compile-time constants directly into your application code, serving as the standard mechanism for passing environment variables from your build system into your client-side JavaScript bundles. This guide explain" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="how-to-inject-environment-variables-with-webpack-defineplugin">How
+to Inject Environment Variables with Webpack DefinePlugin</h1>
+<p>Webpack's <code>DefinePlugin</code> allows you to inject compile-time
+constants directly into your application code, serving as the standard
+mechanism for passing environment variables from your build system into
+your client-side JavaScript bundles. This guide explains how the plugin
+functions, demonstrates the proper configuration syntax, highlights the
+necessity of value stringification, and covers essential security
+practices.</p>
+<h3 id="understanding-how-defineplugin-works">Understanding How
+DefinePlugin Works</h3>
+<p>The <code>DefinePlugin</code> performs a direct text replacement in
+your source code during the compilation step. It does not create true
+runtime variables in the browser. Instead, whenever Webpack encounters a
+key defined in the plugin configuration (such as
+<code>process.env.API_URL</code>), it replaces that token directly with
+the value you provided before generating the final output bundle.</p>
+<h3 id="basic-webpack-configuration">Basic Webpack Configuration</h3>
+<p>To use <code>DefinePlugin</code>, import Webpack into your
+<code>webpack.config.js</code> file and instantiate the plugin within
+the <code>plugins</code> array.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpack <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other webpack configuration options</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> webpack<span class="op">.</span><span class="fu">DefinePlugin</span>({</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="st">&#39;process.env.NODE_ENV&#39;</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">NODE_ENV</span> <span class="op">||</span> <span class="st">&#39;development&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      <span class="st">&#39;process.env.API_URL&#39;</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(<span class="st">&#39;https://api.example.com&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      <span class="st">&#39;process.env.FEATURE_FLAG_NEW_UI&#39;</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(<span class="kw">true</span>)<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="the-importance-of-jsonstringify">The Importance of
+JSON.stringify()</h3>
+<p>A common pitfall with <code>DefinePlugin</code> is omitting
+<code>JSON.stringify()</code>. Because the plugin performs a direct code
+replacement:</p>
+<ul>
+<li>If you pass <code>'https://api.example.com'</code>, Webpack writes
+<code>process.env.API_URL = https://api.example.com;</code>, which
+causes a syntax error at runtime because the value is interpreted as
+JavaScript code rather than a string literal.</li>
+<li>Passing <code>JSON.stringify('https://api.example.com')</code>
+produces <code>'"https://api.example.com"'</code>, which ensures the
+output code properly contains a wrapped string literal.</li>
+</ul>
+<p>Primitives such as booleans and numbers can be passed without
+<code>JSON.stringify()</code>, but using it consistently for all values
+prevents accidental syntax errors.</p>
+<h3 id="consuming-the-variables-in-application-code">Consuming the
+Variables in Application Code</h3>
+<p>Inside your source files, reference the variables using standard
+property access.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">fetchUserData</span>() {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> endpoint <span class="op">=</span> <span class="vs">`</span><span class="sc">${</span><span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">API_URL</span><span class="sc">}</span><span class="vs">/users`</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">NODE_ENV</span> <span class="op">===</span> <span class="st">&#39;development&#39;</span>) {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="vs">`Fetching from: </span><span class="sc">${</span>endpoint<span class="sc">}</span><span class="vs">`</span>)<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="fu">fetch</span>(endpoint)<span class="op">.</span><span class="fu">then</span>((res) <span class="kw">=&gt;</span> res<span class="op">.</span><span class="fu">json</span>())<span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>During the build process, if <code>process.env.NODE_ENV</code> is
+defined as <code>'production'</code>, Webpack replaces
+<code>if (process.env.NODE_ENV === 'development')</code> with
+<code>if ('production' === 'development')</code>. Modern minifiers like
+Terser recognize this as dead code and automatically remove the entire
+block from the production bundle.</p>
+<h3 id="safely-exposing-env-files">Safely Exposing .env Files</h3>
+<p>To load variables dynamically from a <code>.env</code> file using the
+<code>dotenv</code> package, explicitly map only the variables your
+client application requires:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpack <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> dotenv <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;dotenv&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Load environment variables from .env file</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> env <span class="op">=</span> dotenv<span class="op">.</span><span class="fu">config</span>()<span class="op">.</span><span class="at">parsed</span> <span class="op">||</span> {}<span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co">// Format variables for DefinePlugin</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> envKeys <span class="op">=</span> <span class="bu">Object</span><span class="op">.</span><span class="fu">keys</span>(env)<span class="op">.</span><span class="fu">reduce</span>((prev<span class="op">,</span> next) <span class="kw">=&gt;</span> {</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  prev[<span class="vs">`process.env.</span><span class="sc">${</span>next<span class="sc">}</span><span class="vs">`</span>] <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(env[next])<span class="op">;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> prev<span class="op">;</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>}<span class="op">,</span> {})<span class="op">;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> webpack<span class="op">.</span><span class="fu">DefinePlugin</span>(envKeys)<span class="op">,</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="security-considerations">Security Considerations</h3>
+<p>Any value injected using <code>DefinePlugin</code> is permanently
+baked into the client-side JavaScript files and can be read by anyone
+inspecting the bundle in a browser. Never inject sensitive data such as
+database passwords, private encryption keys, or restricted API secrets
+using this method. Only expose public configurations intended for
+client-side execution.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-to-inject-environment-variables-with-webpack-define-plugin';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PurgeCSS Safelist: Protect Dynamic Classes in Webpack - webpack</title>
+    <meta name="description" content="PurgeCSS is essential for stripping unused styles from modern web applications, but its static analysis often accidentally removes dynamic component classes generated at runtime. By configuring safelist patterns within the Webpack build pipeline, develope">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/purge-css-safelist-protect-dynamic-classes-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="PurgeCSS Safelist: Protect Dynamic Classes in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/purge-css-safelist-protect-dynamic-classes-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="PurgeCSS is essential for stripping unused styles from modern web applications, but its static analysis often accidentally removes dynamic component classes generated at runtime. By configuring safelist patterns within the Webpack build pipeline, develope" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="purgecss-safelist-protect-dynamic-classes-in-webpack">PurgeCSS
+Safelist: Protect Dynamic Classes in Webpack</h1>
+<p>PurgeCSS is essential for stripping unused styles from modern web
+applications, but its static analysis often accidentally removes dynamic
+component classes generated at runtime. By configuring safelist patterns
+within the Webpack build pipeline, developers can explicitly instruct
+PurgeCSS to ignore specific class names or dynamic string patterns. This
+article explains why dynamic classes disappear during production builds,
+how to configure the PurgeCSS safelist in Webpack, and best practices
+for using regular expressions to protect dynamic UI states.</p>
+<h3 id="the-challenge-of-dynamic-classes">The Challenge of Dynamic
+Classes</h3>
+<p>PurgeCSS optimizes production bundles by reading source files and
+identifying classes that appear as complete, static strings. When
+frontend components use string interpolation or conditional state
+logic—such as <code>class="alert-${type}"</code> or
+<code>isActive ? 'nav-active' : ''</code>—PurgeCSS cannot predict the
+generated class names. Because strings like <code>alert-success</code>
+or <code>nav-active</code> do not exist as continuous tokens in the
+scanned template files, the extractor marks their corresponding CSS
+rules as unused and removes them from the final stylesheet.</p>
+<h3 id="configuring-the-webpack-safelist">Configuring the Webpack
+Safelist</h3>
+<p>To resolve this issue, the <code>purgecss-webpack-plugin</code>
+provides a <code>safelist</code> property. Any selector or pattern
+defined in this property is excluded from the purging process,
+regardless of whether it was detected in your source code.</p>
+<p>The <code>safelist</code> property accepts either a simple array or
+an object for granular control:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> glob <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;glob&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> MiniCssExtractPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;mini-css-extract-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> PurgeCSSPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;purgecss-webpack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... Webpack entry and output configuration</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">MiniCssExtractPlugin</span>({</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].css&#39;</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">PurgeCSSPlugin</span>({</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      <span class="dt">paths</span><span class="op">:</span> glob<span class="op">.</span><span class="fu">sync</span>(<span class="vs">`</span><span class="sc">${</span>path<span class="op">.</span><span class="fu">join</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;src&#39;</span>)<span class="sc">}</span><span class="vs">/**/*`</span><span class="op">,</span> { <span class="dt">nodir</span><span class="op">:</span> <span class="kw">true</span> })<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      <span class="dt">safelist</span><span class="op">:</span> {</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">standard</span><span class="op">:</span> [</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>          <span class="st">&#39;is-active&#39;</span><span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>          <span class="ss">/</span><span class="sc">^</span><span class="ss">modal-/</span><span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>          <span class="ss">/</span><span class="sc">^</span><span class="ss">btn-</span><span class="sc">(</span><span class="ss">primary</span><span class="sc">|</span><span class="ss">secondary</span><span class="sc">|</span><span class="ss">danger</span><span class="sc">)$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>        ]<span class="op">,</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>        <span class="dt">deep</span><span class="op">:</span> [<span class="ss">/</span><span class="sc">^</span><span class="ss">dropdown-menu/</span>]<span class="op">,</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        <span class="dt">greedy</span><span class="op">:</span> [<span class="ss">/data-theme</span><span class="sc">$</span><span class="ss">/</span>]<span class="op">,</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="safelist-pattern-types">Safelist Pattern Types</h3>
+<p>The safelist object supports distinct matching behaviors depending on
+how classes are composed in the DOM:</p>
+<h4 id="1-standard-patterns">1. Standard Patterns</h4>
+<p>The <code>standard</code> array targets complete selector tokens. You
+can supply exact string literals for static utility classes or regular
+expressions to capture dynamic modifiers.</p>
+<ul>
+<li>Exact string: <code>'is-open'</code> preserves only
+<code>.is-open</code>.</li>
+<li>Regular expression: <code>/^status-/</code> preserves
+<code>.status-pending</code>, <code>.status-resolved</code>, and any
+class starting with <code>status-</code>.</li>
+</ul>
+<h4 id="2-deep-patterns">2. Deep Patterns</h4>
+<p>The <code>deep</code> array ensures that a selector and all of its
+nested child rules are preserved. This is particularly useful for
+component libraries, tooltips, or WYSIWYG editor content where the
+parent container class is dynamic or injected:</p>
+<ul>
+<li>Pattern: <code>[/^ql-editor/]</code> preserves
+<code>.ql-editor</code>, <code>.ql-editor p</code>,
+<code>.ql-editor strong</code>, and all associated child selectors.</li>
+</ul>
+<h4 id="3-greedy-patterns">3. Greedy Patterns</h4>
+<p>The <code>greedy</code> array matches selectors where any part of the
+selector chain matches the given pattern. If a rule contains multiple
+chained or grouped classes, matching any part ensures the entire rule
+remains:</p>
+<ul>
+<li>Pattern: <code>[/active/]</code> will match
+<code>.button.active</code>, <code>.menu-item-active &gt; a</code>, and
+<code>.is-active-item</code>.</li>
+</ul>
+<h3 id="best-practices-for-safelisting">Best Practices for
+Safelisting</h3>
+<ul>
+<li><strong>Use Explicit Dynamic Patterns:</strong> Instead of matching
+broad terms like <code>/red/</code>, match defined patterns like
+<code>/^bg-red-(100|200|500)$/</code> to avoid preserving unrelated
+legacy selectors.</li>
+<li><strong>Adopt Consistent Naming Conventions:</strong> Adopt
+structured prefixes like <code>is-</code>, <code>has-</code>, or
+<code>js-</code> for runtime state modifications. A single regex such as
+<code>/^is-/</code> can protect all toggled states across your
+application.</li>
+<li><strong>Avoid Greedy Selectors for General Terms:</strong> Using
+greedy expressions on common phrases defeats the purpose of PurgeCSS by
+unintentionally preserving large chunks of dead code. Reserve greedy
+configurations for third-party libraries or dynamic data
+attributes.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/purge-css-safelist-protect-dynamic-classes-in-webpack';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

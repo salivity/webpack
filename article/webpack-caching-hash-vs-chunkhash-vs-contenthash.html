@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Caching: Hash vs Chunkhash vs Contenthash - webpack</title>
+    <meta name="description" content="Webpack provides three distinct hashing strategies—[hash] (referred to as [fullhash] in modern Webpack versions), [chunkhash], and [contenthash]—to control how file names are generated for browser cache invalidation. By appending a unique cryptographic di">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-caching-hash-vs-chunkhash-vs-contenthash">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Caching: Hash vs Chunkhash vs Contenthash - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-caching-hash-vs-chunkhash-vs-contenthash" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack provides three distinct hashing strategies—[hash] (referred to as [fullhash] in modern Webpack versions), [chunkhash], and [contenthash]—to control how file names are generated for browser cache invalidation. By appending a unique cryptographic di" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-caching-hash-vs-chunkhash-vs-contenthash">Webpack
+Caching: Hash vs Chunkhash vs Contenthash</h1>
+<p>Webpack provides three distinct hashing
+strategies—<code>[hash]</code> (referred to as <code>[fullhash]</code>
+in modern Webpack versions), <code>[chunkhash]</code>, and
+<code>[contenthash]</code>—to control how file names are generated for
+browser cache invalidation. By appending a unique cryptographic digest
+to the generated asset filenames, developers can leverage aggressive,
+long-term browser caching (using HTTP headers like
+<code>Cache-Control: immutable</code>) while ensuring users immediately
+download updated assets whenever changes occur. Selecting the correct
+hashing algorithm is critical to avoid unnecessary cache busts across
+unchanged assets.</p>
+<h3 id="hash-or-fullhash"><code>[hash]</code> (or
+<code>[fullhash]</code>)</h3>
+<p>The <code>[hash]</code> placeholder generates a hash based on the
+entire build process.</p>
+<ul>
+<li><strong>How it works:</strong> A single hash is calculated for the
+compilation as a whole. If any single file in any part of the project is
+modified, the hash for the entire build changes.</li>
+<li><strong>Impact on caching:</strong> Every single output
+file—regardless of whether its underlying source code changed—will
+receive a new filename.</li>
+<li><strong>Use case:</strong> This strategy is rarely recommended for
+production deployments because modifying a simple line of CSS or an
+isolated component invalidates the browser cache for every file in the
+bundle. It is occasionally used in development or simple setups where
+granular caching is not a priority.</li>
+</ul>
+<h3 id="chunkhash"><code>[chunkhash]</code></h3>
+<p>The <code>[chunkhash]</code> placeholder generates a hash based on
+the specific Webpack chunk to which an asset belongs.</p>
+<ul>
+<li><strong>How it works:</strong> Webpack creates chunks based on entry
+points and dynamic imports. A change inside an entry point or its
+imported modules only changes the hash of that particular chunk. Other
+unrelated entry points and independent chunks keep their original
+hashes.</li>
+<li><strong>Impact on caching:</strong> This provides significantly
+better cache retention than <code>[fullhash]</code>, as users only
+re-download chunks that contain modified code.</li>
+<li><strong>Caveat:</strong> If you extract CSS into a separate file
+using plugins like <code>MiniCssExtractPlugin</code> within the same
+chunk as your JavaScript, both the generated <code>.js</code> and
+<code>.css</code> files historically shared the same
+<code>[chunkhash]</code>. Modifying only the JavaScript would cause the
+stylesheet's hash to update as well, forcing an unnecessary download of
+unchanged CSS.</li>
+</ul>
+<h3 id="contenthash"><code>[contenthash]</code></h3>
+<p>The <code>[contenthash]</code> placeholder generates a hash based
+strictly on the exact content of the individual asset file itself.</p>
+<ul>
+<li><strong>How it works:</strong> The hash is computed after the file
+has been fully processed and rendered. If a file's final output bytes do
+not change, its hash will remain identical, regardless of build changes
+elsewhere in the project or even within the same entry chunk.</li>
+<li><strong>Impact on caching:</strong> This provides the most precise
+and efficient caching strategy available in Webpack. If you update
+JavaScript in an entry file, only that specific <code>.js</code> file's
+hash changes; an extracted <code>.css</code> file from the same chunk
+retains its previous hash if its style rules were untouched.</li>
+<li><strong>Use case:</strong> This is the industry-standard
+recommendation for production output configurations.</li>
+</ul>
+<h3 id="recommended-configuration">Recommended Configuration</h3>
+<p>For optimal production performance, use <code>[contenthash]</code> on
+all generated output files, including JavaScript bundles, extracted
+stylesheets, and assets:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].js&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunkFilename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].chunk.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">clean</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">MiniCssExtractPlugin</span>({</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].css&#39;</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">chunkFilename</span><span class="op">:</span> <span class="st">&#39;[id].[contenthash].css&#39;</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Using <code>[contenthash]</code> guarantees that clients only
+download the files that have genuinely changed, maximizing cache hits
+and minimizing load times for returning users.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-caching-hash-vs-chunkhash-vs-contenthash';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

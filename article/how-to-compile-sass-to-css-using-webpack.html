@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Compile Sass to CSS Using Webpack - webpack</title>
+    <meta name="description" content="Compiling Sass or SCSS into browser-ready CSS using Webpack requires installing the Dart Sass compiler alongside a series of specialized Webpack loaders. This guide walks through the required packages, the setup of webpack.config.js to process stylesheets">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-to-compile-sass-to-css-using-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Compile Sass to CSS Using Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-to-compile-sass-to-css-using-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Compiling Sass or SCSS into browser-ready CSS using Webpack requires installing the Dart Sass compiler alongside a series of specialized Webpack loaders. This guide walks through the required packages, the setup of webpack.config.js to process stylesheets" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-compile-sass-to-css-using-webpack">How to Compile Sass to
+CSS Using Webpack</h1>
+<p>Compiling Sass or SCSS into browser-ready CSS using Webpack requires
+installing the Dart Sass compiler alongside a series of specialized
+Webpack loaders. This guide walks through the required packages, the
+setup of <code>webpack.config.js</code> to process stylesheets in the
+correct order, and the method for extracting the compiled CSS into
+standalone files for production use.</p>
+<h2 id="1-install-required-dependencies">1. Install Required
+Dependencies</h2>
+<p>Webpack relies on a pipeline of loaders to process Sass. First,
+install the Sass compiler, <code>sass-loader</code>,
+<code>css-loader</code>, and either <code>style-loader</code> (for
+development) or <code>mini-css-extract-plugin</code> (for
+production).</p>
+<p>Run the following command in your terminal:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">--save-dev</span> sass sass-loader css-loader style-loader mini-css-extract-plugin</span></code></pre></div>
+<ul>
+<li><strong><code>sass</code></strong>: The official Dart Sass compiler
+that converts Sass/SCSS to pure CSS.</li>
+<li><strong><code>sass-loader</code></strong>: Webpack loader that
+passes <code>.scss</code> or <code>.sass</code> files to the Dart Sass
+compiler.</li>
+<li><strong><code>css-loader</code></strong>: Resolves
+<code>@import</code> and <code>url()</code> paths inside your CSS
+files.</li>
+<li><strong><code>style-loader</code></strong>: Injects CSS directly
+into the DOM via <code>&lt;style&gt;</code> tags during
+development.</li>
+<li><strong><code>mini-css-extract-plugin</code></strong>: Extracts CSS
+into separate files for production performance.</li>
+</ul>
+<h2 id="2-configure-webpackconfigjs">2. Configure
+<code>webpack.config.js</code></h2>
+<p>Loaders in Webpack are executed in reverse order (bottom-to-top or
+right-to-left). To properly compile Sass, the order must be:
+<code>sass-loader</code> first, then <code>css-loader</code>, and
+finally the style injector or extractor.</p>
+<p>Here is a standard <code>webpack.config.js</code> configuration
+supporting both development and production workflows:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> MiniCssExtractPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;mini-css-extract-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> (env<span class="op">,</span> argv) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> isProduction <span class="op">=</span> argv<span class="op">.</span><span class="at">mode</span> <span class="op">===</span> <span class="st">&#39;production&#39;</span><span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>      <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>      <span class="dt">clean</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>      <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>          <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">s</span><span class="sc">[ac]</span><span class="ss">ss</span><span class="sc">$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>          <span class="dt">use</span><span class="op">:</span> [</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Use MiniCssExtractPlugin in production, style-loader in development</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>            isProduction <span class="op">?</span> MiniCssExtractPlugin<span class="op">.</span><span class="at">loader</span> <span class="op">:</span> <span class="st">&#39;style-loader&#39;</span><span class="op">,</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Translates CSS into CommonJS</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;css-loader&#39;</span><span class="op">,</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Compiles Sass to CSS</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>            <span class="st">&#39;sass-loader&#39;</span><span class="op">,</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>          ]<span class="op">,</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>      ]<span class="op">,</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    <span class="dt">plugins</span><span class="op">:</span> []<span class="op">.</span><span class="fu">concat</span>(</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>      isProduction</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>        <span class="op">?</span> [</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>            <span class="kw">new</span> <span class="fu">MiniCssExtractPlugin</span>({</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>              <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].css&#39;</span><span class="op">,</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>            })<span class="op">,</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>          ]</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>        <span class="op">:</span> []</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>    )<span class="op">,</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>  }<span class="op">;</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h2 id="3-import-scss-in-your-javascript-entry-file">3. Import SCSS in
+Your JavaScript Entry File</h2>
+<p>Webpack builds its dependency graph starting from your entry file.
+Import your main Sass or SCSS file inside your primary JavaScript entry
+point (such as <code>src/index.js</code>):</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="st">&#39;./styles/main.scss&#39;</span><span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;App initialized&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<h2 id="4-compile-the-assets">4. Compile the Assets</h2>
+<p>Add build scripts to your <code>package.json</code> to execute
+Webpack:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;scripts&quot;</span><span class="er">:</span> <span class="fu">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;build&quot;</span><span class="fu">:</span> <span class="st">&quot;webpack --mode production&quot;</span><span class="fu">,</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;start&quot;</span><span class="fu">:</span> <span class="st">&quot;webpack serve --mode development&quot;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Running <code>npm run build</code> will process your SCSS files,
+compile them into standard CSS, and output the resulting stylesheet into
+the <code>dist/</code> directory, ready to be linked in an HTML
+document.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-to-compile-sass-to-css-using-webpack';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

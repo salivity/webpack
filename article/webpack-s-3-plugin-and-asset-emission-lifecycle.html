@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack S3 Plugin and Asset Emission Lifecycle - webpack</title>
+    <meta name="description" content="This article provides an overview of the webpack-s3-plugin and explores its role within modern frontend build pipelines. Readers will learn the primary functionality of the plugin, why it is used for cloud asset distribution, and the precise mechanics of">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-s-3-plugin-and-asset-emission-lifecycle">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack S3 Plugin and Asset Emission Lifecycle - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-s-3-plugin-and-asset-emission-lifecycle" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an overview of the webpack-s3-plugin and explores its role within modern frontend build pipelines. Readers will learn the primary functionality of the plugin, why it is used for cloud asset distribution, and the precise mechanics of" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-s3-plugin-and-asset-emission-lifecycle">Webpack S3
+Plugin and Asset Emission Lifecycle</h1>
+<p>This article provides an overview of the
+<code>webpack-s3-plugin</code> and explores its role within modern
+frontend build pipelines. Readers will learn the primary functionality
+of the plugin, why it is used for cloud asset distribution, and the
+precise mechanics of how it hooks into Webpack’s asset emission
+lifecycle to transfer compiled bundles to Amazon Simple Storage Service
+(S3).</p>
+<h2 id="what-is-webpack-s3-plugin">What is webpack-s3-plugin?</h2>
+<p>The <code>webpack-s3-plugin</code> is a build-tool extension designed
+to automate the transfer of compiled assets directly to an Amazon S3
+bucket (or S3-compatible object storage) during the build process.</p>
+<p>In standard frontend workflows, Webpack bundles JavaScript, CSS,
+HTML, and other media into a local output directory (commonly
+<code>dist</code> or <code>build</code>). Rather than requiring separate
+CLI scripts, continuous integration (CI) steps, or manual upload
+routines using the AWS CLI, <code>webpack-s3-plugin</code> integrates
+directly into the compilation process. Key features include:</p>
+<ul>
+<li>Direct integration with AWS SDK for JavaScript.</li>
+<li>Automatic cache-control header assignment for immutable and mutable
+assets.</li>
+<li>Support for gzip or brotli compression detection and header
+mapping.</li>
+<li>Wildcard filtering (<code>include</code> and <code>exclude</code>
+rules) to prevent internal-only files (such as <code>.map</code> files
+or sensitive build manifests) from being published publicly.</li>
+</ul>
+<h2 id="webpacks-asset-emission-lifecycle">Webpack’s Asset Emission
+Lifecycle</h2>
+<p>Webpack’s architecture relies on <strong>Tapable</strong>, a library
+that provides an event-driven hook system. The Webpack build lifecycle
+is driven by two main objects:</p>
+<ol type="1">
+<li><strong><code>Compiler</code></strong>: Represents the configured
+Webpack environment and initiates the build pipeline.</li>
+<li><strong><code>Compilation</code></strong>: Contains the dependency
+graph, transformed modules, and generated assets for a specific build
+run.</li>
+</ol>
+<p>The final stage of the build cycle centers on writing assets from
+memory to storage. The sequence of emission hooks on the
+<code>Compiler</code> is as follows:</p>
+<ol type="1">
+<li><strong><code>emit</code></strong>: Triggered right before Webpack
+writes assets to the output directory. At this stage, files exist
+entirely in memory within the <code>compilation.assets</code>
+object.</li>
+<li><strong><code>afterEmit</code></strong>: Triggered immediately after
+all files have been written to the local output filesystem.</li>
+<li><strong><code>done</code></strong>: Triggered when the entire
+compilation and emission process has finalized, signaling completion to
+the process or watch runner.</li>
+</ol>
+<h2 id="how-webpack-s3-plugin-hooks-into-the-lifecycle">How
+webpack-s3-plugin Hooks into the Lifecycle</h2>
+<p>The <code>webpack-s3-plugin</code> relies on the <code>apply</code>
+method required by all Webpack plugins to access the
+<code>Compiler</code> instance. It binds to the compiler lifecycle to
+intercept and deploy assets.</p>
+<h3 id="1-hook-attachment-afteremit">1. Hook Attachment
+(<code>afterEmit</code>)</h3>
+<p>The plugin primarily registers an asynchronous hook on the
+<code>afterEmit</code> event using
+<code>compiler.hooks.afterEmit.tapPromise</code> (or
+<code>tapAsync</code> in earlier Webpack versions):</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">apply</span>(compiler) {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  compiler<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">afterEmit</span><span class="op">.</span><span class="fu">tapPromise</span>(<span class="st">&#39;WebpackS3Plugin&#39;</span><span class="op">,</span> (compilation) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="kw">this</span><span class="op">.</span><span class="fu">uploadAssets</span>(compilation)<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>The plugin targets <code>afterEmit</code> rather than
+<code>emit</code> because:</p>
+<ul>
+<li><strong>Disk Synchronization</strong>: Files are guaranteed to be
+fully generated and written to disk, preventing race conditions if local
+files need to be verified or read as streams.</li>
+<li><strong>Compilation State</strong>: The
+<code>compilation.assets</code> object remains populated and available,
+providing complete access to the file manifest, relative paths, and
+metadata.</li>
+</ul>
+<h3 id="2-processing-compilationassets">2. Processing
+<code>compilation.assets</code></h3>
+<p>Once the <code>afterEmit</code> hook fires, the plugin inspects the
+<code>compilation.assets</code> dictionary. Each key represents the
+target relative path of an emitted file (e.g.,
+<code>static/js/main.a1b2c3d4.js</code>), and the corresponding value is
+a Webpack <code>Source</code> object.</p>
+<p>The plugin filters these keys against user-configured rules:</p>
+<ul>
+<li><strong>Include/Exclude Matching</strong>: RegEx patterns check file
+paths to select only target deployment assets.</li>
+<li><strong>Directory Traversal</strong>: If configured to upload files
+outside of Webpack's direct asset graph (such as static public
+directories), the plugin queries the local output path.</li>
+</ul>
+<h3 id="3-header-computation-and-file-ingestion">3. Header Computation
+and File Ingestion</h3>
+<p>Before initiating cloud requests, the plugin processes the metadata
+for each asset:</p>
+<ul>
+<li>Computes <code>Content-Type</code> using MIME-type lookups based on
+file extensions.</li>
+<li>Maps <code>Cache-Control</code> rules (e.g., long-term immutable
+caching for hashed files, short TTLs for <code>index.html</code>).</li>
+<li>Inspects content encodings to ensure pre-compressed assets receive
+the appropriate <code>Content-Encoding: gzip</code> or <code>br</code>
+headers.</li>
+</ul>
+<h3 id="4-upload-execution-and-lifecycle-resolution">4. Upload Execution
+and Lifecycle Resolution</h3>
+<p>Using the AWS SDK, the plugin batches upload requests:</p>
+<ul>
+<li>Reads the asset source either directly from memory via Webpack's
+source buffer or by streaming the file from the local output
+directory.</li>
+<li>Dispatches parallel <code>S3.upload</code> or
+<code>S3.putObject</code> API calls.</li>
+<li>Handles progress tracking and rate-limiting.</li>
+</ul>
+<p>Because the hook is registered as an asynchronous promise via
+Tapable, Webpack halts the lifecycle and waits until all upload promises
+resolve or reject. Once resolved, Webpack advances to the
+<code>done</code> hook, outputting the build statistics and terminating
+the process successfully. If an upload fails, the promise rejects,
+allowing Webpack to surface the error and fail the CI/CD pipeline
+immediately.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-s-3-plugin-and-asset-emission-lifecycle';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

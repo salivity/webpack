@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Enable HTTPS in Webpack Dev Server - webpack</title>
+    <meta name="description" content="Enabling HTTPS for local development in Webpack Dev Server allows you to test secure cookies, HTTP/2, service workers, and APIs that require a secure context. This guide covers how to quickly enable the default self-signed certificate using built-in setti">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-to-enable-https-in-webpack-dev-server">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Enable HTTPS in Webpack Dev Server - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-to-enable-https-in-webpack-dev-server" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Enabling HTTPS for local development in Webpack Dev Server allows you to test secure cookies, HTTP/2, service workers, and APIs that require a secure context. This guide covers how to quickly enable the default self-signed certificate using built-in setti" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-enable-https-in-webpack-dev-server">How to Enable HTTPS
+in Webpack Dev Server</h1>
+<p>Enabling HTTPS for local development in Webpack Dev Server allows you
+to test secure cookies, HTTP/2, service workers, and APIs that require a
+secure context. This guide covers how to quickly enable the default
+self-signed certificate using built-in settings, as well as how to
+configure custom, trusted SSL certificates for a warning-free local
+development experience.</p>
+<h3 id="method-1-using-the-default-self-signed-certificate">Method 1:
+Using the Default Self-Signed Certificate</h3>
+<p>The quickest way to enable HTTPS is to use Webpack Dev Server's
+built-in self-signed certificate.</p>
+<p>Open your <code>webpack.config.js</code> file and update the
+<code>devServer</code> configuration object:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other configuration settings</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devServer</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">server</span><span class="op">:</span> <span class="st">&#39;https&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">port</span><span class="op">:</span> <span class="dv">8080</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p><em>(Note: For older versions of <code>webpack-dev-server</code> (v3
+and below), use <code>https: true</code> instead of
+<code>server: 'https'</code>.)</em></p>
+<p>Alternatively, you can start the server via the command-line
+interface without modifying the configuration file:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npx</span> webpack serve <span class="at">--server-type</span> https</span></code></pre></div>
+<p>When you navigate to <code>https://localhost:8080</code>, your
+browser will display a security warning because the default certificate
+is not issued by a trusted Certificate Authority (CA). You can safely
+bypass this warning for local testing.</p>
+<hr />
+<h3 id="method-2-using-custom-trusted-certificates-with-mkcert">Method
+2: Using Custom Trusted Certificates (with mkcert)</h3>
+<p>To avoid browser security warnings, you can generate locally-trusted
+certificates using a tool like <code>mkcert</code>.</p>
+<h4 id="step-1-generate-the-certificates">Step 1: Generate the
+Certificates</h4>
+<p>Install <code>mkcert</code> and generate a certificate for
+<code>localhost</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Install local CA</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">mkcert</span> <span class="at">-install</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Create certificate files</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="ex">mkcert</span> localhost</span></code></pre></div>
+<p>This generates two files in your project directory:
+<code>localhost.pem</code> (certificate) and
+<code>localhost-key.pem</code> (private key).</p>
+<h4 id="step-2-configure-webpack-dev-server">Step 2: Configure Webpack
+Dev Server</h4>
+<p>Update your <code>webpack.config.js</code> to read and use these
+files:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> fs <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;fs&#39;</span>)<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other configuration settings</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devServer</span><span class="op">:</span> {</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">server</span><span class="op">:</span> {</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;https&#39;</span><span class="op">,</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">options</span><span class="op">:</span> {</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">key</span><span class="op">:</span> fs<span class="op">.</span><span class="fu">readFileSync</span>(path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;localhost-key.pem&#39;</span>))<span class="op">,</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        <span class="dt">cert</span><span class="op">:</span> fs<span class="op">.</span><span class="fu">readFileSync</span>(path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;localhost.pem&#39;</span>))<span class="op">,</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="dt">port</span><span class="op">:</span> <span class="dv">8080</span><span class="op">,</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Restart your Webpack Dev Server. When you visit
+<code>https://localhost:8080</code>, the connection will be secure, and
+the browser will accept the certificate without showing a security
+warning. Ensure that your generated certificate files (especially the
+private key) are added to your <code>.gitignore</code> file to prevent
+committing them to version control.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-to-enable-https-in-webpack-dev-server';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

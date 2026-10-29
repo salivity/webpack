@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack contenthash vs chunkhash for CSS Extraction - webpack</title>
+    <meta name="description" content="When extracting CSS into separate files in Webpack, using [contenthash] instead of [chunkhash] is critical for effective long-term browser caching. While [chunkhash] couples the generated hash to the entire entry chunk—causing CSS files to bust cache even">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-contenthash-vs-chunkhash-for-css-extraction">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack contenthash vs chunkhash for CSS Extraction - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-contenthash-vs-chunkhash-for-css-extraction" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When extracting CSS into separate files in Webpack, using [contenthash] instead of [chunkhash] is critical for effective long-term browser caching. While [chunkhash] couples the generated hash to the entire entry chunk—causing CSS files to bust cache even" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-contenthash-vs-chunkhash-for-css-extraction">Webpack
+contenthash vs chunkhash for CSS Extraction</h1>
+<p>When extracting CSS into separate files in Webpack, using
+<code>[contenthash]</code> instead of <code>[chunkhash]</code> is
+critical for effective long-term browser caching. While
+<code>[chunkhash]</code> couples the generated hash to the entire entry
+chunk—causing CSS files to bust cache even when only JavaScript code
+changes—<code>[contenthash]</code> derives its value solely from the
+extracted CSS file's internal content. This ensures client browsers only
+re-download stylesheets when actual style definitions are modified.</p>
+<h3 id="the-limitation-of-chunkhash">The Limitation of [chunkhash]</h3>
+<p>In Webpack, a "chunk" represents a group of modules compiled
+together, often starting from a single entry point. When an entry file
+imports a stylesheet, both the JavaScript logic and the CSS belong to
+the same chunk.</p>
+<p>If you use <code>[chunkhash]</code> to name extracted CSS files (for
+example, via <code>MiniCssExtractPlugin</code>), Webpack assigns the
+hash of the parent chunk to the extracted CSS asset. Because the hash is
+shared:</p>
+<ul>
+<li>Modifying a single line of JavaScript changes the chunk's overall
+hash.</li>
+<li>The extracted CSS filename receives the new hash, even if not a
+single line of CSS was modified.</li>
+<li>Browsers are forced to invalidate their cached version of the CSS
+file and re-download it unnecessarily.</li>
+</ul>
+<p>This behavior defeats the primary purpose of long-term caching, which
+is to allow static assets to remain cached indefinitely until they
+actually change.</p>
+<h3 id="how-contenthash-solves-the-problem">How [contenthash] Solves the
+Problem</h3>
+<p>The <code>[contenthash]</code> placeholder generates a unique hash
+calculated exclusively from the final content of the individual asset
+being emitted.</p>
+<p>When applied to CSS extraction:</p>
+<ol type="1">
+<li><strong>Independent Invalidation:</strong> If you modify JavaScript
+files without touching CSS, the JavaScript bundle's hash updates, while
+the CSS file's hash remains unchanged.</li>
+<li><strong>Selective Updating:</strong> If you update only CSS rules,
+only the CSS file's hash changes, leaving the JavaScript bundle intact
+in the user's browser cache.</li>
+<li><strong>Reduced Bandwidth and Faster Loads:</strong> Returning users
+only download the assets that were genuinely modified between
+deployments, significantly improving load performance.</li>
+</ol>
+<p>Because of this decoupled cache invalidation, modern Webpack
+configurations and extraction plugins standardize on
+<code>[contenthash]</code> for both production CSS files and split code
+bundles.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-contenthash-vs-chunkhash-for-css-extraction';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

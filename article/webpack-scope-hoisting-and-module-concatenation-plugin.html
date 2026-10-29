@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Scope Hoisting and ModuleConcatenationPlugin - webpack</title>
+    <meta name="description" content="This article explains Webpack scope hoisting, an optimization technique that reduces bundle size and accelerates runtime execution by merging multiple module closures into a single scope. You will learn the performance limitations of standard bundling, ho">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-scope-hoisting-and-module-concatenation-plugin">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Scope Hoisting and ModuleConcatenationPlugin - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-scope-hoisting-and-module-concatenation-plugin" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains Webpack scope hoisting, an optimization technique that reduces bundle size and accelerates runtime execution by merging multiple module closures into a single scope. You will learn the performance limitations of standard bundling, ho" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-scope-hoisting-and-moduleconcatenationplugin">Webpack
+Scope Hoisting and ModuleConcatenationPlugin</h1>
+<p>This article explains Webpack scope hoisting, an optimization
+technique that reduces bundle size and accelerates runtime execution by
+merging multiple module closures into a single scope. You will learn the
+performance limitations of standard bundling, how the
+<code>ModuleConcatenationPlugin</code> analyzes module graphs to hoist
+code, and the configuration requirements needed to implement this
+feature in your applications.</p>
+<h3 id="the-problem-with-traditional-webpack-bundling">The Problem with
+Traditional Webpack Bundling</h3>
+<p>In earlier versions of Webpack, the bundler wrapped every file in
+your dependency graph inside its own isolated JavaScript function
+closure. A typical bundle output contained a Webpack runtime boilerplate
+along with an array or object containing these wrapped modules.</p>
+<p>While this approach safely isolated variable scopes, it introduced
+distinct performance penalties:</p>
+<ol type="1">
+<li><strong>Bundle Size Overhead:</strong> Wrapping dozens or hundreds
+of files in individual functions generates boilerplate code that
+increases the total JavaScript payload.</li>
+<li><strong>Browser Execution Costs:</strong> The browser engine must
+allocate and invoke separate execution contexts for each module wrapper,
+which significantly slows down execution and parsing time during
+application startup.</li>
+</ol>
+<h3 id="what-is-scope-hoisting">What Is Scope Hoisting?</h3>
+<p>Scope hoisting detects modules that can be safely merged and inlines
+them into a single parent wrapper function rather than isolating them
+into separate closures.</p>
+<p>Instead of generating individual wrappers like this:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Module A</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span>(module<span class="op">,</span> exports<span class="op">,</span> __webpack_require__) {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> b <span class="op">=</span> <span class="fu">__webpack_require__</span>(<span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  exports<span class="op">.</span><span class="at">value</span> <span class="op">=</span> b<span class="op">.</span><span class="at">value</span> <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">// Module B</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span>(module<span class="op">,</span> exports) {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  exports<span class="op">.</span><span class="at">value</span> <span class="op">=</span> <span class="dv">42</span><span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Scope hoisting flattens the modules into a shared scope:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Concatenated Module</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span>(module<span class="op">,</span> exports) {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> b_value <span class="op">=</span> <span class="dv">42</span><span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> a_value <span class="op">=</span> b_value <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  exports<span class="op">.</span><span class="at">value</span> <span class="op">=</span> a_value<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>This flattening eliminates function invocation overhead, reduces
+script evaluation time in the browser's JavaScript engine, and trims
+unnecessary wrapper bytes from the output.</p>
+<h3 id="how-moduleconcatenationplugin-enables-scope-hoisting">How
+ModuleConcatenationPlugin Enables Scope Hoisting</h3>
+<p>Webpack implements scope hoisting through the
+<code>ModuleConcatenationPlugin</code>. This plugin analyzes the
+dependency graph during the compilation phase to locate clusters of
+modules that can safely share an execution context.</p>
+<p>The plugin operates under specific conditions:</p>
+<ul>
+<li><strong>Static Analysis via ES Modules:</strong> The plugin relies
+strictly on static ES2015 module syntax (<code>import</code> and
+<code>export</code>). Dynamic imports or CommonJS modules
+(<code>require()</code> and <code>module.exports</code>) cannot be
+hoisted because their dependencies and exports can change at
+runtime.</li>
+<li><strong>Module Clustering:</strong> The plugin identifies valid
+"root" modules and groups all statically imported ESM dependencies into
+a single concatenated module.</li>
+<li><strong>Bailout Handling:</strong> If a module is imported via
+CommonJS, imported dynamically, or aliased in a way that prevents
+deterministic analysis, Webpack bails out of concatenation for that
+specific module and falls back to wrapping it in a traditional
+closure.</li>
+</ul>
+<h3 id="configuring-scope-hoisting">Configuring Scope Hoisting</h3>
+<p>In modern Webpack (versions 4 and 5), the
+<code>ModuleConcatenationPlugin</code> is enabled automatically when
+running in production mode (<code>mode: 'production'</code>).</p>
+<p>To manage the plugin manually, you can set the
+<code>concatenateModules</code> optimization property in your
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">concatenateModules</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Alternatively, you can instantiate the plugin directly:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpack <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> webpack<span class="op">.</span><span class="at">optimize</span><span class="op">.</span><span class="fu">ModuleConcatenationPlugin</span>()</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="ensuring-successful-module-concatenation">Ensuring Successful
+Module Concatenation</h3>
+<p>To ensure the <code>ModuleConcatenationPlugin</code> hoists as many
+modules as possible, avoid transpiling ES modules to CommonJS prior to
+Webpack bundling.</p>
+<p>If you use Babel, configure <code>@babel/preset-env</code> with
+<code>modules: false</code> to preserve native ES imports and
+exports:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;presets&quot;</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="ot">[</span><span class="st">&quot;@babel/preset-env&quot;</span><span class="ot">,</span> <span class="fu">{</span> <span class="dt">&quot;modules&quot;</span><span class="fu">:</span> <span class="kw">false</span> <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>To diagnose why certain modules are not being hoisted, enable the
+optimization bailout reporting in your Webpack configuration:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">stats</span><span class="op">:</span> {</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">optimizationBailout</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This output flags modules that prevent scope hoisting, allowing you
+to refactor CommonJS calls to standard ES module syntax to maximize
+bundle compression and runtime speed.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-scope-hoisting-and-module-concatenation-plugin';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

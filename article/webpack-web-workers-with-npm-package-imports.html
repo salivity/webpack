@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Web Workers with NPM Package Imports - webpack</title>
+    <meta name="description" content="This article explains how Webpack processes and bundles Web Workers that rely on external npm dependencies. Modern versions of Webpack provide native, loader-free support for Web Workers by analyzing native URL syntax, treating the worker as a distinct en">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-web-workers-with-npm-package-imports">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Web Workers with NPM Package Imports - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-web-workers-with-npm-package-imports" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how Webpack processes and bundles Web Workers that rely on external npm dependencies. Modern versions of Webpack provide native, loader-free support for Web Workers by analyzing native URL syntax, treating the worker as a distinct en" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-web-workers-with-npm-package-imports">Webpack Web
+Workers with NPM Package Imports</h1>
+<p>This article explains how Webpack processes and bundles Web Workers
+that rely on external npm dependencies. Modern versions of Webpack
+provide native, loader-free support for Web Workers by analyzing native
+URL syntax, treating the worker as a distinct entry point, resolving
+third-party modules from <code>node_modules</code>, and producing an
+isolated, fully functional bundle for background execution.</p>
+<h2 id="native-worker-syntax-in-webpack-5">Native Worker Syntax in
+Webpack 5</h2>
+<p>Webpack 5 introduced out-of-the-box support for Web Workers, removing
+the historical requirement for plugins like <code>worker-loader</code>.
+To instantiate a worker that can import npm modules, use the standard
+ECMAScript module syntax:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> worker <span class="op">=</span> <span class="kw">new</span> <span class="bu">Worker</span>(<span class="kw">new</span> <span class="fu">URL</span>(<span class="st">&#39;./worker.js&#39;</span><span class="op">,</span> <span class="im">import</span><span class="op">.</span><span class="at">meta</span><span class="op">.</span><span class="at">url</span>))<span class="op">;</span></span></code></pre></div>
+<p>When Webpack encounters this static analysis pattern during
+compilation, it automatically identifies <code>./worker.js</code> as an
+entry point for a worker chunk.</p>
+<h2 id="how-webpack-compiles-worker-dependencies">How Webpack Compiles
+Worker Dependencies</h2>
+<p>When a Web Worker imports an npm package—for example,
+<code>import { debounce } from 'lodash-es';</code> or
+<code>import axios from 'axios';</code>—Webpack executes the following
+pipeline:</p>
+<ol type="1">
+<li><strong>Child Compilation:</strong> Webpack spawns a separate
+compilation process for the worker script. This ensures the worker
+receives its own runtime environment, as workers execute in a different
+global scope (<code>DedicatedWorkerGlobalScope</code>) rather than the
+standard <code>window</code> object.</li>
+<li><strong>Module Resolution:</strong> Webpack applies its standard
+resolver rules via <code>enhanced-resolve</code>. It traverses the
+<code>node_modules</code> directory to locate the requested npm
+packages, resolving package entry fields such as <code>module</code> or
+<code>main</code>.</li>
+<li><strong>Loader Processing:</strong> Any configured loaders (such as
+<code>babel-loader</code> or <code>ts-loader</code>) that match the
+imported files within the worker or within <code>node_modules</code> run
+just as they would for the main application bundle.</li>
+<li><strong>Packaging and Chunk Generation:</strong> Webpack bundles the
+worker code alongside its imported npm packages into a standalone asset
+file in the configured output directory.</li>
+</ol>
+<h2 id="code-splitting-and-shared-dependencies">Code Splitting and
+Shared Dependencies</h2>
+<p>If both the main thread application and the Web Worker import the
+same npm package, Webpack must determine how to serve those files.</p>
+<p>By default, Webpack isolates worker chunks to avoid cross-context
+execution issues, which may duplicate the shared npm package in both the
+main bundle and the worker bundle. To optimize this behavior, you can
+configure Webpack's <code>splitChunks</code> optimization to share
+chunks across different chunk types:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">splitChunks</span><span class="op">:</span> {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When configured properly, Webpack creates a shared chunk containing
+the common npm dependency, loading it asynchronously in both the main
+thread and the worker scope.</p>
+<h2 id="critical-considerations-for-npm-packages-in-workers">Critical
+Considerations for NPM Packages in Workers</h2>
+<p>Not all npm packages can run inside a Web Worker. When importing
+packages, consider the following technical limits:</p>
+<ul>
+<li><strong>DOM Restrictions:</strong> Web Workers do not have access to
+the <code>window</code>, <code>document</code>, or DOM APIs. Any npm
+package that attempts to read or mutate the DOM upon initialization will
+throw a runtime error inside a worker.</li>
+<li><strong>Global Scope Access:</strong> Packages relying on global
+variables must use <code>self</code> or <code>globalThis</code> instead
+of <code>window</code>.</li>
+<li><strong>Output Targets:</strong> If the imported npm packages output
+modern ES modules, you must instruct the worker to load as a module by
+passing the type option:</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> worker <span class="op">=</span> <span class="kw">new</span> <span class="bu">Worker</span>(<span class="kw">new</span> <span class="fu">URL</span>(<span class="st">&#39;./worker.js&#39;</span><span class="op">,</span> <span class="im">import</span><span class="op">.</span><span class="at">meta</span><span class="op">.</span><span class="at">url</span>)<span class="op">,</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;module&#39;</span><span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p>Using modern Webpack worker construction enables seamless integration
+of external npm packages while maintaining proper code isolation and
+standard bundling workflows.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-web-workers-with-npm-package-imports';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

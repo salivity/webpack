@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack 5 File-System Caching for Faster Builds - webpack</title>
+    <meta name="description" content="Webpack 5 introduced persistent file-system caching, a built-in feature designed to dramatically slash build and rebuild times by serializing compilation states directly to disk. This article provides an overview of how Webpack 5 file-system caching works">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-5-file-system-caching-for-faster-builds">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack 5 File-System Caching for Faster Builds - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-5-file-system-caching-for-faster-builds" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 introduced persistent file-system caching, a built-in feature designed to dramatically slash build and rebuild times by serializing compilation states directly to disk. This article provides an overview of how Webpack 5 file-system caching works" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-5-file-system-caching-for-faster-builds">Webpack 5
+File-System Caching for Faster Builds</h1>
+<p>Webpack 5 introduced persistent file-system caching, a built-in
+feature designed to dramatically slash build and rebuild times by
+serializing compilation states directly to disk. This article provides
+an overview of how Webpack 5 file-system caching works, the
+architectural shift from prior in-memory approaches, the mechanics
+behind its performance gains, and how to configure it to optimize
+developer workflows and deployment pipelines.</p>
+<h2 id="the-shift-from-in-memory-to-persistent-caching">The Shift from
+In-Memory to Persistent Caching</h2>
+<p>In Webpack 4 and earlier versions, compilation caching was primarily
+in-memory by default. When the compiler process terminated—such as
+stopping a local development server or running a single build
+command—the entire cache vanished. To preserve state between runs,
+developers had to rely on third-party plugins like
+<code>hard-source-webpack-plugin</code> or loader-specific options like
+<code>babel-loader?cacheDirectory</code>.</p>
+<p>Webpack 5 solved this limitation by building persistent,
+file-system-level caching directly into the core architecture. Instead
+of discarding the compilation context on exit, Webpack writes module
+graphs, resolved dependencies, and processed assets directly to disk
+(typically within the <code>node_modules/.cache/webpack</code>
+directory).</p>
+<h2 id="how-file-system-caching-operates">How File-System Caching
+Operates</h2>
+<p>The persistent cache relies on a sophisticated snapshotting mechanism
+to determine what needs to be recompiled and what can be safely restored
+from disk.</p>
+<ol type="1">
+<li><strong>Snapshot Creation:</strong> During a build, Webpack
+generates snapshots of project files, configuration files, and
+<code>node_modules</code>. These snapshots track file modification
+times, hashes, and package versions.</li>
+<li><strong>Serialization:</strong> Transformed source code, abstract
+syntax trees (ASTs), module resolution maps, and asset states are
+serialized and written into binary cache files.</li>
+<li><strong>Validation on Next Run:</strong> When a subsequent build
+starts, Webpack compares the current state of files against the stored
+snapshots.</li>
+<li><strong>Targeted Recompilation:</strong> If a file has not changed,
+Webpack reads the pre-compiled output directly from the file system,
+entirely bypassing expensive operations like parsing, transpilation, and
+module resolution for that dependency.</li>
+</ol>
+<h2 id="why-build-times-improve-significantly">Why Build Times Improve
+Significantly</h2>
+<p>The performance jump between cold builds (no cache) and warm builds
+(with persistent cache) can exceed an 80% to 90% reduction in build
+time. The improvements stem from eliminating several heavy computational
+stages:</p>
+<ul>
+<li><strong>Eliminating Transpilation Overhead:</strong> Compiling
+modern JavaScript, TypeScript, or JSX through loaders (such as Babel or
+<code>ts-loader</code>) requires parsing code into ASTs and transforming
+it. Bypassing this step for unchanged files yields the largest
+single-step speedup.</li>
+<li><strong>Skipping Module Resolution:</strong> Resolving import paths
+and navigating nested dependencies inside <code>node_modules</code>
+involves heavy disk I/O. Webpack reuses previously resolved paths
+directly from the cache.</li>
+<li><strong>Faster Startup Times:</strong> Developers working on large
+applications can stop and restart their development servers in seconds,
+as the initial build phase simply reads from the pre-existing disk cache
+rather than rebuilding the entire dependency tree from scratch.</li>
+</ul>
+<h2 id="configuring-file-system-caching">Configuring File-System
+Caching</h2>
+<p>Enabling persistent caching requires a minimal addition to your
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">cache</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;filesystem&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">buildDependencies</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Invalidate the cache when the webpack config itself changes</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">config</span><span class="op">:</span> [<span class="bu">__filename</span>]<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>The <code>buildDependencies</code> setting ensures cache safety by
+invalidating stored data whenever build configurations, lockfiles, or
+environment files are modified.</p>
+<h2 id="benefits-in-continuous-integration-ci">Benefits in Continuous
+Integration (CI)</h2>
+<p>While file-system caching primarily benefits daily local development,
+it can also accelerate CI/CD workflows. By persisting the
+<code>.cache/webpack</code> directory across pipeline steps using CI
+caching layers (such as GitHub Actions cache or GitLab CI cache), test
+runners and staging build jobs can utilize warm builds, significantly
+reducing feedback cycles and saving compute resources.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-5-file-system-caching-for-faster-builds';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

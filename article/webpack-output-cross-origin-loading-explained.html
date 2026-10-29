@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack output.crossOriginLoading Explained - webpack</title>
+    <meta name="description" content="The output.crossOriginLoading setting in Webpack dictates how dynamically loaded code chunks, such as those split via asynchronous import(), request external resources across different origins. By configuring this property, Webpack appends the standard HT">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-output-cross-origin-loading-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack output.crossOriginLoading Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-output-cross-origin-loading-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The output.crossOriginLoading setting in Webpack dictates how dynamically loaded code chunks, such as those split via asynchronous import(), request external resources across different origins. By configuring this property, Webpack appends the standard HT" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-outputcrossoriginloading-explained">Webpack
+output.crossOriginLoading Explained</h1>
+<p>The <code>output.crossOriginLoading</code> setting in Webpack
+dictates how dynamically loaded code chunks, such as those split via
+asynchronous <code>import()</code>, request external resources across
+different origins. By configuring this property, Webpack appends the
+standard HTML <code>crossorigin</code> attribute to dynamically
+generated <code>&lt;script&gt;</code> and <code>&lt;link&gt;</code>
+elements. This article explains what
+<code>output.crossOriginLoading</code> does, the values it accepts, and
+the HTTP security headers required on the hosting server to ensure
+assets load properly and securely.</p>
+<h3 id="what-is-outputcrossoriginloading">What is
+output.crossOriginLoading?</h3>
+<p>When Webpack splits code into multiple bundles, it injects
+<code>&lt;script&gt;</code> tags into the DOM at runtime to load chunks
+on demand. If these assets are hosted on an external domain—such as a
+Content Delivery Network (CDN)—browsers treat them as cross-origin
+requests.</p>
+<p>By default, cross-origin scripts are executed with restricted error
+reporting, often masking errors as a generic "Script error." Configuring
+<code>output.crossOriginLoading</code> forces Webpack to add the
+<code>crossorigin</code> attribute to these dynamically injected tags,
+enabling full error tracing in <code>window.onerror</code> and allowing
+Subresource Integrity (SRI) checks.</p>
+<h3 id="supported-values">Supported Values</h3>
+<p>The <code>output.crossOriginLoading</code> option accepts three
+values in your <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">crossOriginLoading</span><span class="op">:</span> <span class="st">&#39;anonymous&#39;</span><span class="op">,</span> <span class="co">// Options: false, &#39;anonymous&#39;, &#39;use-credentials&#39;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<ul>
+<li><strong><code>false</code> (Default):</strong> Disables cross-origin
+loading behavior. Dynamic <code>&lt;script&gt;</code> tags will not
+include a <code>crossorigin</code> attribute.</li>
+<li><strong><code>"anonymous"</code>:</strong> Injects
+<code>crossorigin="anonymous"</code> into dynamic tags. The browser
+sends a cross-origin request without user credentials (such as cookies,
+HTTP Basic authentication, or client-side SSL certificates).</li>
+<li><strong><code>"use-credentials"</code>:</strong> Injects
+<code>crossorigin="use-credentials"</code> into dynamic tags. The
+browser sends the request with credentials included, which is necessary
+if your asset server or CDN requires authenticated access.</li>
+</ul>
+<h3 id="supported-security-and-cors-headers">Supported Security and CORS
+Headers</h3>
+<p>Setting <code>output.crossOriginLoading</code> on the client side
+requires specific Cross-Origin Resource Sharing (CORS) HTTP headers on
+the server hosting the static chunks. If the server does not return the
+correct headers, the browser will block the script from executing.</p>
+<ol type="1">
+<li><strong><code>Access-Control-Allow-Origin</code></strong>
+<ul>
+<li><strong>Required for:</strong> Both <code>"anonymous"</code> and
+<code>"use-credentials"</code>.</li>
+<li><strong>Behavior:</strong> When using <code>'anonymous'</code>, the
+server can return either a wildcard
+(<code>Access-Control-Allow-Origin: *</code>) or a specific origin
+(e.g., <code>Access-Control-Allow-Origin: https://example.com</code>).
+When using <code>'use-credentials'</code>, the wildcard <code>*</code>
+is not permitted by browsers; the header must explicitly reflect the
+requesting origin.</li>
+</ul></li>
+<li><strong><code>Access-Control-Allow-Credentials</code></strong>
+<ul>
+<li><strong>Required for:</strong> <code>"use-credentials"</code>.</li>
+<li><strong>Behavior:</strong> The asset server must set this header to
+<code>true</code> (<code>Access-Control-Allow-Credentials: true</code>).
+If set to <code>false</code> or omitted when using
+<code>'use-credentials'</code>, the browser rejects the response.</li>
+</ul></li>
+<li><strong><code>Cross-Origin-Resource-Policy</code> (CORP)</strong>
+<ul>
+<li><strong>Header:</strong>
+<code>Cross-Origin-Resource-Policy: cross-origin</code></li>
+<li><strong>Behavior:</strong> While not strictly part of CORS
+negotiation, modern browsers check this header to defend against
+speculative side-channel attacks (like Spectre). If a server protects
+assets with <code>Cross-Origin-Resource-Policy: same-origin</code>, the
+browser blocks the assets regardless of the <code>crossorigin</code>
+attribute.</li>
+</ul></li>
+<li><strong>Integration with Subresource Integrity (SRI)</strong>
+<ul>
+<li>While not an HTTP header itself, enabling
+<code>output.crossOriginLoading</code> is a mandatory prerequisite for
+using SRI headers and plugins (like
+<code>webpack-subresource-integrity</code>). SRI requires explicit CORS
+authorization to validate script hashes against loaded content to
+prevent tampering.</li>
+</ul></li>
+</ol></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-output-cross-origin-loading-explained';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

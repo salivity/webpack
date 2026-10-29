@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Use Dart Sass in Modern Webpack Pipelines - webpack</title>
+    <meta name="description" content="Dart Sass has become the mandatory standard for Sass compilation in modern Webpack build pipelines, replacing legacy implementations like LibSass and Node Sass. This shift is driven by the official deprecation of older compilers, first-class support for m">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/why-use-dart-sass-in-modern-webpack-pipelines">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Use Dart Sass in Modern Webpack Pipelines - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/why-use-dart-sass-in-modern-webpack-pipelines" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Dart Sass has become the mandatory standard for Sass compilation in modern Webpack build pipelines, replacing legacy implementations like LibSass and Node Sass. This shift is driven by the official deprecation of older compilers, first-class support for m" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-use-dart-sass-in-modern-webpack-pipelines">Why Use Dart Sass
+in Modern Webpack Pipelines</h1>
+<p>Dart Sass has become the mandatory standard for Sass compilation in
+modern Webpack build pipelines, replacing legacy implementations like
+LibSass and Node Sass. This shift is driven by the official deprecation
+of older compilers, first-class support for modern Sass language
+features such as the module system, immediate synchronization with
+evolving CSS standards, and seamless compatibility with Webpack’s
+<code>sass-loader</code>. Choosing Dart Sass ensures that frontend
+applications remain future-proof, maintainable, and free from obsolete
+native build dependencies.</p>
+<h3 id="official-deprecation-of-libsass-and-node-sass">Official
+Deprecation of LibSass and Node Sass</h3>
+<p>The primary reason to use Dart Sass is that all other major Sass
+implementations are officially deprecated. LibSass—and the Node Sass
+wrapper historically used in Webpack builds—reached end-of-life status
+in late 2020. Node Sass relies on LibSass and C++ bindings to Node.js,
+which frequently cause compilation failures whenever Node.js versions
+are updated. Dart Sass is the canonical, primary implementation
+maintained directly by the Sass core team. It receives all active
+feature development, security patches, and performance improvements,
+making it the only viable choice for long-term project stability.</p>
+<h3 id="full-support-for-the-modern-sass-module-system">Full Support for
+the Modern Sass Module System</h3>
+<p>Dart Sass introduces and fully supports the modern Sass module
+system, which phased out the legacy <code>@import</code> rule in favor
+of <code>@use</code> and <code>@forward</code>. The benefits of this
+system include:</p>
+<ul>
+<li><strong>Namespacing:</strong> Variables, mixins, and functions are
+explicitly scoped to their imported files, preventing global namespace
+pollution.</li>
+<li><strong>Granular Control:</strong> The <code>@forward</code> rule
+allows developers to organize library entry points cleanly while
+maintaining control over which members are public.</li>
+<li><strong>Deterministic Compiles:</strong> Files are compiled only
+once, avoiding the redundant code generation and bloated Webpack output
+bundles caused by nested <code>@import</code> chains.</li>
+</ul>
+<p>Legacy compilers such as LibSass will never support this modern
+module system, which is critical for scalable, modular CSS architecture
+in large-scale Webpack applications.</p>
+<h3 id="synchronization-with-evolving-css-features">Synchronization with
+Evolving CSS Features</h3>
+<p>Modern CSS moves rapidly, introducing native features such as CSS
+nesting, modern color spaces (like <code>lch</code>,
+<code>oklch</code>), and standard math functions like
+<code>min()</code>, <code>max()</code>, and <code>clamp()</code>.</p>
+<p>Because older compilers are frozen in time, they often mistake new
+CSS syntax for invalid Sass syntax and fail during the build process.
+Dart Sass is continuously updated to disambiguate between Sass functions
+and native CSS functions, ensuring that new CSS specifications compile
+cleanly without requiring awkward workarounds or polyfills in Webpack
+pipelines.</p>
+<h3 id="seamless-and-flexible-webpack-integration">Seamless and Flexible
+Webpack Integration</h3>
+<p>In Webpack, Sass processing is handled through
+<code>sass-loader</code>. Modern versions of <code>sass-loader</code>
+use the pure JavaScript distribution of Dart Sass (distributed on npm as
+<code>sass</code>) by default.</p>
+<p>Dart Sass offers two main runtime models within Webpack:</p>
+<ol type="1">
+<li><strong>Pure JavaScript Distribution (<code>sass</code>):</strong>
+Highly portable, runs across any environment without native compilation
+steps, and completely avoids <code>node-gyp</code> binding errors in
+continuous integration (CI) environments.</li>
+<li><strong>Embedded Dart Sass (<code>sass-embedded</code>):</strong> A
+high-performance alternative that communicates directly with native Dart
+binaries over a protocol buffer, offering significantly faster
+compilation times for massive codebases while keeping the standard
+Webpack loader configuration.</li>
+</ol>
+<p>Modern Webpack configurations can switch between these
+implementations simply by altering the <code>implementation</code>
+option in <code>sass-loader</code>, providing flexibility between
+installation portability and raw build speed.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/why-use-dart-sass-in-modern-webpack-pipelines';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

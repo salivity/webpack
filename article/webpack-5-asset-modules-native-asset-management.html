@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack 5 Asset Modules: Native Asset Management - webpack</title>
+    <meta name="description" content="Webpack 5 introduces Asset Modules, a native system designed to handle static assets such as images, fonts, and text files without requiring additional loaders like file-loader, url-loader, or raw-loader. By integrating this functionality directly into th">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-5-asset-modules-native-asset-management">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack 5 Asset Modules: Native Asset Management - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-5-asset-modules-native-asset-management" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack 5 introduces Asset Modules, a native system designed to handle static assets such as images, fonts, and text files without requiring additional loaders like file-loader, url-loader, or raw-loader. By integrating this functionality directly into th" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-5-asset-modules-native-asset-management">Webpack 5 Asset
+Modules: Native Asset Management</h1>
+<p>Webpack 5 introduces Asset Modules, a native system designed to
+handle static assets such as images, fonts, and text files without
+requiring additional loaders like <code>file-loader</code>,
+<code>url-loader</code>, or <code>raw-loader</code>. By integrating this
+functionality directly into the Webpack core, developers can process,
+emit, and inline assets with simpler configurations, reduced dependency
+overhead, and improved build performance. This guide covers how these
+native modules work, the four core asset types available, and how to
+configure them in your projects.</p>
+<h2 id="the-shift-from-legacy-loaders">The Shift from Legacy
+Loaders</h2>
+<p>In Webpack 4 and earlier versions, managing assets required
+installing and configuring separate npm packages:</p>
+<ul>
+<li><code>file-loader</code> emitted files into the output directory and
+returned their public URLs.</li>
+<li><code>url-loader</code> converted files into Base64-encoded Data
+URIs, falling back to <code>file-loader</code> if a size limit was
+exceeded.</li>
+<li><code>raw-loader</code> imported file contents as plain text
+strings.</li>
+</ul>
+<p>Webpack 5 replaces all of these loaders with <strong>Asset
+Modules</strong>, configuring asset processing directly through the
+<code>type</code> property in <code>module.rules</code>.</p>
+<h2 id="the-four-core-asset-module-types">The Four Core Asset Module
+Types</h2>
+<p>Webpack 5 provides four distinct module types to handle different
+asset requirements:</p>
+<h3 id="1-assetresource">1. <code>asset/resource</code></h3>
+<p>This type emits a separate file into the output directory and exports
+its public URL. It acts as a direct replacement for
+<code>file-loader</code>.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">png</span><span class="sc">|</span><span class="ss">svg</span><span class="sc">|</span><span class="ss">jpg</span><span class="sc">|</span><span class="ss">jpeg</span><span class="sc">|</span><span class="ss">gif</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/resource&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When an image matching the regular expression is imported in
+JavaScript or referenced in CSS, Webpack copies the asset to the output
+folder and provides the relative or absolute path to the file.</p>
+<h3 id="2-assetinline">2. <code>asset/inline</code></h3>
+<p>This type exports the asset as a Base64-encoded Data URI, embedding
+the content directly into the bundle. It acts as a direct replacement
+for <code>url-loader</code> when used without file-size fallback
+limits.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">svg</span><span class="sc">$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/inline&#39;</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This is ideal for small vector graphics or icons where minimizing
+HTTP requests is preferred over file size overhead.</p>
+<h3 id="3-assetsource">3. <code>asset/source</code></h3>
+<p>This type exports the raw, uncompiled source code of the asset as a
+string. It acts as a direct replacement for <code>raw-loader</code>.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">txt</span><span class="sc">$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/source&#39;</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>It is commonly used for loading plain text files, raw GLSL shader
+code, or unparsed HTML templates.</p>
+<h3 id="4-asset">4. <code>asset</code></h3>
+<p>This hybrid type automatically decides whether to emit a separate
+file (<code>asset/resource</code>) or inline the asset as a Data URI
+(<code>asset/inline</code>). By default, Webpack uses an 8 KB size
+threshold: assets smaller than 8 KB are inlined, while larger assets are
+emitted to the output directory.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">png</span><span class="sc">|</span><span class="ss">jpg</span><span class="sc">|</span><span class="ss">jpeg</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset&#39;</span><span class="op">,</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h2 id="customizing-asset-handling">Customizing Asset Handling</h2>
+<p>Webpack 5 provides options to modify the default behavior of Asset
+Modules.</p>
+<h3 id="customizing-output-filenames">Customizing Output Filenames</h3>
+<p>You can set a global output pattern for all asset modules using
+<code>output.assetModuleFilename</code>:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">assetModuleFilename</span><span class="op">:</span> <span class="st">&#39;assets/[hash][ext][query]&#39;</span><span class="op">,</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Alternatively, you can define filenames on a per-rule basis using the
+<code>generator</code> property:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">woff</span><span class="sc">|</span><span class="ss">woff2</span><span class="sc">|</span><span class="ss">eot</span><span class="sc">|</span><span class="ss">ttf</span><span class="sc">|</span><span class="ss">otf</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/resource&#39;</span><span class="op">,</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">generator</span><span class="op">:</span> {</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;fonts/[name].[contenthash][ext]&#39;</span><span class="op">,</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="changing-the-inlining-size-limit">Changing the Inlining Size
+Limit</h3>
+<p>For the general <code>asset</code> type, you can override the default
+8 KB threshold using the <code>parser.dataUrlCondition.maxSize</code>
+property:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">png</span><span class="sc">|</span><span class="ss">jpg</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset&#39;</span><span class="op">,</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">parser</span><span class="op">:</span> {</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">dataUrlCondition</span><span class="op">:</span> {</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">maxSize</span><span class="op">:</span> <span class="dv">4</span> <span class="op">*</span> <span class="dv">1024</span><span class="op">,</span> <span class="co">// 4 KB limit</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Through these native module types, Webpack 5 simplifies static asset
+bundling, eliminates the need for legacy third-party loaders, and
+provides fine-grained control over how files are emitted or
+embedded.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-5-asset-modules-native-asset-management';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

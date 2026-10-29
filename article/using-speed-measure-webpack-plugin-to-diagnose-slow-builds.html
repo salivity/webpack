@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Using speed-measure-webpack-plugin to Diagnose Slow Builds - webpack</title>
+    <meta name="description" content="Webpack build times can degrade significantly as projects scale, often leaving developers guessing which parts of the compilation pipeline are causing delays. This article explains how the speed-measure-webpack-plugin (SMP) identifies performance bottlene">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/using-speed-measure-webpack-plugin-to-diagnose-slow-builds">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Using speed-measure-webpack-plugin to Diagnose Slow Builds - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/using-speed-measure-webpack-plugin-to-diagnose-slow-builds" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack build times can degrade significantly as projects scale, often leaving developers guessing which parts of the compilation pipeline are causing delays. This article explains how the speed-measure-webpack-plugin (SMP) identifies performance bottlene" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="using-speed-measure-webpack-plugin-to-diagnose-slow-builds">Using
+speed-measure-webpack-plugin to Diagnose Slow Builds</h1>
+<p>Webpack build times can degrade significantly as projects scale,
+often leaving developers guessing which parts of the compilation
+pipeline are causing delays. This article explains how the
+<code>speed-measure-webpack-plugin</code> (SMP) identifies performance
+bottlenecks by measuring the execution time of individual plugins and
+loaders. By providing granular, human-readable metrics for the entire
+build lifecycle, SMP removes the guesswork and allows teams to make
+targeted optimizations to their Webpack configurations.</p>
+<h3 id="what-is-speed-measure-webpack-plugin">What is
+speed-measure-webpack-plugin?</h3>
+<p>The <code>speed-measure-webpack-plugin</code> is a diagnostic tool
+designed specifically for Webpack. Rather than acting as a standard
+plugin inserted into the <code>plugins</code> array, it wraps around
+your entire Webpack configuration object. During execution, it
+intercepts Webpack’s internal lifecycle hooks to monitor performance and
+outputs a detailed timing breakdown directly to the console when the
+build completes.</p>
+<h3 id="how-it-identifies-bottlenecks">How It Identifies
+Bottlenecks</h3>
+<p>SMP demystifies the build process by categorizing and timing every
+critical step:</p>
+<ul>
+<li><strong>Overall Build Time:</strong> It captures the total duration
+from the moment the compilation starts to when the final assets are
+emitted.</li>
+<li><strong>Plugin Timing:</strong> SMP measures the runtime of each
+configured plugin (such as <code>HtmlWebpackPlugin</code>,
+<code>TerserPlugin</code>, or <code>MiniCssExtractPlugin</code>). This
+reveals if asset minification, bundle analysis, or extraction tasks are
+dominating your build.</li>
+<li><strong>Loader Timing:</strong> Webpack passes source files through
+chains of loaders (like <code>babel-loader</code>,
+<code>ts-loader</code>, or <code>sass-loader</code>). SMP breaks down
+the time spent inside each loader, both globally and relative to
+specific file types, pinpointing whether transpilation, type checking,
+or CSS pre-processing is slowing down the process.</li>
+</ul>
+<h3 id="basic-setup">Basic Setup</h3>
+<p>Integrating SMP into an existing Webpack setup requires wrapping the
+exported configuration:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> SpeedMeasurePlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&quot;speed-measure-webpack-plugin&quot;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> smp <span class="op">=</span> <span class="kw">new</span> <span class="fu">SpeedMeasurePlugin</span>()<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpackConfig <span class="op">=</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&quot;./src/index.js&quot;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... rest of your Webpack configuration</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> smp<span class="op">.</span><span class="fu">wrap</span>(webpackConfig)<span class="op">;</span></span></code></pre></div>
+<p>Once wrapped, running your build script (such as
+<code>webpack --mode production</code>) automatically outputs the report
+in your terminal alongside the standard build output.</p>
+<h3 id="diagnosing-and-resolving-common-issues">Diagnosing and Resolving
+Common Issues</h3>
+<p>The report highlights slow operations using color-coding (typically
+green for fast, amber for moderate, and red for slow). Common
+diagnostics derived from this data include:</p>
+<ul>
+<li><strong>Heavy Transpilation:</strong> If <code>babel-loader</code>
+or <code>ts-loader</code> takes up a disproportionate amount of time, it
+often indicates missing <code>include</code> or <code>exclude</code>
+rules, causing Webpack to parse files inside <code>node_modules</code>.
+It can also highlight the need to move TypeScript type checking to a
+separate process using tools like
+<code>fork-ts-checker-webpack-plugin</code>.</li>
+<li><strong>Minification Overhead:</strong> If minification plugins take
+too long during production builds, you can evaluate faster alternatives,
+such as using the SWC or ESBuild minifiers.</li>
+<li><strong>Uncached Pipelines:</strong> Consistently high loader times
+across repeated builds indicate that persistent filesystem caching
+(available natively in Webpack 5) is either disabled or
+misconfigured.</li>
+</ul>
+<p>By converting vague performance issues into hard data,
+<code>speed-measure-webpack-plugin</code> enables developers to
+prioritize the exact loaders and plugins that yield the greatest
+performance gains when optimized.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/using-speed-measure-webpack-plugin-to-diagnose-slow-builds';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

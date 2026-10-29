@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack CSS @font-face Relative Path Resolution - webpack</title>
+    <meta name="description" content="Webpack processes CSS @font-face rules by treating local url() references as module dependencies through css-loader. When a relative path points to a font located in a subdirectory, Webpack resolves that path relative to the specific stylesheet where the">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-css-font-face-relative-path-resolution">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack CSS @font-face Relative Path Resolution - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-css-font-face-relative-path-resolution" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack processes CSS @font-face rules by treating local url() references as module dependencies through css-loader. When a relative path points to a font located in a subdirectory, Webpack resolves that path relative to the specific stylesheet where the" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-css-font-face-relative-path-resolution">Webpack CSS
+<span class="citation" data-cites="font-face">@font-face</span> Relative
+Path Resolution</h1>
+<p>Webpack processes CSS <code>@font-face</code> rules by treating local
+<code>url()</code> references as module dependencies through
+<code>css-loader</code>. When a relative path points to a font located
+in a subdirectory, Webpack resolves that path relative to the specific
+stylesheet where the rule is declared, extracts the file using asset
+modules, and automatically updates the output URL to match the final
+build directory structure.</p>
+<h3 id="the-role-of-css-loader">The Role of <code>css-loader</code></h3>
+<p>When Webpack compiles stylesheets, <code>css-loader</code> parses the
+CSS AST (Abstract Syntax Tree) and scans for <code>url()</code>
+declarations. Upon encountering an <code>@font-face</code> rule with a
+relative path such as:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode css"><code class="sourceCode css"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">@font-face</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">font-family</span><span class="ch">:</span> <span class="st">&#39;CustomFont&#39;</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">src</span><span class="ch">:</span> <span class="fu">url(</span><span class="st">&#39;./fonts/subfolder/custom-font.woff2&#39;</span><span class="fu">)</span> <span class="fu">format(</span><span class="st">&#39;woff2&#39;</span><span class="fu">)</span><span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p><code>css-loader</code> translates
+<code>url('./fonts/subfolder/custom-font.woff2')</code> into a module
+request equivalent to
+<code>require('./fonts/subfolder/custom-font.woff2')</code>.</p>
+<h3 id="path-resolution-context">Path Resolution Context</h3>
+<p>Webpack strictly resolves relative paths in CSS relative to the file
+where the rule is written, not relative to:</p>
+<ul>
+<li>The root JavaScript entry point.</li>
+<li>The root directory of the application.</li>
+<li>The output HTML document.</li>
+</ul>
+<p>If your stylesheet is located at
+<code>src/styles/typography.css</code> and the font is at
+<code>src/styles/fonts/subfolder/custom-font.woff2</code>, the path
+<code>./fonts/subfolder/custom-font.woff2</code> correctly maps to the
+physical file system. If the path cannot be resolved from that specific
+file location, Webpack immediately halts compilation with a
+<code>Module not found</code> error.</p>
+<h3 id="asset-module-handling-in-webpack-5">Asset Module Handling in
+Webpack 5</h3>
+<p>Once <code>css-loader</code> resolves the dependency, Webpack
+delegates the asset to its module pipeline. In modern Webpack (version
+5+), font files are processed using native Asset Modules instead of
+legacy loaders like <code>file-loader</code> or
+<code>url-loader</code>.</p>
+<p>A standard configuration designates font formats as
+<code>asset/resource</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">css</span><span class="sc">$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> [<span class="st">&#39;style-loader&#39;</span><span class="op">,</span> <span class="st">&#39;css-loader&#39;</span>]<span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">woff</span><span class="sc">|</span><span class="ss">woff2</span><span class="sc">|</span><span class="ss">eot</span><span class="sc">|</span><span class="ss">ttf</span><span class="sc">|</span><span class="ss">otf</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/resource&#39;</span><span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        <span class="dt">generator</span><span class="op">:</span> {</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>          <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;assets/fonts/[name].[hash][ext]&#39;</span><span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When configured as <code>asset/resource</code>, Webpack:</p>
+<ol type="1">
+<li>Emits the font file into the specified output directory (e.g.,
+<code>dist/assets/fonts/custom-font.a1b2c3.woff2</code>).</li>
+<li>Calculates the final public URL based on
+<code>output.publicPath</code>.</li>
+<li>Rewrites the original <code>url(...)</code> string in the compiled
+CSS output to reference the emitted file's new destination.</li>
+</ol>
+<h3 id="public-path-and-deployment-considerations">Public Path and
+Deployment Considerations</h3>
+<p>The rewritten URL inside the generated <code>@font-face</code>
+declaration relies directly on your <code>output.publicPath</code>
+setting.</p>
+<ul>
+<li><strong>Absolute paths (<code>publicPath: '/'</code>)</strong>:
+Webpack rewrites the font URL to
+<code>/assets/fonts/custom-font.hash.woff2</code>. The browser requests
+the font from the server root, which works reliably across multi-level
+routes.</li>
+<li><strong>Relative paths (<code>publicPath: 'auto'</code> or
+<code>''</code>)</strong>: Webpack calculates the path relative to the
+generated CSS file. If the extracted CSS is located in a
+<code>css/</code> directory and fonts are placed in
+<code>assets/fonts/</code>, Webpack automatically inserts necessary
+relative traversal segments (e.g.,
+<code>../assets/fonts/custom-font.hash.woff2</code>).</li>
+</ul>
+<p>If fonts fail to load with a 404 status at runtime despite a
+successful build, the issue typically stems from a mismatched
+<code>output.publicPath</code> relative to how the production server
+routes static assets.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-css-font-face-relative-path-resolution';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

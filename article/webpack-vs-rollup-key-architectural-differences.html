@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack vs Rollup: Key Architectural Differences - webpack</title>
+    <meta name="description" content="Webpack and Rollup are two of the most influential JavaScript bundlers in modern web development, yet they operate on fundamentally different architectural designs. While Webpack was built to handle complex single-page applications by treating every stati">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-vs-rollup-key-architectural-differences">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack vs Rollup: Key Architectural Differences - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-vs-rollup-key-architectural-differences" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack and Rollup are two of the most influential JavaScript bundlers in modern web development, yet they operate on fundamentally different architectural designs. While Webpack was built to handle complex single-page applications by treating every stati" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-vs-rollup-key-architectural-differences">Webpack vs
+Rollup: Key Architectural Differences</h1>
+<p>Webpack and Rollup are two of the most influential JavaScript
+bundlers in modern web development, yet they operate on fundamentally
+different architectural designs. While Webpack was built to handle
+complex single-page applications by treating every static asset as a
+module managed through a custom runtime, Rollup was designed around
+native ECMAScript standards to produce lean, flat bundles with minimal
+overhead. This article examines the core architectural differences
+between Webpack and Rollup, focusing on their module models, runtime
+implementations, tree-shaking strategies, and processing pipelines.</p>
+<h3 id="module-model-and-philosophy">Module Model and Philosophy</h3>
+<p>Webpack operates on an "everything is a module" paradigm. It treats
+JavaScript, CSS, HTML, fonts, and images as interchangeable nodes in a
+unified dependency graph. Webpack parses all imported assets through
+specialized loaders, converting non-JavaScript assets into
+JavaScript-compatible constructs.</p>
+<p>Rollup, by contrast, focuses strictly on the ES module (ESM)
+standard. Its architecture assumes that JavaScript is the primary
+citizen and analyzes import and export statements statically. While
+Rollup can process other file types via plugins, it avoids converting
+arbitrary assets into synthetic JavaScript modules internally,
+prioritizing native module semantics and predictable output formats.</p>
+<h3 id="runtime-overhead-vs-scope-hoisting">Runtime Overhead vs. Scope
+Hoisting</h3>
+<p>A significant architectural divide lies in how the two bundlers
+assemble code:</p>
+<ul>
+<li><strong>Webpack Runtime Registry:</strong> Historically, Webpack
+places each module inside its own function closure and manages them
+using an internal runtime system (via <code>__webpack_require__</code>).
+This runtime tracks loaded modules, resolves circular dependencies, and
+coordinates asynchronous chunk loading. Although Webpack supports scope
+hoisting via the <code>ModuleConcatenationPlugin</code>, its
+architecture often retains a layer of runtime code to bridge dynamic
+imports and module bindings.</li>
+<li><strong>Rollup Scope Hoisting by Default:</strong> Rollup does not
+generate a runtime module loader for standard bundles. Instead, it
+parses Abstract Syntax Trees (ASTs) to rename variables and hoist all
+modules into a shared global scope within a single closure. The
+resulting bundle reads like hand-written code, completely eliminating
+execution overhead and function call costs associated with custom
+runtime wrappers.</li>
+</ul>
+<h3 id="tree-shaking-mechanism">Tree-Shaking Mechanism</h3>
+<p>Both bundlers support dead-code elimination, but they execute it
+differently at an architectural level:</p>
+<ul>
+<li><strong>Rollup's Static AST Analysis:</strong> Because Rollup was
+architected exclusively for ES modules from its inception, its
+tree-shaking engine evaluates the direct bindings of ES exports and
+imports. It identifies which AST nodes actively affect program state
+(evaluating side effects) and discards unused statements before
+generating the final code. This allows for aggressive and precise
+dead-code elimination out of the box.</li>
+<li><strong>Webpack's Mark-and-Sweep Optimization:</strong> Webpack
+builds its dependency graph and tags unused exports during the
+compilation phase, but the actual removal of dead code is primarily
+delegated to downstream minifiers like Terser. Because Webpack must
+maintain compatibility with CommonJS patterns and dynamic module
+structures, its tree-shaking pipeline must be more defensive,
+occasionally retaining code that Rollup would safely prune.</li>
+</ul>
+<h3 id="asset-transformation-pipeline-loaders-vs-plugins">Asset
+Transformation Pipeline: Loaders vs. Plugins</h3>
+<p>The internal processing lifecycles of Webpack and Rollup diverge
+significantly:</p>
+<ul>
+<li><strong>Webpack's Split Pipeline (Loaders and Plugins):</strong>
+Webpack separates compilation into Loaders and Plugins. Loaders operate
+on individual file sources, transforming them before they are added to
+the dependency graph. Plugins hook into Webpack’s complex event-driven
+lifecycle (driven by the <code>Tapable</code> engine), allowing deep
+manipulation of the compiler, compilation instances, and asset
+generation stages.</li>
+<li><strong>Rollup’s Unified Plugin API:</strong> Rollup uses a single,
+streamlined plugin API designed to mirror AST generation and module
+resolution hooks (<code>resolveId</code>, <code>load</code>,
+<code>transform</code>, and <code>renderChunk</code>). Every stage of
+code acquisition, transformation, and output generation is handled
+within this unified hook pipeline, leading to a simpler, more linear
+execution flow compared to Webpack's event-heavy bus.</li>
+</ul>
+<h3 id="code-splitting-and-chunk-loading">Code Splitting and Chunk
+Loading</h3>
+<p>Webpack was engineered from the ground up for application code
+splitting. It provides a robust, built-in chunk-loading engine that
+handles JSONP, dynamic script injection, web workers, and prefetching
+strategies directly within its runtime. This makes it capable of routing
+complex, multi-tiered dependency splits in enterprise web
+applications.</p>
+<p>Rollup relies primarily on the browser’s native <code>import()</code>
+capabilities for code splitting. When outputting ESM, it emits native ES
+chunks without generating a synthetic loading mechanism. While this
+produces cleaner code for environments that fully support native
+modules, it shifts the responsibility of dynamic asset management to the
+execution environment or consumer rather than packaging it into a
+dedicated application runtime.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-vs-rollup-key-architectural-differences';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

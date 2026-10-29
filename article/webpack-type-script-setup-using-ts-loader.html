@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack TypeScript Setup Using ts-loader - webpack</title>
+    <meta name="description" content="Compiling TypeScript with Webpack requires integrating ts-loader into your build pipeline alongside a valid TypeScript configuration. This guide outlines the necessary prerequisites, the tsconfig.json setup, and the specific module rules and resolve confi">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-type-script-setup-using-ts-loader">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack TypeScript Setup Using ts-loader - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-type-script-setup-using-ts-loader" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Compiling TypeScript with Webpack requires integrating ts-loader into your build pipeline alongside a valid TypeScript configuration. This guide outlines the necessary prerequisites, the tsconfig.json setup, and the specific module rules and resolve confi" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-typescript-setup-using-ts-loader">Webpack TypeScript
+Setup Using ts-loader</h1>
+<p>Compiling TypeScript with Webpack requires integrating
+<code>ts-loader</code> into your build pipeline alongside a valid
+TypeScript configuration. This guide outlines the necessary
+prerequisites, the <code>tsconfig.json</code> setup, and the specific
+module rules and resolve configurations needed in
+<code>webpack.config.js</code> to enable fast, seamless TypeScript
+transpilation.</p>
+<h2 id="1-install-dependencies">1. Install Dependencies</h2>
+<p>To begin, install Webpack, the Webpack CLI, TypeScript, and
+<code>ts-loader</code> as development dependencies in your project:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install <span class="at">--save-dev</span> webpack webpack-cli typescript ts-loader</span></code></pre></div>
+<h2 id="2-configure-typescript-tsconfigjson">2. Configure TypeScript
+(<code>tsconfig.json</code>)</h2>
+<p><code>ts-loader</code> relies on a <code>tsconfig.json</code> file in
+your project root to read compilation options. You can generate a
+default file using <code>npx tsc --init</code> or create one manually
+with basic settings:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;compilerOptions&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;outDir&quot;</span><span class="fu">:</span> <span class="st">&quot;./dist&quot;</span><span class="fu">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;target&quot;</span><span class="fu">:</span> <span class="st">&quot;ES6&quot;</span><span class="fu">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;module&quot;</span><span class="fu">:</span> <span class="st">&quot;ESNext&quot;</span><span class="fu">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;moduleResolution&quot;</span><span class="fu">:</span> <span class="st">&quot;node&quot;</span><span class="fu">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;strict&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;allowJs&quot;</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;sourceMap&quot;</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;include&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;src/**/*&quot;</span><span class="ot">]</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h2 id="3-configure-webpack-webpackconfigjs">3. Configure Webpack
+(<code>webpack.config.js</code>)</h2>
+<p>Create or update your <code>webpack.config.js</code> file. The
+required configuration includes defining the entry point, resolving
+<code>.ts</code> and <code>.tsx</code> file extensions, and declaring
+the <code>ts-loader</code> rule inside <code>module.rules</code>.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;development&#39;</span><span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.ts&#39;</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">clean</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Enable Webpack to resolve TypeScript and JavaScript file extensions</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">extensions</span><span class="op">:</span> [<span class="st">&#39;.tsx&#39;</span><span class="op">,</span> <span class="st">&#39;.ts&#39;</span><span class="op">,</span> <span class="st">&#39;.js&#39;</span>]<span class="op">,</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Match all .ts and .tsx files</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">tsx</span><span class="sc">?$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> <span class="st">&#39;ts-loader&#39;</span><span class="op">,</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>        <span class="dt">exclude</span><span class="op">:</span> <span class="ss">/node_modules/</span><span class="op">,</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>  <span class="dt">devtool</span><span class="op">:</span> <span class="st">&#39;inline-source-map&#39;</span><span class="op">,</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h2 id="explanation-of-key-settings">Explanation of Key Settings</h2>
+<ul>
+<li><strong><code>resolve.extensions</code></strong>: Instructs Webpack
+to look for <code>.ts</code>, <code>.tsx</code>, and <code>.js</code>
+extensions automatically when resolving import statements, allowing
+statements like <code>import { func } from './module'</code> without
+specifying the extension.</li>
+<li><strong><code>module.rules.test</code></strong>: A regular
+expression (<code>/\.tsx?$/</code>) targeting all files ending in
+<code>.ts</code> or <code>.tsx</code>.</li>
+<li><strong><code>module.rules.use</code></strong>: Specifies
+<code>ts-loader</code> to compile the matched files via the TypeScript
+compiler.</li>
+<li><strong><code>module.rules.exclude</code></strong>: Prevents
+processing files in <code>node_modules</code> to avoid unnecessary
+overhead and performance degradation during builds.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-type-script-setup-using-ts-loader';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

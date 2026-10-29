@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babel useBuiltIns: usage vs entry Explained - webpack</title>
+    <meta name="description" content="When configuring modern JavaScript compilation with Webpack and @babel/preset-env, the useBuiltIns option determines how polyfills from core-js are integrated into your bundle. Setting useBuiltIns: &#39;entry&#39; replaces direct global imports of core-js with in">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/babel-use-built-ins-usage-vs-entry-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Babel useBuiltIns: usage vs entry Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/babel-use-built-ins-usage-vs-entry-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When configuring modern JavaScript compilation with Webpack and @babel/preset-env, the useBuiltIns option determines how polyfills from core-js are integrated into your bundle. Setting useBuiltIns: &#39;entry&#39; replaces direct global imports of core-js with in" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="babel-usebuiltins-usage-vs-entry-explained">Babel useBuiltIns:
+usage vs entry Explained</h1>
+<p>When configuring modern JavaScript compilation with Webpack and
+<code>@babel/preset-env</code>, the <code>useBuiltIns</code> option
+determines how polyfills from <code>core-js</code> are integrated into
+your bundle. Setting <code>useBuiltIns: 'entry'</code> replaces direct
+global imports of <code>core-js</code> with individual imports targeting
+your specified browser environments, regardless of whether your code
+actually uses those features. In contrast,
+<code>useBuiltIns: 'usage'</code> analyzes each file individually and
+injects only the specific polyfills required by the actual code you
+wrote, optimizing for the smallest possible bundle size.</p>
+<h2 id="what-is-usebuiltins">What is useBuiltIns?</h2>
+<p><code>@babel/preset-env</code> uses <code>useBuiltIns</code> to
+manage browser polyfills through the <code>core-js</code> library.
+Without this setting (or when set to <code>false</code>), Babel will
+transform modern JavaScript syntax (such as arrow functions or optional
+chaining) into older syntax, but it will not polyfill missing global
+objects or methods (such as <code>Promise</code>, <code>Map</code>, or
+<code>Array.prototype.includes</code>).</p>
+<p>To add polyfills, <code>useBuiltIns</code> must be set to either
+<code>'entry'</code> or <code>'usage'</code>.</p>
+<h2 id="usebuiltins-entry">useBuiltIns: 'entry'</h2>
+<p>With <code>'entry'</code>, you must manually import
+<code>core-js</code> at the root entry point of your application:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// index.js (Application entry)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="st">&quot;core-js/stable&quot;</span><span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="st">&quot;regenerator-runtime/runtime&quot;</span><span class="op">;</span></span></code></pre></div>
+<h3 id="how-it-works">How It Works</h3>
+<p>When Babel encounters this import, it evaluates your
+<code>targets</code> (like your Browserslist config) and replaces the
+single import with individual polyfill imports for every feature your
+targeted browsers lack.</p>
+<h3 id="characteristics">Characteristics</h3>
+<ul>
+<li><strong>Target-driven:</strong> Polyfills are added based purely on
+what your target browsers do not support natively.</li>
+<li><strong>Larger bundle size:</strong> It includes polyfills for all
+unsupported features in your target environments, even if your
+application never uses those APIs.</li>
+<li><strong>Safer for third-party libraries:</strong> Because all
+required polyfills are loaded upfront in the global scope, any
+<code>node_modules</code> dependencies requiring older polyfills will
+work correctly, even if Babel does not transpile them.</li>
+</ul>
+<h2 id="usebuiltins-usage">useBuiltIns: 'usage'</h2>
+<p>With <code>'usage'</code>, you do not import <code>core-js</code>
+manually in your application files. Babel handles the polyfill imports
+automatically.</p>
+<h3 id="how-it-works-1">How It Works</h3>
+<p>Babel inspects every individual file it processes. If it finds a
+modern API usage (such as <code>[].includes()</code> or
+<code>new Set()</code>) that is unsupported by your target browsers, it
+automatically adds the specific <code>core-js</code> import at the top
+of that specific file.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Your source code</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> exists <span class="op">=</span> list<span class="op">.</span><span class="fu">includes</span>(<span class="st">&quot;item&quot;</span>)<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Babel output (conceptually)</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> <span class="st">&quot;core-js/modules/es.array.includes.js&quot;</span><span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> exists <span class="op">=</span> list<span class="op">.</span><span class="fu">includes</span>(<span class="st">&quot;item&quot;</span>)<span class="op">;</span></span></code></pre></div>
+<h3 id="characteristics-1">Characteristics</h3>
+<ul>
+<li><strong>Usage-driven:</strong> Polyfills are added strictly based on
+the intersection of what your code uses and what your targets need.</li>
+<li><strong>Optimal bundle size:</strong> Unused APIs are never
+polyfilled, keeping your production bundle as small as possible.</li>
+<li><strong>Dependency risk:</strong> Babel usually ignores
+<code>node_modules</code> by default in Webpack configurations. If an
+external package relies on an API that your application code does not
+use, Babel will not inject the polyfill for it, potentially leading to
+runtime errors in older browsers unless you explicitly transpile that
+package.</li>
+</ul>
+<h2 id="key-differences-summary">Key Differences Summary</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;"><code>useBuiltIns: 'entry'</code></th>
+<th style="text-align: left;"><code>useBuiltIns: 'usage'</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Manual Import
+Required</strong></td>
+<td style="text-align: left;">Yes
+(<code>import "core-js/stable"</code>)</td>
+<td style="text-align: left;">No</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Polyfill Inclusion
+Logic</strong></td>
+<td style="text-align: left;">Targets-based (browser list)</td>
+<td style="text-align: left;">Code-based (actual usage)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Bundle Size</strong></td>
+<td style="text-align: left;">Larger</td>
+<td style="text-align: left;">Minimal</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Third-Party Safety</strong></td>
+<td style="text-align: left;">High (polyfills globals upfront)</td>
+<td style="text-align: left;">Lower (misses uncompiled
+dependencies)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Configuration
+Complexity</strong></td>
+<td style="text-align: left;">Simple</td>
+<td style="text-align: left;">Requires attention to dependency
+transpilation</td>
+</tr>
+</tbody>
+</table>
+<h2 id="choosing-the-right-option">Choosing the Right Option</h2>
+<p>Choose <strong><code>useBuiltIns: 'usage'</code></strong> if your
+priority is minimal bundle size and you have standard application code
+with well-maintained, pre-transpiled dependencies.</p>
+<p>Choose <strong><code>useBuiltIns: 'entry'</code></strong> if you
+target older environments and experience runtime issues with
+untranspiled third-party packages, or if you prefer a predictable,
+fail-safe environment where all missing standard features are polyfilled
+globally.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/babel-use-built-ins-usage-vs-entry-explained';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>
