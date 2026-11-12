@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Is Webpack 5 output.uniqueName and Why It Matters - webpack</title>
+    <meta name="description" content="This article provides a concise guide to the output.uniqueName configuration property in Webpack 5. It explains the purpose of this setting, how Webpack handles it by default, why it is critical for preventing runtime collisions in modern web architecture">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/what-is-webpack-5-output-unique-name-and-why-it-matters">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="What Is Webpack 5 output.uniqueName and Why It Matters - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/what-is-webpack-5-output-unique-name-and-why-it-matters" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides a concise guide to the output.uniqueName configuration property in Webpack 5. It explains the purpose of this setting, how Webpack handles it by default, why it is critical for preventing runtime collisions in modern web architecture" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="what-is-webpack-5-outputuniquename-and-why-it-matters">What Is
+Webpack 5 output.uniqueName and Why It Matters</h1>
+<p>This article provides a concise guide to the
+<code>output.uniqueName</code> configuration property in Webpack 5. It
+explains the purpose of this setting, how Webpack handles it by default,
+why it is critical for preventing runtime collisions in modern web
+architectures like micro-frontends and Module Federation, and how to
+configure it correctly in your project.</p>
+<h3 id="what-is-outputuniquename">What is output.uniqueName?</h3>
+<p>In Webpack 5, <code>output.uniqueName</code> is a configuration
+option that sets a unique identifier for a specific compilation or build
+runtime. Webpack relies on this unique name to namespace global runtime
+variables, script elements, and chunk-loading mechanisms (such as
+<code>window["webpackChunk" + uniqueName]</code>).</p>
+<p>By default, Webpack attempts to read the <code>name</code> field from
+your project’s nearest <code>package.json</code> file. If the
+<code>package.json</code> does not specify a name, Webpack defaults to
+an empty string.</p>
+<h3 id="why-is-outputuniquename-important">Why is output.uniqueName
+Important?</h3>
+<h4 id="1-preventing-global-namespace-collisions">1. Preventing Global
+Namespace Collisions</h4>
+<p>When multiple Webpack runtimes execute on the same page, they need a
+way to store and load chunks without interfering with each other.
+Webpack loads chunks by pushing them into a global array on the
+<code>window</code> object. If two independent builds share the same
+unique name, they will attempt to push chunks into the same global
+variable, causing chunk ID conflicts, broken dependencies, or silent
+runtime failures.</p>
+<h4 id="2-essential-for-micro-frontends-and-module-federation">2.
+Essential for Micro-Frontends and Module Federation</h4>
+<p>In Module Federation or micro-frontend architectures, multiple
+independently deployed applications share the browser environment
+simultaneously. Assigning an explicit <code>output.uniqueName</code>
+guarantees that the host application and every remote application
+maintain isolated chunk-loading states. It ensures that chunk requests
+intended for Remote A are never intercepted or corrupted by Remote
+B.</p>
+<h4 id="3-script-element-identification">3. Script Element
+Identification</h4>
+<p>Webpack dynamically injects <code>&lt;script&gt;</code> tags into the
+DOM for on-demand chunk loading. It tags these elements using the
+<code>uniqueName</code> value (typically via a <code>data-webpack</code>
+attribute). This allows Webpack to determine whether a required script
+is already present in the DOM or needs to be fetched, avoiding redundant
+network requests and DOM bloat.</p>
+<h3 id="how-to-configure-outputuniquename">How to Configure
+output.uniqueName</h3>
+<p>You can set <code>output.uniqueName</code> directly in your
+<code>webpack.config.js</code> under the <code>output</code> block:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">uniqueName</span><span class="op">:</span> <span class="st">&#39;my-micro-frontend-app&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="best-practices">Best Practices</h3>
+<ul>
+<li><strong>Always set it explicitly in distributed
+environments:</strong> If you are building micro-frontends, remotes, or
+embedded widgets, do not rely on automatic fallback to
+<code>package.json</code>. Define a distinct, predictable name
+manually.</li>
+<li><strong>Keep it URL- and variable-safe:</strong> Use alphanumeric
+characters, hyphens, or underscores to prevent syntax issues when
+Webpack uses the name in script attributes or global object keys.</li>
+<li><strong>Ensure uniqueness across the organization:</strong> If
+multiple teams contribute applications to a single host shell, establish
+a naming convention (e.g., combining team and service names) to
+eliminate any chance of accidental duplication.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/what-is-webpack-5-output-unique-name-and-why-it-matters';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Split Vendor Dependencies into Chunks in Webpack - webpack</title>
+    <meta name="description" content="Splitting vendor dependencies into separate chunks is an essential Webpack optimization technique that improves web application performance and browser caching. Because third-party libraries change much less frequently than application code, separating th">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/split-vendor-dependencies-into-chunks-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Split Vendor Dependencies into Chunks in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/split-vendor-dependencies-into-chunks-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Splitting vendor dependencies into separate chunks is an essential Webpack optimization technique that improves web application performance and browser caching. Because third-party libraries change much less frequently than application code, separating th" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="split-vendor-dependencies-into-chunks-in-webpack">Split Vendor
+Dependencies into Chunks in Webpack</h1>
+<p>Splitting vendor dependencies into separate chunks is an essential
+Webpack optimization technique that improves web application performance
+and browser caching. Because third-party libraries change much less
+frequently than application code, separating them prevents users from
+re-downloading large packages every time a minor application update is
+deployed. This article explains how to configure Webpack's built-in
+<code>SplitChunksPlugin</code> via the
+<code>optimization.splitChunks</code> configuration to automatically
+extract dependencies from <code>node_modules</code> into isolated vendor
+bundles.</p>
+<h3 id="the-basic-configuration">The Basic Configuration</h3>
+<p>Webpack handles code splitting through the <code>optimization</code>
+section of <code>webpack.config.js</code>. By default, Webpack applies
+default split rules, but you can explicitly configure it to group all
+external libraries into a single <code>vendor</code> bundle:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].js&#39;</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunkFilename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].chunk.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">clean</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">splitChunks</span><span class="op">:</span> {</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span><span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>      <span class="dt">cacheGroups</span><span class="op">:</span> {</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="dt">vendor</span><span class="op">:</span> {</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>          <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">[\\/]</span><span class="ss">node_modules</span><span class="sc">[\\/]</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>          <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;vendors&#39;</span><span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>          <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span><span class="op">,</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="key-configuration-properties">Key Configuration Properties</h3>
+<ul>
+<li><strong><code>chunks: 'all'</code></strong>: Tells Webpack to
+optimize both synchronous and asynchronous imports. By default, Webpack
+only optimizes dynamically imported (<code>async</code>) chunks.</li>
+<li><strong><code>cacheGroups</code></strong>: Custom rules that tell
+Webpack how to group modules into separate files.</li>
+<li><strong><code>test: /[\\/]node_modules[\\/]/</code></strong>: A
+regular expression ensuring that only files inside the
+<code>node_modules</code> directory are included in this chunk.</li>
+<li><strong><code>name: 'vendors'</code></strong>: Sets the output
+bundle name. Using <code>[contenthash]</code> in the <code>output</code>
+configuration ensures the resulting file name includes a unique hash
+(e.g., <code>vendors.a1b2c3d4.js</code>) for long-term browser
+caching.</li>
+</ul>
+<h3 id="splitting-large-libraries-into-individual-chunks">Splitting
+Large Libraries into Individual Chunks</h3>
+<p>Grouping all <code>node_modules</code> into a single file can still
+result in a very large bundle. To optimize further, you can split
+specific, heavy dependencies—such as React, Vue, or UI libraries—into
+their own distinct chunks by adding dedicated cache groups:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>optimization<span class="op">:</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">splitChunks</span><span class="op">:</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">maxInitialRequests</span><span class="op">:</span> <span class="kw">Infinity</span><span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">minSize</span><span class="op">:</span> <span class="dv">20000</span><span class="op">,</span> <span class="co">// 20kb</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">cacheGroups</span><span class="op">:</span> {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">reactVendor</span><span class="op">:</span> {</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">[\\/]</span><span class="ss">node_modules</span><span class="sc">[\\/](</span><span class="ss">react</span><span class="sc">|</span><span class="ss">react-dom</span><span class="sc">)[\\/]</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;vendor-react&#39;</span><span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span><span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        <span class="dt">priority</span><span class="op">:</span> <span class="dv">20</span><span class="op">,</span> <span class="co">// Must be higher than the general vendor group</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>      <span class="dt">defaultVendors</span><span class="op">:</span> {</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">[\\/]</span><span class="ss">node_modules</span><span class="sc">[\\/]</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;vendor-common&#39;</span><span class="op">,</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span><span class="op">,</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        <span class="dt">priority</span><span class="op">:</span> <span class="dv">10</span><span class="op">,</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>        <span class="dt">reuseExistingChunk</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<ul>
+<li><strong><code>priority</code></strong>: Determines which cache group
+captures a module if it matches multiple rules. The group with higher
+priority processes the file first.</li>
+<li><strong><code>reuseExistingChunk</code></strong>: Allows Webpack to
+reuse existing modules rather than duplicating them if they have already
+been split from the main bundle.</li>
+</ul>
+<h3 id="granular-splitting-per-package">Granular Splitting per
+Package</h3>
+<p>For applications with numerous dependencies, you can dynamically
+create a separate chunk for each <code>node_module</code> package
+automatically:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>optimization<span class="op">:</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">splitChunks</span><span class="op">:</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span><span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">cacheGroups</span><span class="op">:</span> {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">defaultVendors</span><span class="op">:</span> {</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">[\\/]</span><span class="ss">node_modules</span><span class="sc">[\\/]</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="fu">name</span>(module) {</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>          <span class="co">// Extracts the package name from node_modules/&lt;package-name&gt;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>          <span class="kw">const</span> packageName <span class="op">=</span> module<span class="op">.</span><span class="at">context</span><span class="op">.</span><span class="fu">match</span>(<span class="ss">/</span><span class="sc">[\\/]</span><span class="ss">node_modules</span><span class="sc">[\\/](</span><span class="ss">.</span><span class="sc">*?)([\\/]|</span><span class="ss">$</span><span class="sc">)</span><span class="ss">/</span>)[<span class="dv">1</span>]<span class="op">;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>          <span class="co">// NPM package names are URL-safe, but some servers do not like &#39;@&#39; symbols</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>          <span class="cf">return</span> <span class="vs">`npm.</span><span class="sc">${</span>packageName<span class="op">.</span><span class="fu">replace</span>(<span class="st">&#39;@&#39;</span><span class="op">,</span> <span class="st">&#39;&#39;</span>)<span class="sc">}</span><span class="vs">`</span><span class="op">;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>This approach generates files such as
+<code>npm.lodash.[contenthash].js</code> and
+<code>npm.axios.[contenthash].js</code>, ensuring that modifying or
+updating a single library only invalidates the cache for that specific
+package.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/split-vendor-dependencies-into-chunks-in-webpack';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

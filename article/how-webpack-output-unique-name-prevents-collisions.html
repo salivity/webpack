@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack output.uniqueName Prevents Collisions - webpack</title>
+    <meta name="description" content="When running multiple Webpack bundles simultaneously on a single webpage—a common pattern in micro-frontend architectures and federated applications—different runtimes can clash over shared global variables. This article explains how Webpack&#39;s output.uniq">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-output-unique-name-prevents-collisions">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack output.uniqueName Prevents Collisions - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-output-unique-name-prevents-collisions" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When running multiple Webpack bundles simultaneously on a single webpage—a common pattern in micro-frontend architectures and federated applications—different runtimes can clash over shared global variables. This article explains how Webpack&#39;s output.uniq" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-outputuniquename-prevents-collisions">How Webpack
+output.uniqueName Prevents Collisions</h1>
+<p>When running multiple Webpack bundles simultaneously on a single
+webpage—a common pattern in micro-frontend architectures and federated
+applications—different runtimes can clash over shared global variables.
+This article explains how Webpack's <code>output.uniqueName</code>
+option resolves this issue by isolating runtime instances, preventing
+chunk-loading conflicts, and ensuring that multiple independent bundles
+execute safely within the same global scope.</p>
+<h3 id="the-conflict-shared-global-namespaces">The Conflict: Shared
+Global Namespaces</h3>
+<p>By default, Webpack relies on global properties attached to the
+<code>window</code> object to manage asynchronous chunk loading, module
+caching, and runtime execution. In Webpack 5, the primary mechanism for
+chunk loading is an array attached to the global scope, typically named
+<code>webpackChunk&lt;name&gt;</code>.</p>
+<p>If two or more separate Webpack builds are loaded onto the same
+window without distinct naming, they will both attempt to read and write
+to the same global property (such as
+<code>window["webpackChunk"]</code>). This collision creates severe
+runtime bugs:</p>
+<ul>
+<li><strong>Chunk Hijacking:</strong> One runtime might intercept and
+process a script chunk intended for another application, leading to
+missing dependencies or script evaluation errors.</li>
+<li><strong>Overwritten Globals:</strong> Global hooks, such as JSONP
+callbacks and module definition registries, can be overwritten by
+whichever runtime executes last.</li>
+<li><strong>Cache Poisoning:</strong> Identical module IDs or chunk IDs
+across different projects can accidentally resolve to the wrong build's
+internal modules.</li>
+</ul>
+<h3 id="how-outputuniquename-solves-the-issue">How
+<code>output.uniqueName</code> Solves the Issue</h3>
+<p>The <code>output.uniqueName</code> configuration provides an isolated
+namespace for a specific Webpack compilation. Webpack uses this unique
+string to derive distinct names for all runtime-level global
+variables.</p>
+<p>Instead of registering chunks to a generic global array, Webpack
+dynamically scopes the array name using the format:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">window</span>[<span class="st">&quot;webpackChunk_&quot;</span> <span class="op">+</span> output<span class="op">.</span><span class="at">uniqueName</span>]</span></code></pre></div>
+<p>When an asynchronous chunk is loaded via a
+<code>&lt;script&gt;</code> tag, the chunk pushes its modules and
+identifiers directly into this uniquely named array. Because the runtime
+only monitors its own namespaced array, each Webpack instance handles
+solely its own dependencies, completely eliminating cross-bundle
+interference.</p>
+<h3 id="impact-on-script-loading-and-script-tags">Impact on Script
+Loading and Script Tags</h3>
+<p>In addition to namespacing the chunk array, Webpack uses
+<code>output.uniqueName</code> to identify and reuse its own script tags
+within the Document Object Model (DOM).</p>
+<p>When loading chunks on demand, Webpack queries existing
+<code>&lt;script&gt;</code> elements in the DOM to avoid re-fetching
+scripts that have already been injected. It does this by checking a
+custom attribute: <code>data-webpack</code>. Webpack formats this
+attribute using the configured unique name:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode html"><code class="sourceCode html"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">&lt;</span><span class="kw">script</span><span class="ot"> src</span><span class="op">=</span><span class="st">&quot;bundle.chunk.js&quot;</span><span class="ot"> data-webpack</span><span class="op">=</span><span class="st">&quot;my_unique_app:chunk-id&quot;</span><span class="dt">&gt;&lt;/</span><span class="kw">script</span><span class="dt">&gt;</span></span></code></pre></div>
+<p>By querying for <code>data-webpack^="my_unique_app:"</code>, the
+runtime ensures it never misidentifies a chunk injected by a different
+Webpack build, preventing false-positive loading states.</p>
+<h3 id="role-in-module-federation">Role in Module Federation</h3>
+<p>In Webpack Module Federation, <code>output.uniqueName</code> is
+critical. Federated applications share dependencies and expose modules
+to one another dynamically at runtime. Webpack uses
+<code>output.uniqueName</code> to:</p>
+<ul>
+<li>Create isolated containers on the global scope for exposed
+modules.</li>
+<li>Ensure shared dependencies (such as React or Lodash) are tracked
+under the correct application scope before negotiation occurs.</li>
+<li>Prevent remote entry scripts from overriding host or peer container
+entry points.</li>
+</ul>
+<h3 id="configuring-outputuniquename">Configuring
+<code>output.uniqueName</code></h3>
+<p>By default, Webpack 5 attempts to read the <code>name</code> field
+from the nearest <code>package.json</code> to populate
+<code>output.uniqueName</code>. However, relying on this fallback can
+lead to issues if multiple micro-frontends share identical package names
+or generic defaults.</p>
+<p>The best practice is to explicitly define
+<code>output.uniqueName</code> in your
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">uniqueName</span><span class="op">:</span> <span class="st">&#39;microAppBilling&#39;</span><span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// ...</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Explicitly setting this value guarantees a stable, conflict-free
+namespace across all deployment environments, allowing any number of
+Webpack runtimes to co-exist cleanly on the same
+<code>window</code>.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-webpack-output-unique-name-prevents-collisions';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How svelte-loader Compiles Svelte for Webpack - webpack</title>
+    <meta name="description" content="svelte-loader acts as the integration bridge between Webpack&#39;s module-bundling pipeline and Svelte&#39;s compile-time architecture. Because Webpack natively understands only standard JavaScript and JSON, it cannot directly process .svelte single-file componen">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-svelte-loader-compiles-svelte-for-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How svelte-loader Compiles Svelte for Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-svelte-loader-compiles-svelte-for-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="svelte-loader acts as the integration bridge between Webpack&#39;s module-bundling pipeline and Svelte&#39;s compile-time architecture. Because Webpack natively understands only standard JavaScript and JSON, it cannot directly process .svelte single-file componen" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-svelte-loader-compiles-svelte-for-webpack">How svelte-loader
+Compiles Svelte for Webpack</h1>
+<p><code>svelte-loader</code> acts as the integration bridge between
+Webpack's module-bundling pipeline and Svelte's compile-time
+architecture. Because Webpack natively understands only standard
+JavaScript and JSON, it cannot directly process <code>.svelte</code>
+single-file components. The loader intercepts these files, passes their
+markup, styles, and scripts to the official Svelte compiler, and
+converts the reactive code into standard ES modules and separate CSS
+assets that Webpack can map, bundle, and optimize.</p>
+<h3 id="1-interception-and-module-resolution">1. Interception and Module
+Resolution</h3>
+<p>When Webpack encounters an <code>import</code> statement targeting a
+<code>.svelte</code> file, its module resolution system matches the file
+extension against rules defined in <code>webpack.config.js</code>. Once
+matched, Webpack routes the raw source code of the component directly to
+<code>svelte-loader</code>.</p>
+<h3 id="2-delegation-to-the-svelte-compiler">2. Delegation to the Svelte
+Compiler</h3>
+<p><code>svelte-loader</code> itself does not parse the component syntax
+or implement reactivity algorithms. Instead, it reads the user-defined
+options—such as <code>dev</code>, <code>generate</code>, and
+<code>hydratable</code>—and feeds the raw <code>.svelte</code> source
+code directly into <code>svelte/compiler</code> via its
+<code>compile()</code> API.</p>
+<p>During this compilation step, the Svelte compiler performs three
+critical tasks:</p>
+<ul>
+<li><strong>Parsing into an AST:</strong> The compiler parses the
+<code>&lt;script&gt;</code>, <code>&lt;style&gt;</code>, and HTML
+template regions into an Abstract Syntax Tree (AST).</li>
+<li><strong>Reactivity Transformation:</strong> Standard JavaScript
+assignments targeting reactive variables are transformed. In Svelte 3
+and 4, the compiler instruments variables with
+<code>$$invalidate()</code> calls to schedule DOM updates. In Svelte 5,
+it compiles template expressions and runes into fine-grained reactive
+primitives.</li>
+<li><strong>DOM Node Creation:</strong> The template HTML is converted
+into efficient, vanilla JavaScript instructions (such as
+<code>document.createElement</code> and
+<code>element.appendChild</code>) rather than a virtual DOM
+representation.</li>
+</ul>
+<h3 id="3-css-extraction-and-handling">3. CSS Extraction and
+Handling</h3>
+<p>Components often contain scoped <code>&lt;style&gt;</code> blocks.
+<code>svelte-loader</code> can handle this styling in two ways depending
+on the loader configuration:</p>
+<ul>
+<li><strong>Inline Injection:</strong> The compiled JavaScript includes
+the CSS as a string, injecting styles into the document head at
+runtime.</li>
+<li><strong>Extracted CSS (Emit CSS):</strong> When
+<code>emitCss: true</code> is configured, <code>svelte-loader</code>
+strips the compiled CSS from the JavaScript output and generates a
+virtual import path (e.g.,
+<code>import './Component.svelte.css';</code>). Webpack catches this new
+synthetic import and delegates it to subsequent loaders, such as
+<code>css-loader</code> and <code>MiniCssExtractPlugin</code>, enabling
+code splitting and standalone CSS files.</li>
+</ul>
+<h3 id="4-hot-module-replacement-hmr-integration">4. Hot Module
+Replacement (HMR) Integration</h3>
+<p>During development, <code>svelte-loader</code> can integrate with
+<code>svelte-hmr</code>. When enabled, the loader wraps the compiled
+component output with proxy code. When a component file changes on disk,
+Webpack delivers the update to the browser, and the proxy swaps the
+component's internal methods and templates while preserving its existing
+state, avoiding a full page refresh.</p>
+<h3 id="5-returning-webpack-compatible-output">5. Returning
+Webpack-Compatible Output</h3>
+<p>After the Svelte compiler generates the JavaScript code and source
+maps, <code>svelte-loader</code> packages the output as a valid ES
+module. The resulting module exports a standard JavaScript class or
+function that implements the Svelte component API (<code>$on</code>,
+<code>$set</code>, <code>$destroy</code>, or the mount API).</p>
+<p>Webpack receives this output as pure JavaScript, integrates it into
+its internal dependency graph, and continues running any downstream
+loaders or optimization plugins (such as Terser) before writing the
+final production bundle.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-svelte-loader-compiles-svelte-for-webpack';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

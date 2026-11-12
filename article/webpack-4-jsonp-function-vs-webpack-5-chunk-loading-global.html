@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack 4 jsonpFunction vs Webpack 5 chunkLoadingGlobal - webpack</title>
+    <meta name="description" content="When running multiple Webpack applications on the same webpage, configuring unique chunk-loading namespaces prevents global runtime collisions. Webpack 4 relied on output.jsonpFunction to define the global array used for asynchronous chunk loading, wherea">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-4-jsonp-function-vs-webpack-5-chunk-loading-global">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack 4 jsonpFunction vs Webpack 5 chunkLoadingGlobal - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-4-jsonp-function-vs-webpack-5-chunk-loading-global" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When running multiple Webpack applications on the same webpage, configuring unique chunk-loading namespaces prevents global runtime collisions. Webpack 4 relied on output.jsonpFunction to define the global array used for asynchronous chunk loading, wherea" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-4-jsonpfunction-vs-webpack-5-chunkloadingglobal">Webpack
+4 jsonpFunction vs Webpack 5 chunkLoadingGlobal</h1>
+<p>When running multiple Webpack applications on the same webpage,
+configuring unique chunk-loading namespaces prevents global runtime
+collisions. Webpack 4 relied on <code>output.jsonpFunction</code> to
+define the global array used for asynchronous chunk loading, whereas
+Webpack 5 replaced this setting with
+<code>output.chunkLoadingGlobal</code> to support diverse transport
+protocols beyond JSONP. This guide explains how both options work, how
+to configure them, and the architectural differences between Webpack 4
+and 5.</p>
+<h3 id="webpack-4-using-outputjsonpfunction">Webpack 4: Using
+output.jsonpFunction</h3>
+<p>In Webpack 4, asynchronous bundle loading defaults to JSONP via a
+global function attached to the <code>window</code> object named
+<code>webpackJsonp</code>. When multiple independently built Webpack
+applications or micro-frontends share the same browser environment,
+using the default name causes collision issues where chunks from one
+application are intercepted by another.</p>
+<p>To prevent this collision, define a custom string for
+<code>output.jsonpFunction</code> in your
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js (Webpack 4)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunkFilename</span><span class="op">:</span> <span class="st">&#39;[name].chunk.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">jsonpFunction</span><span class="op">:</span> <span class="st">&#39;webpackJsonp_myUniqueApp&#39;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Setting <code>jsonpFunction</code> renames the global variable from
+<code>window.webpackJsonp</code> to
+<code>window.webpackJsonp_myUniqueApp</code>.</p>
+<h3 id="webpack-5-using-outputchunkloadingglobal">Webpack 5: Using
+output.chunkLoadingGlobal</h3>
+<p>Webpack 5 supports various chunk-loading methods, including ES
+modules, Fetch, Node.js <code>require</code>, and Web Worker
+<code>importScripts</code>, making the "JSONP" terminology obsolete. As
+a result, <code>output.jsonpFunction</code> was deprecated and renamed
+to <code>output.chunkLoadingGlobal</code>.</p>
+<p>To configure this in Webpack 5, update your
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js (Webpack 5)</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunkFilename</span><span class="op">:</span> <span class="st">&#39;[name].chunk.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">chunkLoadingGlobal</span><span class="op">:</span> <span class="st">&#39;webpackChunk_myUniqueApp&#39;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This assigns chunk registration to
+<code>window.webpackChunk_myUniqueApp</code> instead of the default
+<code>window.webpackChunk</code>.</p>
+<h3 id="migration-and-outputuniquename">Migration and
+output.uniqueName</h3>
+<p>In Webpack 5, manually setting <code>output.chunkLoadingGlobal</code>
+is often unnecessary due to the introduction of
+<code>output.uniqueName</code>.</p>
+<p>Webpack 5 uses <code>output.uniqueName</code> to compute a unique
+namespace for <code>chunkLoadingGlobal</code> automatically. By default,
+it derives this value from your project's <code>package.json</code>
+<code>name</code> field:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js (Webpack 5 recommended approach)</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">uniqueName</span><span class="op">:</span> <span class="st">&#39;myUniqueApp&#39;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Setting <code>output.uniqueName</code> automatically namespaces both
+<code>chunkLoadingGlobal</code> and other runtime globals such as script
+containers and Module Federation remotes, eliminating the need to set
+<code>chunkLoadingGlobal</code> explicitly in most micro-frontend
+setups.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-4-jsonp-function-vs-webpack-5-chunk-loading-global';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

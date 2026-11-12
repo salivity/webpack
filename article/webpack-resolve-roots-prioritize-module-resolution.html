@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack resolve.roots: Prioritize Module Resolution - webpack</title>
+    <meta name="description" content="This article explains how to configure Webpack&#39;s resolve.roots option to prioritize module resolution from specific folders. You will learn the purpose of resolve.roots, how it affects root-relative imports (paths starting with /), step-by-step configurat">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-resolve-roots-prioritize-module-resolution">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack resolve.roots: Prioritize Module Resolution - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-resolve-roots-prioritize-module-resolution" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how to configure Webpack&#39;s resolve.roots option to prioritize module resolution from specific folders. You will learn the purpose of resolve.roots, how it affects root-relative imports (paths starting with /), step-by-step configurat" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-resolveroots-prioritize-module-resolution">Webpack
+resolve.roots: Prioritize Module Resolution</h1>
+<p>This article explains how to configure Webpack's
+<code>resolve.roots</code> option to prioritize module resolution from
+specific folders. You will learn the purpose of
+<code>resolve.roots</code>, how it affects root-relative imports (paths
+starting with <code>/</code>), step-by-step configuration examples, and
+how Webpack processes directory precedence.</p>
+<hr />
+<h3 id="what-is-resolveroots">What Is <code>resolve.roots</code>?</h3>
+<p>Introduced in Webpack 5, <code>resolve.roots</code> defines a list of
+base directories used to resolve server-relative URLs—imports that begin
+with a forward slash (<code>/</code>).</p>
+<p>By default, Webpack treats imports starting with <code>/</code> as
+absolute paths on your operating system's filesystem. Setting
+<code>resolve.roots</code> redirects these requests to one or more
+project directories, allowing you to establish root directories for
+project-level module resolution.</p>
+<h3 id="basic-configuration">Basic Configuration</h3>
+<p>To configure <code>resolve.roots</code>, define an array of absolute
+paths inside the <code>resolve</code> object of your
+<code>webpack.config.js</code>.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other webpack configuration</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">roots</span><span class="op">:</span> [</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;src&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;shared&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="how-folder-prioritization-works">How Folder Prioritization
+Works</h3>
+<p>Webpack resolves modules by evaluating the directories in the
+<code>resolve.roots</code> array in sequential order:</p>
+<ol type="1">
+<li><strong>Top-to-bottom lookup:</strong> Webpack inspects the first
+path in the array. If the requested file is found, resolution stops
+immediately.</li>
+<li><strong>Fallback:</strong> If the file does not exist in the first
+directory, Webpack checks the second directory, and so on.</li>
+<li><strong>Error handling:</strong> If none of the folders contain the
+requested module, Webpack throws a <code>Module not found</code>
+error.</li>
+</ol>
+<h4 id="example-scenario">Example Scenario</h4>
+<p>Consider a project with the following directory structure:</p>
+<pre class="text"><code>my-project/
+├── src/
+│   └── components/
+│       └── Header.js
+├── shared/
+│   └── components/
+│       ├── Header.js
+│       └── Footer.js
+└── webpack.config.js</code></pre>
+<p>Given the configuration:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>resolve<span class="op">:</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">roots</span><span class="op">:</span> [</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;src&#39;</span>)<span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;shared&#39;</span>)<span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>When importing modules using root-relative paths:</p>
+<ul>
+<li><code>import Header from '/components/Header';</code> resolves to
+<code>src/components/Header.js</code> because <code>src</code> is listed
+first.</li>
+<li><code>import Footer from '/components/Footer';</code> checks
+<code>src/components/Footer</code> first, fails, and falls back to
+<code>shared/components/Footer.js</code>.</li>
+</ul>
+<h3
+id="resolveroots-vs-resolvemodules-vs-resolvealias"><code>resolve.roots</code>
+vs. <code>resolve.modules</code> vs. <code>resolve.alias</code></h3>
+<ul>
+<li><strong><code>resolve.roots</code></strong>: Resolves paths starting
+with a leading slash (<code>/path/to/file</code>). It does not affect
+bare module specifiers.</li>
+<li><strong><code>resolve.modules</code></strong>: Resolves bare
+specifiers (like <code>import 'lodash'</code> or
+<code>import 'components/Button'</code>). It tells Webpack which
+directories to search for non-relative, non-absolute imports.</li>
+<li><strong><code>resolve.alias</code></strong>: Maps exact path
+prefixes or aliases (such as <code>@components</code>) to specific file
+or directory targets.</li>
+</ul>
+<h3 id="best-practices">Best Practices</h3>
+<ul>
+<li><strong>Always provide absolute paths:</strong> Use Node's built-in
+<code>path.resolve(__dirname, 'folder')</code> to avoid
+platform-specific path discrepancies.</li>
+<li><strong>Combine with TypeScript or ESLint:</strong> If using
+TypeScript or ESLint, synchronize your <code>tsconfig.json</code>
+(<code>paths</code> or <code>baseUrl</code>) or ESLint import resolvers
+so your editor correctly understands <code>/</code> imports.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-resolve-roots-prioritize-module-resolution';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

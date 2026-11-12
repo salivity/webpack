@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Bundle Audio and Video with Webpack - webpack</title>
+    <meta name="description" content="Webpack handles audio and video formats like MP3, OGG, and MP4 by managing asset paths, emitting files to the distribution directory, and providing valid URLs directly inside your JavaScript code. Rather than compiling or transcoding binary media files, W">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-to-bundle-audio-and-video-with-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How to Bundle Audio and Video with Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-to-bundle-audio-and-video-with-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack handles audio and video formats like MP3, OGG, and MP4 by managing asset paths, emitting files to the distribution directory, and providing valid URLs directly inside your JavaScript code. Rather than compiling or transcoding binary media files, W" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-to-bundle-audio-and-video-with-webpack">How to Bundle Audio
+and Video with Webpack</h1>
+<p>Webpack handles audio and video formats like MP3, OGG, and MP4 by
+managing asset paths, emitting files to the distribution directory, and
+providing valid URLs directly inside your JavaScript code. Rather than
+compiling or transcoding binary media files, Webpack integrates them
+into the dependency graph so they can be imported and consumed by HTML
+elements like <code>&lt;audio&gt;</code> and <code>&lt;video&gt;</code>.
+This guide covers how Webpack processes these formats using modern
+Webpack 5 Asset Modules, how the underlying build process works, and
+best practices for media assets.</p>
+<h2 id="using-webpack-5-asset-modules">Using Webpack 5 Asset
+Modules</h2>
+<p>Prior to Webpack 5, bundling binary assets required third-party
+loaders such as <code>file-loader</code> or <code>url-loader</code>.
+Webpack 5 introduced native <strong>Asset Modules</strong>, eliminating
+the need for extra dependencies.</p>
+<p>To bundle media files, use the <code>asset/resource</code> module
+type. This emits the media file into your output folder and exports the
+asset's URL into your JavaScript bundle.</p>
+<h3 id="webpack-configuration-example">Webpack Configuration
+Example</h3>
+<p>Add a rule to your <code>webpack.config.js</code> inside the
+<code>module.rules</code> array:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">clean</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">mp4</span><span class="sc">|</span><span class="ss">webm</span><span class="sc">|</span><span class="ss">ogg</span><span class="sc">|</span><span class="ss">mp3</span><span class="sc">|</span><span class="ss">wav</span><span class="sc">|</span><span class="ss">flac</span><span class="sc">|</span><span class="ss">aac</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/resource&#39;</span><span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        <span class="dt">generator</span><span class="op">:</span> {</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>          <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;media/[name].[contenthash][ext]&#39;</span><span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<ul>
+<li><code>test</code>: A regular expression identifying audio and video
+file extensions.</li>
+<li><code>type: 'asset/resource'</code>: Directs Webpack to emit
+separate physical files and return their final paths.</li>
+<li><code>generator.filename</code>: Specifies the output directory
+(<code>dist/media/</code>) and attaches a content hash to the filename
+for effective cache-busting.</li>
+</ul>
+<h2 id="how-the-bundling-process-works">How the Bundling Process
+Works</h2>
+<p>When Webpack builds your application, it processes media files
+through three main steps:</p>
+<ol type="1">
+<li><strong>Resolution:</strong> When Webpack encounters an
+<code>import</code> or <code>require</code> statement for a media file
+(for example,
+<code>import sampleAudio from './sounds/sound.mp3'</code>), it matches
+the file against your configured <code>test</code> regex.</li>
+<li><strong>File Emission:</strong> Webpack copies the raw binary file
+directly to the build destination directory (<code>dist/media/</code>)
+without modifying the internal audio/video data.</li>
+<li><strong>URL Export:</strong> Webpack generates a module that exports
+the public URL string representing where the file will reside on the
+server.</li>
+</ol>
+<h3 id="usage-in-application-code">Usage in Application Code</h3>
+<p>Because the import yields a path string, you can assign it directly
+to media elements in JavaScript:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> oceanWaves <span class="im">from</span> <span class="st">&#39;./media/waves.mp3&#39;</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> introVideo <span class="im">from</span> <span class="st">&#39;./media/intro.mp4&#39;</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Using Audio in JavaScript</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> audio <span class="op">=</span> <span class="kw">new</span> <span class="fu">Audio</span>(oceanWaves)<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>audio<span class="op">.</span><span class="fu">play</span>()<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co">// Attaching to a Video element in the DOM</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> videoElement <span class="op">=</span> <span class="bu">document</span><span class="op">.</span><span class="fu">createElement</span>(<span class="st">&#39;video&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>videoElement<span class="op">.</span><span class="at">src</span> <span class="op">=</span> introVideo<span class="op">;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>videoElement<span class="op">.</span><span class="at">controls</span> <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="bu">document</span><span class="op">.</span><span class="at">body</span><span class="op">.</span><span class="fu">appendChild</span>(videoElement)<span class="op">;</span></span></code></pre></div>
+<h2 id="legacy-approach-webpack-4-and-file-loader">Legacy Approach:
+Webpack 4 and <code>file-loader</code></h2>
+<p>In Webpack 4 and older setups, <code>file-loader</code> performs the
+same task:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">mp4</span><span class="sc">|</span><span class="ss">ogg</span><span class="sc">|</span><span class="ss">mp3</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> [</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>          {</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>            <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;file-loader&#39;</span><span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>            <span class="dt">options</span><span class="op">:</span> {</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>              <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;[name].[hash].[ext]&#39;</span><span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>              <span class="dt">outputPath</span><span class="op">:</span> <span class="st">&#39;media/&#39;</span><span class="op">,</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>            }<span class="op">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>        ]<span class="op">,</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h2 id="important-considerations-for-media-bundling">Important
+Considerations for Media Bundling</h2>
+<ul>
+<li><strong>File Size and Inlining:</strong> Avoid using
+<code>asset/inline</code> (base64 strings) for video and high-resolution
+audio. Inlining increases file size by roughly 33%, inflates JavaScript
+parsing time, and prevents browsers from leveraging byte-range requests
+for streaming.</li>
+<li><strong>No Transcoding:</strong> Webpack does not transcode,
+compress, or convert media formats (e.g., converting WAV to MP3).
+Optimize and compress all media files before placing them in your source
+directory.</li>
+<li><strong>Streaming Media:</strong> For long-form video or adaptive
+bitrate streaming (HLS or MPEG-DASH), host segmented files
+(<code>.m3u8</code>, <code>.ts</code>, <code>.mpd</code>) on a dedicated
+Content Delivery Network (CDN) or media server rather than bundling them
+through Webpack.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-to-bundle-audio-and-video-with-webpack';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

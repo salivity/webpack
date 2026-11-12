@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compilation Assets in Webpack Plugin Lifecycle - webpack</title>
+    <meta name="description" content="In Webpack, compilation.assets serves as the in-memory staging ground for all output files generated during the build process before they are written to disk. This article explains the technical role of compilation.assets across the plugin lifecycle, illu">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/compilation-assets-in-webpack-plugin-lifecycle">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Compilation Assets in Webpack Plugin Lifecycle - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/compilation-assets-in-webpack-plugin-lifecycle" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Webpack, compilation.assets serves as the in-memory staging ground for all output files generated during the build process before they are written to disk. This article explains the technical role of compilation.assets across the plugin lifecycle, illu" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="compilation-assets-in-webpack-plugin-lifecycle">Compilation
+Assets in Webpack Plugin Lifecycle</h1>
+<p>In Webpack, <code>compilation.assets</code> serves as the in-memory
+staging ground for all output files generated during the build process
+before they are written to disk. This article explains the technical
+role of <code>compilation.assets</code> across the plugin lifecycle,
+illustrating how plugins use this object to inspect, modify, generate,
+and delete build artifacts.</p>
+<h2 id="what-is-compilationassets">What is Compilation.assets?</h2>
+<p>The <code>compilation.assets</code> property is a plain JavaScript
+object where keys represent target file paths (relative to the
+configured output directory) and values represent asset objects. These
+asset objects adhere to the <code>webpack-sources</code> interface,
+providing methods such as:</p>
+<ul>
+<li><code>source()</code>: Returns the content of the asset as a string
+or a Buffer.</li>
+<li><code>size()</code>: Returns the size of the asset in bytes.</li>
+<li><code>map()</code>: Returns source maps, if available.</li>
+</ul>
+<p>This structure allows Webpack to manipulate files entirely in memory,
+avoiding redundant file system reads and writes until the final phase of
+compilation.</p>
+<h2 id="position-in-the-plugin-lifecycle">Position in the Plugin
+Lifecycle</h2>
+<p>The <code>compilation.assets</code> dictionary is populated and
+finalized across distinct compilation hooks before the output is
+physically written to the disk by the compiler.</p>
+<ol type="1">
+<li><strong>Asset Creation</strong>: Loaders and internal plugins parse
+modules, resolve dependencies, and generate initial chunks. The
+<code>compilation.assets</code> object is populated with the generated
+bundles, source maps, and extracted files.</li>
+<li><strong>Asset Processing</strong>: Plugins intercept the assets
+using hooks on the <code>compilation</code> object. In modern Webpack
+(v5+), this is handled primarily via
+<code>compilation.hooks.processAssets</code>.</li>
+<li><strong>Emission</strong>: Once all asset hooks complete, the main
+compiler invokes the <code>emit</code> hook, where
+<code>compilation.assets</code> is finalized. Finally, Webpack iterates
+over the keys of <code>compilation.assets</code> and writes each item to
+the output directory specified in <code>output.path</code>.</li>
+</ol>
+<h2 id="primary-roles-in-plugin-development">Primary Roles in Plugin
+Development</h2>
+<p>Plugins interact with <code>compilation.assets</code> to accomplish
+four main tasks:</p>
+<h3 id="1-generating-new-assets">1. Generating New Assets</h3>
+<p>Plugins can emit additional files that do not originate from
+individual JavaScript modules, such as dynamic HTML files, build
+manifests, or license files. In Webpack 5, the recommended approach is
+using <code>compilation.emitAsset(name, source)</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>compilation<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">processAssets</span><span class="op">.</span><span class="fu">tap</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;MyPlugin&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">stage</span><span class="op">:</span> Compilation<span class="op">.</span><span class="at">PROCESS_ASSETS_STAGE_ADDITIONAL</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  () <span class="kw">=&gt;</span> {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> content <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({ <span class="dt">buildTime</span><span class="op">:</span> <span class="bu">Date</span><span class="op">.</span><span class="fu">now</span>() })<span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    compilation<span class="op">.</span><span class="fu">emitAsset</span>(<span class="st">&#39;build-meta.json&#39;</span><span class="op">,</span> <span class="kw">new</span> sources<span class="op">.</span><span class="fu">RawSource</span>(content))<span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<h3 id="2-modifying-existing-assets">2. Modifying Existing Assets</h3>
+<p>Plugins such as banner injectors, obfuscators, and custom minifiers
+read the existing source code of an asset and wrap or transform it.
+Using <code>compilation.updateAsset()</code> ensures that downstream
+plugins receive the updated source and accurate size metrics:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>compilation<span class="op">.</span><span class="at">hooks</span><span class="op">.</span><span class="at">processAssets</span><span class="op">.</span><span class="fu">tap</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;MyPlugin&#39;</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">stage</span><span class="op">:</span> Compilation<span class="op">.</span><span class="at">PROCESS_ASSETS_STAGE_OPTIMIZE</span><span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  (assets) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="bu">Object</span><span class="op">.</span><span class="fu">keys</span>(assets)<span class="op">.</span><span class="fu">forEach</span>((assetName) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (assetName<span class="op">.</span><span class="fu">endsWith</span>(<span class="st">&#39;.js&#39;</span>)) {</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        compilation<span class="op">.</span><span class="fu">updateAsset</span>(</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>          assetName<span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>          (oldSource) <span class="kw">=&gt;</span> <span class="kw">new</span> sources<span class="op">.</span><span class="fu">ConcatSource</span>(<span class="st">&#39;// License Header</span><span class="sc">\n</span><span class="st">&#39;</span><span class="op">,</span> oldSource)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        )<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<h3 id="3-inspecting-asset-metadata">3. Inspecting Asset Metadata</h3>
+<p>Analysis tools, bundle visualizers, and deployment plugins inspect
+<code>compilation.assets</code> to read file sizes, verify hash names,
+or gather stats. These plugins read from <code>compilation.assets</code>
+during stages such as <code>PROCESS_ASSETS_STAGE_REPORT</code> or the
+compiler-level <code>emit</code> hook without altering the contents.</p>
+<h3 id="4-removing-assets">4. Removing Assets</h3>
+<p>Plugins can prune assets from the final build—for example, removing
+temporary source maps or extraneous files generated during intermediate
+steps—by using <code>compilation.deleteAsset(name)</code>.</p>
+<h2 id="modern-webpack-5-stages">Modern Webpack 5 Stages</h2>
+<p>In earlier Webpack versions, plugins manipulated
+<code>compilation.assets</code> directly inside the
+<code>compiler.hooks.emit</code> hook. Webpack 5 introduced the
+<code>processAssets</code> hook, categorizing operations into
+standardized stages to prevent race conditions:</p>
+<ul>
+<li><strong>STAGE_ADDITIONAL</strong>: Add extra assets to the
+compilation.</li>
+<li><strong>STAGE_PRE_PROCESS</strong>: Basic transformations before
+major optimizations.</li>
+<li><strong>STAGE_OPTIMIZE</strong>: Optimizing existing assets (e.g.,
+minification).</li>
+<li><strong>STAGE_OPTIMIZE_COUNT</strong>: Combining or inlining assets
+to reduce output count.</li>
+<li><strong>STAGE_OPTIMIZE_COMPATIBILITY</strong>: Modifying assets for
+browser compatibility.</li>
+<li><strong>STAGE_SUMMARIZE</strong>: Aggregating assets (e.g.,
+generating <code>manifest.json</code>).</li>
+<li><strong>STAGE_REPORT</strong>: Inspecting assets for reporting or
+logging purposes.</li>
+</ul>
+<p>Through <code>compilation.assets</code> and its associated methods,
+Webpack ensures that any plugin can safely read, transform, or append to
+the final build output in a predictable, high-performance in-memory
+pipeline.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/compilation-assets-in-webpack-plugin-lifecycle';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

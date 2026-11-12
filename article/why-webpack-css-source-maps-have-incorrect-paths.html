@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Webpack CSS Source Maps Have Incorrect Paths - webpack</title>
+    <meta name="description" content="Webpack often generates CSS source maps with incorrect asset paths due to conflicts between how loaders resolve relative URLs, how browsers evaluate source-mapped assets, and how Webpack&#39;s output configuration is structured. This article explains the prim">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/why-webpack-css-source-maps-have-incorrect-paths">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Webpack CSS Source Maps Have Incorrect Paths - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/why-webpack-css-source-maps-have-incorrect-paths" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack often generates CSS source maps with incorrect asset paths due to conflicts between how loaders resolve relative URLs, how browsers evaluate source-mapped assets, and how Webpack&#39;s output configuration is structured. This article explains the prim" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-webpack-css-source-maps-have-incorrect-paths">Why Webpack
+CSS Source Maps Have Incorrect Paths</h1>
+<p>Webpack often generates CSS source maps with incorrect asset paths
+due to conflicts between how loaders resolve relative URLs, how browsers
+evaluate source-mapped assets, and how Webpack's output configuration is
+structured. This article explains the primary technical reasons behind
+these path discrepancies—including loader chaining issues, relative URL
+resolution context, missing <code>publicPath</code> definitions, and
+source map format choices—and outlines how to ensure your assets resolve
+correctly.</p>
+<h3 id="the-relative-path-resolution-mismatch">The Relative Path
+Resolution Mismatch</h3>
+<p>The most common cause of broken asset paths in CSS source maps is the
+difference in how relative paths are resolved during build time versus
+runtime. When a preprocessor like Sass or Less compiles code containing
+an asset path (such as
+<code>background-image: url('../images/bg.png')</code>), it processes
+the URL relative to the file where it is declared.</p>
+<p>However, by the time the asset reaches <code>css-loader</code>, the
+CSS is bundled into a single file or injected directly into the DOM. The
+browser resolves source map paths relative to the generated source map's
+location or the document root, rather than the original source file. If
+the relative relationship between the stylesheet and the target asset is
+not maintained across the entire compilation chain, the resulting source
+map points to a nonexistent directory.</p>
+<h3 id="missing-resolve-url-loader-in-preprocessor-chains">Missing
+<code>resolve-url-loader</code> in Preprocessor Chains</h3>
+<p>When using preprocessors alongside Webpack, <code>sass-loader</code>
+does not inherently rewrite relative asset paths when importing files
+from nested directories. If nested files use paths relative to their own
+locations, Sass flattens them into the compiled CSS without adjusting
+the paths.</p>
+<p>To fix this, Webpack requires <code>resolve-url-loader</code> to be
+placed between <code>sass-loader</code> and <code>css-loader</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>rules<span class="op">:</span> [</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">scss</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">use</span><span class="op">:</span> [</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="st">&#39;style-loader&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="st">&#39;css-loader&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;resolve-url-loader&#39;</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">options</span><span class="op">:</span> { <span class="dt">sourceMap</span><span class="op">:</span> <span class="kw">true</span> }</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;sass-loader&#39;</span><span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        <span class="dt">options</span><span class="op">:</span> { <span class="dt">sourceMap</span><span class="op">:</span> <span class="kw">true</span> }</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>]</span></code></pre></div>
+<p><code>resolve-url-loader</code> uses the source maps generated by
+<code>sass-loader</code> to rewrite all relative <code>url()</code>
+statements so they resolve correctly relative to the root context. If
+<code>sourceMap: true</code> is not explicitly enabled on all upstream
+loaders in the chain, <code>resolve-url-loader</code> fails silently or
+produces invalid paths.</p>
+<h3 id="misconfigured-outputpublicpath">Misconfigured
+<code>output.publicPath</code></h3>
+<p>Webpack relies on <code>output.publicPath</code> to prefix URLs for
+assets loaded at runtime, such as fonts, images, and split chunks. If
+<code>publicPath</code> is omitted, set to an empty string
+<code>""</code>, or set to a relative path like <code>./</code>, asset
+paths in source maps can become unpredictable.</p>
+<p>When source maps are evaluated via virtual schemes (like
+<code>webpack://</code> or <code>blob:</code> URLs), the browser cannot
+resolve relative URLs against a standard HTTP path. Defining an explicit
+absolute path (such as <code>/</code> or a full CDN URL like
+<code>https://cdn.example.com/assets/</code>) ensures that asset URLs
+are absolute, preventing the browser from attempting to resolve them
+against virtual source map paths.</p>
+<h3 id="source-map-devtool-format-issues">Source Map Devtool Format
+Issues</h3>
+<p>The <code>devtool</code> configuration option in Webpack dictates how
+source maps are constructed. Options that rely on <code>eval</code>
+(such as <code>eval-source-map</code> or
+<code>eval-cheap-module-source-map</code>) wrap CSS modules in
+<code>eval()</code> functions.</p>
+<p>Browsers often sandbox these evaluated scripts or treat them as Data
+URLs or Blob URLs. Under these conditions, the browser's DevTools assign
+an arbitrary origin (such as
+<code>blob:http://localhost:8080/...</code>), causing any relative asset
+references inside the generated CSS to break. Switching to a
+production-grade or non-eval format, such as <code>source-map</code>,
+provides static <code>.map</code> files that browsers can map reliably
+to disk or server locations.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/why-webpack-css-source-maps-have-incorrect-paths';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

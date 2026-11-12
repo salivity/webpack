@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack SplitChunks minSize Configuration Guide - webpack</title>
+    <meta name="description" content="The minSize option in Webpack&#39;s SplitChunksPlugin dictates the minimum file size, in bytes, required for a module or group of modules to be split into a separate chunk. This article explains how the minSize threshold works, why it is critical for balancin">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-split-chunks-min-size-configuration-guide">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack SplitChunks minSize Configuration Guide - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-split-chunks-min-size-configuration-guide" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The minSize option in Webpack&#39;s SplitChunksPlugin dictates the minimum file size, in bytes, required for a module or group of modules to be split into a separate chunk. This article explains how the minSize threshold works, why it is critical for balancin" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-splitchunks-minsize-configuration-guide">Webpack
+SplitChunks minSize Configuration Guide</h1>
+<p>The <code>minSize</code> option in Webpack's
+<code>SplitChunksPlugin</code> dictates the minimum file size, in bytes,
+required for a module or group of modules to be split into a separate
+chunk. This article explains how the <code>minSize</code> threshold
+works, why it is critical for balancing network overhead against asset
+caching, and how to configure it effectively within your Webpack
+setup.</p>
+<h2 id="understanding-minsize">Understanding minSize</h2>
+<p>In modern web development, code splitting creates smaller bundles so
+browsers only download what they need. However, creating too many tiny
+chunks can degrade performance due to the overhead of extra HTTP
+requests. The <code>minSize</code> setting acts as a safeguard against
+excessive fragmentation by preventing Webpack from generating chunks
+that are smaller than a specified byte limit.</p>
+<p>If a potential chunk does not meet this threshold, Webpack leaves the
+code in its parent bundle or merges it with other chunks rather than
+isolating it into its own file.</p>
+<p>In Webpack 5, the default value for <code>minSize</code> is
+<code>20000</code> bytes (approximately 20 KiB) in production mode.</p>
+<h2 id="how-to-configure-minsize">How to Configure minSize</h2>
+<p>You can configure <code>minSize</code> globally within the
+<code>optimization.splitChunks</code> object, or target specific module
+groups inside the <code>cacheGroups</code> configuration.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">splitChunks</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Global threshold applied to all chunks</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">minSize</span><span class="op">:</span> <span class="dv">20000</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">cacheGroups</span><span class="op">:</span> {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">vendor</span><span class="op">:</span> {</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>          <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">[\\/]</span><span class="ss">node_modules</span><span class="sc">[\\/]</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>          <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;vendors&#39;</span><span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>          <span class="co">// Override global minSize for vendor libraries</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>          <span class="dt">minSize</span><span class="op">:</span> <span class="dv">30000</span><span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>          <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span><span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When defined within a specific cache group, that value overrides the
+global setting.</p>
+<h2 id="key-considerations">Key Considerations</h2>
+<h3 id="1-http11-vs-http2-and-http3">1. HTTP/1.1 vs. HTTP/2 and
+HTTP/3</h3>
+<p>Under HTTP/1.1, browsers are limited to a small number of
+simultaneous TCP connections per domain. Setting a higher
+<code>minSize</code> (e.g., 30–50 KiB) reduces the total number of
+requests, preventing connection bottlenecks. Under HTTP/2 and HTTP/3
+with multiplexing, smaller chunks are less penalized, allowing you to
+lower <code>minSize</code> if fine-grained cache invalidation is a
+priority.</p>
+<h3 id="2-interaction-with-maxsize">2. Interaction with maxSize</h3>
+<p>Webpack provides a companion setting called <code>maxSize</code>.
+While <code>minSize</code> enforces the lower bound,
+<code>maxSize</code> tells Webpack to try splitting chunks larger than
+that limit into smaller parts. The <code>minSize</code> property always
+takes precedence: Webpack will not split a chunk to satisfy
+<code>maxSize</code> if doing so creates a piece smaller than
+<code>minSize</code>.</p>
+<h3 id="3-development-vs-production">3. Development vs. Production</h3>
+<p>In development mode, <code>minSize</code> defaults to
+<code>10000</code> bytes to speed up build times. For production builds,
+you should monitor your real-world bundle analysis using tools like
+<code>webpack-bundle-analyzer</code> to ensure <code>minSize</code> is
+neither producing thousands of negligible micro-chunks nor bundling
+distinct third-party libraries into massive monolithic files.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-split-chunks-min-size-configuration-guide';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

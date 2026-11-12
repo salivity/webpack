@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raw, URL, and File Loader in Webpack Explained - webpack</title>
+    <meta name="description" content="Prior to Webpack 5, Webpack natively understood only JavaScript and JSON files, requiring specialized loaders to process and bundle external assets like images, fonts, and raw text. To manage these static resources, developers relied on a trio of communit">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/raw-url-and-file-loader-in-webpack-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Raw, URL, and File Loader in Webpack Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/raw-url-and-file-loader-in-webpack-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Prior to Webpack 5, Webpack natively understood only JavaScript and JSON files, requiring specialized loaders to process and bundle external assets like images, fonts, and raw text. To manage these static resources, developers relied on a trio of communit" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="raw-url-and-file-loader-in-webpack-explained">Raw, URL, and File
+Loader in Webpack Explained</h1>
+<p>Prior to Webpack 5, Webpack natively understood only JavaScript and
+JSON files, requiring specialized loaders to process and bundle external
+assets like images, fonts, and raw text. To manage these static
+resources, developers relied on a trio of community packages:
+<code>file-loader</code>, <code>url-loader</code>, and
+<code>raw-loader</code>. Each loader served a distinct role in resolving
+file paths, inlining content, or reading assets as strings. With the
+release of Webpack 5, these loaders were formally deprecated and
+replaced by native Asset Modules.</p>
+<h3 id="file-loader"><code>file-loader</code></h3>
+<p>The primary purpose of <code>file-loader</code> was to instruct
+Webpack how to emit a file into the output directory and return its
+public URL. When an asset like an image or a font was imported into a
+JavaScript file (e.g., <code>import logo from './logo.png'</code>),
+Webpack did not know how to handle the binary data natively.</p>
+<p><code>file-loader</code> resolved this by:</p>
+<ul>
+<li>Copying the target file from the source directory to the build
+output directory (such as <code>dist/</code>).</li>
+<li>Renaming the file, typically using a content hash (e.g.,
+<code>logo.d3b07384.png</code>), to support long-term browser
+caching.</li>
+<li>Returning the final public path or filename as a string export,
+allowing code like <code>&lt;img src={logo} /&gt;</code> to reference
+the correct location in the production environment.</li>
+</ul>
+<p>It was predominantly used for large images (PNG, JPEG, GIF), font
+files (WOFF, TTF, EOT), and other binary assets (PDFs, media files).</p>
+<h3 id="url-loader"><code>url-loader</code></h3>
+<p>While <code>file-loader</code> moved files to the output directory,
+making separate HTTP requests necessary to fetch them,
+<code>url-loader</code> solved the performance cost of multiple
+round-trips for small assets.</p>
+<p>The purpose of <code>url-loader</code> was to transform files into
+Base64-encoded Data URLs, inlining the asset directly into the generated
+JavaScript bundle. Its key feature was a configurable byte threshold
+(<code>limit</code> option):</p>
+<ul>
+<li><strong>Below the threshold:</strong> If the asset size was smaller
+than the defined limit (e.g., 8 KB), <code>url-loader</code> converted
+the file into a <code>data:image/png;base64,...</code> string. This
+eliminated an HTTP request at the expense of slightly increasing bundle
+size.</li>
+<li><strong>Above the threshold:</strong> If the asset exceeded the
+limit, <code>url-loader</code> automatically delegated the file to
+<code>file-loader</code> as a fallback, emitting it as a standalone
+file.</li>
+</ul>
+<p>This made <code>url-loader</code> ideal for small icons, SVGs, and
+tiny background graphics.</p>
+<h3 id="raw-loader"><code>raw-loader</code></h3>
+<p>The purpose of <code>raw-loader</code> was straightforward: it read
+the contents of a file and exported them directly as a plain JavaScript
+string.</p>
+<p>Unlike <code>url-loader</code>, which encoded binary files into
+Base64 format, <code>raw-loader</code> did not encode or move files to
+the output folder. Instead, it read the source content using UTF-8
+encoding and wrapped it inside a standard module export.</p>
+<p>Common use cases for <code>raw-loader</code> included:</p>
+<ul>
+<li>Importing raw text files (<code>.txt</code>).</li>
+<li>Reading Markdown files (<code>.md</code>) to be parsed by an
+in-browser renderer.</li>
+<li>Injecting raw SVG markup directly into the DOM as inline HTML.</li>
+<li>Importing plain CSS, GLSL shader code, or HTML template
+strings.</li>
+</ul>
+<h3 id="summary-of-webpack-5-replacements">Summary of Webpack 5
+Replacements</h3>
+<p>In Webpack 5, the functionality of these three loaders was integrated
+directly into the core runtime via Asset Modules:</p>
+<ul>
+<li><code>raw-loader</code> was replaced by
+<code>asset/source</code>.</li>
+<li><code>file-loader</code> was replaced by
+<code>asset/resource</code>.</li>
+<li><code>url-loader</code> was replaced by <code>asset/inline</code>
+(for direct inlining) or <code>asset</code> (for conditional inlining
+based on file size).</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/raw-url-and-file-loader-in-webpack-explained';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

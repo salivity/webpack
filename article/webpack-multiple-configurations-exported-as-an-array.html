@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Multiple Configurations Exported as an Array - webpack</title>
+    <meta name="description" content="When you export an array of configuration objects from a Webpack configuration file, Webpack activates its MultiCompiler feature to process each configuration independently within a single execution. This article explains how Webpack processes these confi">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-multiple-configurations-exported-as-an-array">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Multiple Configurations Exported as an Array - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-multiple-configurations-exported-as-an-array" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When you export an array of configuration objects from a Webpack configuration file, Webpack activates its MultiCompiler feature to process each configuration independently within a single execution. This article explains how Webpack processes these confi" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-multiple-configurations-exported-as-an-array">Webpack
+Multiple Configurations Exported as an Array</h1>
+<p>When you export an array of configuration objects from a Webpack
+configuration file, Webpack activates its MultiCompiler feature to
+process each configuration independently within a single execution. This
+article explains how Webpack processes these configurations
+simultaneously, manages execution order and system resources, and
+handles outputs, along with the standard use cases and trade-offs of
+this approach.</p>
+<h2 id="the-multicompiler-mechanism">The MultiCompiler Mechanism</h2>
+<p>When Webpack detects an array exported from
+<code>webpack.config.js</code> (for example,
+<code>module.exports = [clientConfig, serverConfig]</code>), it does not
+instantiate a standard single <code>Compiler</code>. Instead, it
+instantiates a <code>MultiCompiler</code>.</p>
+<p>The <code>MultiCompiler</code> acts as a wrapper that manages a
+collection of discrete <code>Compiler</code> instances. Each
+configuration object in the array receives its own isolated lifecycle,
+compilation pipeline, dependency graph, entry points, loaders, and
+plugin instances.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> clientConfig <span class="op">=</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;client&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;web&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/client.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist/client&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> serverConfig <span class="op">=</span> {</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;server&#39;</span><span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="dt">target</span><span class="op">:</span> <span class="st">&#39;node&#39;</span><span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/server.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist/server&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;server.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> [clientConfig<span class="op">,</span> serverConfig]<span class="op">;</span></span></code></pre></div>
+<h2 id="concurrency-and-resource-allocation">Concurrency and Resource
+Allocation</h2>
+<p>By default, Webpack runs the compilers in parallel or concurrently
+depending on your environment. You can control the degree of parallelism
+using the <code>--parallelism</code> flag in the Webpack CLI:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npx</span> webpack <span class="at">--parallelism</span> 2</span></code></pre></div>
+<p>Because each configuration runs through its own compilation pipeline,
+memory usage scales proportionally with the number of configurations.
+When compiling large applications, running too many configurations
+simultaneously can lead to out-of-memory errors. Setting an explicit
+limit on parallelism ensures Webpack schedules builds sequentially or in
+smaller batches.</p>
+<h2 id="configuration-independence">Configuration Independence</h2>
+<p>Each configuration in the array must be completely
+self-contained:</p>
+<ul>
+<li><strong>Plugins:</strong> Plugin instances are not shared between
+configurations. If you use a plugin like <code>HtmlWebpackPlugin</code>
+in both builds, each configuration must instantiate its own copy.</li>
+<li><strong>Output Paths:</strong> Each configuration should define a
+unique <code>output.path</code> or ensure that filenames do not collide;
+otherwise, one compiler may overwrite the artifacts of another.</li>
+<li><strong>Loaders and Resolve Rules:</strong> Module resolution and
+transformations are isolated. Settings defined in one configuration
+object do not bleed into adjacent objects.</li>
+<li><strong>Naming and Dependencies:</strong> You can assign a
+<code>name</code> property to each configuration. Webpack allows
+defining dependencies between configurations using the
+<code>dependencies</code> array (e.g.,
+<code>dependencies: ['client']</code>), which instructs Webpack to wait
+for the specified configuration to finish before starting the dependent
+one.</li>
+</ul>
+<h2 id="webpack-dev-server-behavior">Webpack Dev Server Behavior</h2>
+<p>When using <code>webpack-dev-server</code> with an array
+configuration, the server inspects the configurations to determine how
+to serve assets. By default, the server serves assets generated by all
+compilers, but dev server configurations (such as port, proxy, and
+history fallback) are typically sourced only from the first
+configuration object in the array, or from a specific configuration that
+defines a <code>devServer</code> block.</p>
+<h2 id="common-use-cases">Common Use Cases</h2>
+<ul>
+<li><strong>Server-Side Rendering (SSR):</strong> Generating a
+Node.js-targeted bundle for server execution alongside a
+browser-targeted bundle for client hydration.</li>
+<li><strong>Modern vs. Legacy Builds:</strong> Generating one bundle
+with modern JavaScript syntax for evergreen browsers and a separate,
+transpiled bundle with polyfills for legacy browsers.</li>
+<li><strong>Multi-Format Libraries:</strong> Compiling a shared library
+simultaneously into CommonJS, ESM, and UMD formats from a single
+command.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-multiple-configurations-exported-as-an-array';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

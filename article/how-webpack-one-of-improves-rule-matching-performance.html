@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack oneOf Improves Rule Matching Performance - webpack</title>
+    <meta name="description" content="This article explains how Webpack&#39;s oneOf rule configuration optimizes build performance during the module resolution phase. By default, Webpack evaluates every single file against all defined loader rules, leading to unnecessary regular expression execut">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-one-of-improves-rule-matching-performance">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack oneOf Improves Rule Matching Performance - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-one-of-improves-rule-matching-performance" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how Webpack&#39;s oneOf rule configuration optimizes build performance during the module resolution phase. By default, Webpack evaluates every single file against all defined loader rules, leading to unnecessary regular expression execut" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-oneof-improves-rule-matching-performance">How
+Webpack oneOf Improves Rule Matching Performance</h1>
+<p>This article explains how Webpack's <code>oneOf</code> rule
+configuration optimizes build performance during the module resolution
+phase. By default, Webpack evaluates every single file against all
+defined loader rules, leading to unnecessary regular expression
+executions. Utilizing <code>oneOf</code> stops the loader matching
+process as soon as the first matching condition is met, significantly
+reducing compilation overhead in large codebases.</p>
+<h3 id="the-problem-with-default-rule-matching">The Problem with Default
+Rule Matching</h3>
+<p>In a standard Webpack configuration, loaders are defined inside the
+<code>module.rules</code> array. When Webpack processes an imported
+file, it iterates sequentially through every rule in this array to see
+if the file path satisfies the <code>test</code>, <code>include</code>,
+or <code>exclude</code> conditions.</p>
+<p>Even if a file matches the very first rule in the list, Webpack
+continues evaluating it against all remaining rules because it assumes
+multiple loaders might need to target the same file type. For a project
+with hundreds of modules and a dozen loader rules, this translates to
+thousands of redundant regular expression tests, causing measurable CPU
+overhead and slowing down build times.</p>
+<h3 id="how-oneof-optimizes-the-process">How <code>oneOf</code>
+Optimizes the Process</h3>
+<p>The <code>oneOf</code> property changes this matching behavior from
+an exhaustive search to a "first-match-wins" approach. When rules are
+nested inside a <code>oneOf</code> array, Webpack evaluates them in
+order and stops checking as soon as it finds a rule that matches the
+module.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">oneOf</span><span class="op">:</span> [</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>          {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>            <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">js</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>            <span class="dt">exclude</span><span class="op">:</span> <span class="ss">/node_modules/</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>            <span class="dt">use</span><span class="op">:</span> <span class="st">&#39;babel-loader&#39;</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>          {</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>            <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">css</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>            <span class="dt">use</span><span class="op">:</span> [<span class="st">&#39;style-loader&#39;</span><span class="op">,</span> <span class="st">&#39;css-loader&#39;</span>]<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>          {</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>            <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">png</span><span class="sc">|</span><span class="ss">jpe</span><span class="sc">?</span><span class="ss">g</span><span class="sc">|</span><span class="ss">gif</span><span class="sc">)$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>            <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/resource&#39;</span><span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>          <span class="co">// Fallback loader if none of the above match</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>          {</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>            <span class="dt">exclude</span><span class="op">:</span> [<span class="ss">/</span><span class="sc">^$</span><span class="ss">/</span><span class="op">,</span> <span class="ss">/</span><span class="sc">\.(</span><span class="ss">js</span><span class="sc">|</span><span class="ss">mjs</span><span class="sc">|</span><span class="ss">jsx</span><span class="sc">|</span><span class="ss">ts</span><span class="sc">|</span><span class="ss">tsx</span><span class="sc">)$</span><span class="ss">/</span><span class="op">,</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">html</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">json</span><span class="sc">$</span><span class="ss">/</span>]<span class="op">,</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>            <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;asset/resource&#39;</span><span class="op">,</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>        ]<span class="op">,</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>By halting execution at the first match, <code>oneOf</code> provides
+key performance advantages:</p>
+<ul>
+<li><strong>Reduced Regex Execution:</strong> It eliminates subsequent
+condition checks for already-handled files, saving CPU cycles on every
+module import.</li>
+<li><strong>Faster Cold and Incremental Builds:</strong> The cumulative
+savings of skipping redundant rule checks lead to noticeable decreases
+in initial build times and faster rebuilds during development.</li>
+<li><strong>Deterministic Pipeline:</strong> It prevents accidental
+multiple transformations of the same file by competing loaders unless
+explicitly intended.</li>
+</ul>
+<h3 id="best-practices-when-using-oneof">Best Practices When Using
+<code>oneOf</code></h3>
+<p>Because <code>oneOf</code> stops at the first match, rules that must
+run for every file regardless of other loaders—such as linters
+(<code>eslint-loader</code>) or source map loaders—should remain outside
+the <code>oneOf</code> block, often paired with
+<code>enforce: 'pre'</code>.</p>
+<p>Additionally, ordering matters inside <code>oneOf</code>. Placing
+more specific rules (such as CSS Modules) above more generic ones
+(standard CSS), and frequently matched file types (like JavaScript or
+TypeScript) higher in the list, maximizes matching efficiency.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-webpack-one-of-improves-rule-matching-performance';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

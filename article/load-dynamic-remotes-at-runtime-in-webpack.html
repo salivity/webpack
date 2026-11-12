@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Load Dynamic Remotes at Runtime in Webpack - webpack</title>
+    <meta name="description" content="Dynamic remote loading in Webpack Module Federation allows host applications to integrate micro-frontends on the fly without defining hardcoded URLs or remote names in build-time configuration files. This guide details how to bypass static Webpack declara">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/load-dynamic-remotes-at-runtime-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Load Dynamic Remotes at Runtime in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/load-dynamic-remotes-at-runtime-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Dynamic remote loading in Webpack Module Federation allows host applications to integrate micro-frontends on the fly without defining hardcoded URLs or remote names in build-time configuration files. This guide details how to bypass static Webpack declara" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="load-dynamic-remotes-at-runtime-in-webpack">Load Dynamic Remotes
+at Runtime in Webpack</h1>
+<p>Dynamic remote loading in Webpack Module Federation allows host
+applications to integrate micro-frontends on the fly without defining
+hardcoded URLs or remote names in build-time configuration files. This
+guide details how to bypass static Webpack declarations by leveraging
+dynamic script injection, the Webpack sharing scope API, and runtime
+container initialization to dynamically load remote micro-frontends
+based on dynamic runtime data.</p>
+<h3 id="the-problem-with-static-declarations">The Problem with Static
+Declarations</h3>
+<p>Typically, Webpack Module Federation requires remotes to be declared
+directly inside the <code>ModuleFederationPlugin</code>
+configuration:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;host&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">remotes</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">mfeApp</span><span class="op">:</span> <span class="st">&#39;mfeApp@https://example.com/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<p>While functional, this approach tightly couples the host application
+to a specific URL at build time. It prevents environments from swapping
+endpoints dynamically, resolving micro-frontends through an API
+manifest, or implementing multi-tenant architectures where different
+remotes are loaded depending on the active user.</p>
+<h3 id="the-runtime-loading-mechanism">The Runtime Loading
+Mechanism</h3>
+<p>Webpack exposes low-level APIs to initialize and consume remote
+containers at runtime:</p>
+<ol type="1">
+<li><strong><code>__webpack_init_sharing__('default')</code></strong>:
+Initializes the global shared scope across the host and remotes,
+ensuring shared dependencies (like React or Lodash) resolve
+correctly.</li>
+<li><strong><code>__webpack_share_scopes__.default</code></strong>: The
+shared dependency registry passed to the remote container.</li>
+<li><strong>Container Interface</strong>: Every Webpack remote entry
+exposes a global container object with two primary methods:
+<code>init(shareScope)</code> to receive dependencies and
+<code>get(module)</code> to provide the requested federated module.</li>
+</ol>
+<h3 id="step-by-step-implementation">Step-by-Step Implementation</h3>
+<p>To load a remote container dynamically, you must append the
+<code>remoteEntry.js</code> script to the DOM, initialize the remote
+container, and resolve the federated module via standard JavaScript
+Promises.</p>
+<h4 id="1-dynamic-script-loader">1. Dynamic Script Loader</h4>
+<p>Create a helper function that injects the remote script tag into the
+document head:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">loadScript</span>(url) {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="kw">new</span> <span class="bu">Promise</span>((resolve<span class="op">,</span> reject) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> existingScript <span class="op">=</span> <span class="bu">document</span><span class="op">.</span><span class="fu">querySelector</span>(<span class="vs">`script[src=&quot;</span><span class="sc">${</span>url<span class="sc">}</span><span class="vs">&quot;]`</span>)<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (existingScript) {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">resolve</span>()<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span><span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> script <span class="op">=</span> <span class="bu">document</span><span class="op">.</span><span class="fu">createElement</span>(<span class="st">&#39;script&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    script<span class="op">.</span><span class="at">src</span> <span class="op">=</span> url<span class="op">;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    script<span class="op">.</span><span class="at">type</span> <span class="op">=</span> <span class="st">&#39;text/javascript&#39;</span><span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    script<span class="op">.</span><span class="at">async</span> <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    script<span class="op">.</span><span class="at">onload</span> <span class="op">=</span> () <span class="kw">=&gt;</span> <span class="fu">resolve</span>()<span class="op">;</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    script<span class="op">.</span><span class="at">onerror</span> <span class="op">=</span> () <span class="kw">=&gt;</span> <span class="fu">reject</span>(<span class="kw">new</span> <span class="bu">Error</span>(<span class="vs">`Failed to load script: </span><span class="sc">${</span>url<span class="sc">}</span><span class="vs">`</span>))<span class="op">;</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="bu">document</span><span class="op">.</span><span class="at">head</span><span class="op">.</span><span class="fu">appendChild</span>(script)<span class="op">;</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="2-container-initializer-and-module-resolver">2. Container
+Initializer and Module Resolver</h4>
+<p>Once the script has executed, access the global variable exposed by
+the remote container, initialize its shared scope, and request the
+exposed module:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">async</span> <span class="kw">function</span> <span class="fu">loadDynamicRemote</span>({ url<span class="op">,</span> scope<span class="op">,</span> module }) {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Step 1: Load the remote script</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">await</span> <span class="fu">loadScript</span>(url)<span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Step 2: Initialize Webpack&#39;s shared scope</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">await</span> <span class="fu">__webpack_init_sharing__</span>(<span class="st">&#39;default&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Step 3: Access the container attached to the window object</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> container <span class="op">=</span> <span class="bu">window</span>[scope]<span class="op">;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="op">!</span>container) {</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">throw</span> <span class="kw">new</span> <span class="bu">Error</span>(<span class="vs">`Container &#39;</span><span class="sc">${</span>scope<span class="sc">}</span><span class="vs">&#39; not found on window.`</span>)<span class="op">;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Step 4: Initialize the container with the host&#39;s shared scope</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  <span class="cf">await</span> container<span class="op">.</span><span class="fu">init</span>(__webpack_share_scopes__<span class="op">.</span><span class="at">default</span>)<span class="op">;</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Step 5: Extract the federated module</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> factory <span class="op">=</span> <span class="cf">await</span> container<span class="op">.</span><span class="fu">get</span>(module)<span class="op">;</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="fu">factory</span>()<span class="op">;</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="consuming-dynamic-modules-in-applications">Consuming Dynamic
+Modules in Applications</h3>
+<p>You can consume these dynamic modules directly using async workflows
+or integrate them natively into framework components.</p>
+<h4 id="react-implementation">React Implementation</h4>
+<p>For React applications, combine the loader with
+<code>React.lazy</code> to mount components dynamically:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> React<span class="op">,</span> { lazy<span class="op">,</span> Suspense } <span class="im">from</span> <span class="st">&#39;react&#39;</span><span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">DynamicRemoteComponent</span>({ url<span class="op">,</span> scope<span class="op">,</span> module }) {</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> Component <span class="op">=</span> <span class="fu">lazy</span>(() <span class="kw">=&gt;</span> <span class="fu">loadDynamicRemote</span>({ url<span class="op">,</span> scope<span class="op">,</span> module }))<span class="op">;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> (</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">&lt;Suspense</span> <span class="ot">fallback</span><span class="op">=</span><span class="va">{</span><span class="kw">&lt;div&gt;</span>Loading remote component...<span class="kw">&lt;/div&gt;</span><span class="va">}</span><span class="fu">&gt;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>      <span class="fu">&lt;Component</span> <span class="fu">/&gt;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">&lt;/Suspense&gt;</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co">// Usage</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="im">default</span> <span class="kw">function</span> <span class="fu">App</span>() {</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> (</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">&lt;div&gt;</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>      <span class="kw">&lt;h1&gt;</span>Host Application<span class="kw">&lt;/h1&gt;</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>      <span class="fu">&lt;DynamicRemoteComponent</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>        <span class="ot">url</span><span class="op">=</span><span class="st">&quot;https://cdn.example.com/analytics/remoteEntry.js&quot;</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>        <span class="ot">scope</span><span class="op">=</span><span class="st">&quot;analyticsApp&quot;</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>        <span class="ot">module</span><span class="op">=</span><span class="st">&quot;./Widget&quot;</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>      <span class="fu">/&gt;</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    <span class="kw">&lt;/div&gt;</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="key-considerations-for-runtime-federation">Key Considerations
+for Runtime Federation</h3>
+<ul>
+<li><strong>Error Handling</strong>: Network interruptions or missing
+remote entries will trigger standard promise rejections. Implement
+robust error boundaries or fallback states to prevent application
+crashes.</li>
+<li><strong>Shared Scope Race Conditions</strong>:
+<code>__webpack_init_sharing__('default')</code> caches its
+initialization promise, making it safe to execute multiple times across
+concurrent component loads.</li>
+<li><strong>Idempotency</strong>: Webpack containers throw an error if
+<code>.init()</code> is called more than once on the same container. In
+production implementations, store loaded container states in a local
+cache to avoid re-initialization.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/load-dynamic-remotes-at-runtime-in-webpack';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

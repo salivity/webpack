@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Default Export Interop: CommonJS and ESM - webpack</title>
+    <meta name="description" content="Webpack bridges the architectural gap between CommonJS (CJS) and ECMAScript Modules (ESM) using compile-time transformations and runtime compatibility helpers. When managing default exports across these module systems, Webpack inspects the module format a">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-default-export-interop-common-js-and-esm">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Default Export Interop: CommonJS and ESM - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-default-export-interop-common-js-and-esm" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack bridges the architectural gap between CommonJS (CJS) and ECMAScript Modules (ESM) using compile-time transformations and runtime compatibility helpers. When managing default exports across these module systems, Webpack inspects the module format a" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-default-export-interop-commonjs-and-esm">Webpack Default
+Export Interop: CommonJS and ESM</h1>
+<p>Webpack bridges the architectural gap between CommonJS (CJS) and
+ECMAScript Modules (ESM) using compile-time transformations and runtime
+compatibility helpers. When managing default exports across these module
+systems, Webpack inspects the module format and metadata
+flags—specifically <code>__esModule</code>—to determine whether an
+import targets a module's raw exports object or a designated
+<code>default</code> property. This mechanism ensures that code using
+modern <code>import</code> statements can interact reliably with legacy
+<code>module.exports</code> packages, and vice versa.</p>
+<h3 id="the-role-of-the-__esmodule-flag">The Role of the
+<code>__esModule</code> Flag</h3>
+<p>Because CommonJS natively lacks the concept of a "default" export,
+tools like Babel and TypeScript introduced the <code>__esModule</code>
+boolean marker on the <code>exports</code> object to indicate that a CJS
+file was compiled from an original ES module source.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Object</span><span class="op">.</span><span class="fu">defineProperty</span>(exports<span class="op">,</span> <span class="st">&quot;__esModule&quot;</span><span class="op">,</span> { <span class="dt">value</span><span class="op">:</span> <span class="kw">true</span> })<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>exports<span class="op">.</span><span class="at">default</span> <span class="op">=</span> <span class="kw">function</span> <span class="fu">example</span>() {}<span class="op">;</span></span></code></pre></div>
+<p>Webpack evaluates this flag at runtime to dynamically route default
+import requests.</p>
+<h3 id="importing-commonjs-into-es-modules">Importing CommonJS into ES
+Modules</h3>
+<p>When you use an ESM <code>import</code> to consume a CommonJS
+module:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> myLibrary <span class="im">from</span> <span class="st">&#39;./legacy-module.cjs&#39;</span><span class="op">;</span></span></code></pre></div>
+<p>Webpack generates an internal helper (historically
+<code>__webpack_require__.n</code>) to resolve the import target. The
+helper executes the following logic:</p>
+<ol type="1">
+<li><strong>If <code>__esModule</code> is true:</strong> Webpack treats
+the module as transpiled ESM and assigns
+<code>module.exports.default</code> to <code>myLibrary</code>.</li>
+<li><strong>If <code>__esModule</code> is false or absent:</strong>
+Webpack identifies the module as native CommonJS. It assigns the entire
+<code>module.exports</code> object directly to
+<code>myLibrary</code>.</li>
+</ol>
+<p>This allows developers to import traditional CJS libraries—such as
+Lodash—using <code>import _ from 'lodash'</code> without needing to
+write <code>import * as _</code> or accessing
+<code>_.default</code>.</p>
+<h3 id="requiring-es-modules-from-commonjs">Requiring ES Modules from
+CommonJS</h3>
+<p>When you use <code>require()</code> to pull in an ES module:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> myModule <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;./esm-module.js&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<p>CommonJS has no standard mechanism to infer an unwrap operation for
+default exports. Consequently, Webpack returns the entire module
+namespace object. In this scenario:</p>
+<ul>
+<li><code>myModule</code> contains all named exports as keys.</li>
+<li>The default export is accessible only through the
+<code>.default</code> property:</li>
+</ul>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> value <span class="op">=</span> myModule<span class="op">.</span><span class="at">default</span><span class="op">;</span></span></code></pre></div>
+<p>Webpack does not automatically unwrap the default export when using
+<code>require()</code>, maintaining consistency with Node.js module
+resolution semantics.</p>
+<h3 id="webpack-runtime-helper-implementation">Webpack Runtime Helper
+Implementation</h3>
+<p>Under the hood, Webpack wraps imported dependencies inside a getter
+function to maintain live bindings and handle interop:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Webpack&#39;s compatibility getter helper</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>__webpack_require__<span class="op">.</span><span class="at">n</span> <span class="op">=</span> <span class="kw">function</span>(module) {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">var</span> getter <span class="op">=</span> module <span class="op">&amp;&amp;</span> module<span class="op">.</span><span class="at">__esModule</span> <span class="op">?</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span>() { <span class="cf">return</span> module[<span class="st">&#39;default&#39;</span>]<span class="op">;</span> } <span class="op">:</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span>() { <span class="cf">return</span> module<span class="op">;</span> }<span class="op">;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  __webpack_require__<span class="op">.</span><span class="fu">d</span>(getter<span class="op">,</span> { <span class="dt">a</span><span class="op">:</span> getter })<span class="op">;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> getter<span class="op">;</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When an ESM file accesses the default import, Webpack executes this
+getter, returning <code>module['default']</code> if the module was
+authored as ESM, or the root <code>module</code> object if it originated
+as CommonJS.</p>
+<h3 id="webpack-5-strict-esm-handling">Webpack 5 Strict ESM
+Handling</h3>
+<p>In Webpack 5, interoperability rules depend on file extensions and
+the <code>package.json</code> <code>"type"</code> field:</p>
+<ul>
+<li>Files ending in <code>.mjs</code> or within a package marked
+<code>"type": "module"</code> are treated as strict ECMAScript
+modules.</li>
+<li>In strict mode, Webpack mirrors Node.js behavior: importing a
+CommonJS file via <code>import defaultExport from './cjs'</code> assigns
+the entire <code>module.exports</code> object to
+<code>defaultExport</code>, ignoring the <code>__esModule</code> flag
+unless configured otherwise via <code>javascript/auto</code> or specific
+module rules.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-default-export-interop-common-js-and-esm';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

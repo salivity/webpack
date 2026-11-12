@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Disable resolve.symlinks in Webpack Monorepos - webpack</title>
+    <meta name="description" content="Webpack resolves symlinks to their real path by default, which can introduce critical module resolution errors, duplicated dependencies, and broken singletons in monorepo architectures. Tools like Yarn Workspaces, npm workspaces, and pnpm rely heavily on">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/why-disable-resolve-symlinks-in-webpack-monorepos">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Disable resolve.symlinks in Webpack Monorepos - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/why-disable-resolve-symlinks-in-webpack-monorepos" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack resolves symlinks to their real path by default, which can introduce critical module resolution errors, duplicated dependencies, and broken singletons in monorepo architectures. Tools like Yarn Workspaces, npm workspaces, and pnpm rely heavily on" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-disable-resolvesymlinks-in-webpack-monorepos">Why Disable
+resolve.symlinks in Webpack Monorepos</h1>
+<p>Webpack resolves symlinks to their real path by default, which can
+introduce critical module resolution errors, duplicated dependencies,
+and broken singletons in monorepo architectures. Tools like Yarn
+Workspaces, npm workspaces, and pnpm rely heavily on symlinks to link
+shared local packages into consuming applications. Disabling
+<code>resolve.symlinks</code> by setting it to <code>false</code> alters
+how Webpack traverses the directory tree, forcing it to resolve nested
+dependencies relative to the symlink's location rather than its
+canonical path on disk.</p>
+<h2 id="how-webpack-handles-symlinks-by-default">How Webpack Handles
+Symlinks by Default</h2>
+<p>By default, Webpack sets <code>resolve.symlinks: true</code>. When
+Webpack encounters an imported package that is a symlink, it uses the
+Node.js <code>fs.realpath</code> equivalent to determine the file's
+canonical location.</p>
+<p>For example, if <code>packages/app</code> depends on a local monorepo
+package <code>packages/ui</code>, a symlink exists at:
+<code>packages/app/node_modules/@monorepo/ui</code> -&gt;
+<code>packages/ui</code></p>
+<p>With <code>resolve.symlinks: true</code>, Webpack resolves the path
+to <code>packages/ui/src/index.js</code>.</p>
+<h2 id="the-dependency-lookup-problem">The Dependency Lookup
+Problem</h2>
+<p>Node's module resolution algorithm searches for dependencies by
+walking up the directory tree from the importing file until it finds a
+<code>node_modules</code> directory. When Webpack uses the canonical
+path (<code>packages/ui</code>), the search path becomes:</p>
+<ol type="1">
+<li><code>packages/ui/node_modules</code></li>
+<li><code>packages/node_modules</code></li>
+<li><code>/node_modules</code> (the monorepo root)</li>
+</ol>
+<p>Webpack completely bypasses <code>packages/app/node_modules</code>.
+This creates several major issues:</p>
+<h3 id="1-duplicate-dependency-instances-broken-singletons">1. Duplicate
+Dependency Instances (Broken Singletons)</h3>
+<p>Libraries like React, GraphQL, and styled-components rely on single
+instances at runtime. If <code>packages/app</code> and
+<code>packages/ui</code> both import React, resolving the symlink to
+<code>packages/ui</code> can cause Webpack to bundle two distinct copies
+of React—one from the root or local <code>node_modules</code> and one
+from the application. This typically results in fatal runtime errors,
+such as React's "Invalid hook call" error.</p>
+<h3 id="2-broken-peer-dependencies">2. Broken Peer Dependencies</h3>
+<p>Shared internal packages often declare peer dependencies (like
+<code>@angular/core</code> or <code>react</code>) that are meant to be
+provided by the consumer application (<code>packages/app</code>). When
+Webpack jumps to the real path of <code>packages/ui</code>, it expects
+the peer dependencies to exist in the ancestry of
+<code>packages/ui</code>. If they are only installed in
+<code>packages/app/node_modules</code>, Webpack fails to resolve them
+entirely.</p>
+<h3 id="3-inconsistent-build-contexts">3. Inconsistent Build
+Contexts</h3>
+<p>When loaders (such as <code>babel-loader</code> or
+<code>ts-loader</code>) process files based on <code>include</code> or
+<code>exclude</code> regex rules, canonical paths can break these
+filters. A rule intended to exclude <code>/node_modules/</code> might
+fail to match, or a rule targeting only files inside
+<code>packages/app/src</code> will unexpectedly process files from
+<code>packages/ui</code> because their real paths sit outside the
+expected root.</p>
+<h2 id="why-disabling-resolvesymlinks-solves-the-issue">Why Disabling
+<code>resolve.symlinks</code> Solves the Issue</h2>
+<p>Setting <code>resolve.symlinks: false</code> in your
+<code>webpack.config.js</code> instructs Webpack to treat the symlink
+itself as the actual directory path:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">symlinks</span><span class="op">:</span> <span class="kw">false</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>With this configuration, when <code>packages/app</code> imports
+<code>@monorepo/ui</code>, Webpack views the file path as:
+<code>packages/app/node_modules/@monorepo/ui/src/index.js</code></p>
+<p>Module resolution now walks up the consumer tree:</p>
+<ol type="1">
+<li><code>packages/app/node_modules/@monorepo/ui/node_modules</code></li>
+<li><code>packages/app/node_modules</code></li>
+<li><code>packages/node_modules</code></li>
+<li><code>/node_modules</code> (the root)</li>
+</ol>
+<p>This lookup hierarchy ensures that any dependencies imported by the
+shared module are resolved using the consuming application's
+<code>node_modules</code> directory first, preventing multiple instances
+of shared libraries and allowing peer dependencies to resolve as
+intended.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/why-disable-resolve-symlinks-in-webpack-monorepos';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

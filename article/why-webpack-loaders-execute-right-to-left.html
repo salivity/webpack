@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Webpack Loaders Execute Right-to-Left - webpack</title>
+    <meta name="description" content="In Webpack, chained loaders are executed from right-to-left (or bottom-to-top in multiline arrays) rather than left-to-right. This article explores why Webpack adopted this convention, demonstrating how functional programming concepts like function compos">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/why-webpack-loaders-execute-right-to-left">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Why Webpack Loaders Execute Right-to-Left - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/why-webpack-loaders-execute-right-to-left" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Webpack, chained loaders are executed from right-to-left (or bottom-to-top in multiline arrays) rather than left-to-right. This article explores why Webpack adopted this convention, demonstrating how functional programming concepts like function compos" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="why-webpack-loaders-execute-right-to-left">Why Webpack Loaders
+Execute Right-to-Left</h1>
+<p>In Webpack, chained loaders are executed from right-to-left (or
+bottom-to-top in multiline arrays) rather than left-to-right. This
+article explores why Webpack adopted this convention, demonstrating how
+functional programming concepts like function composition dictate this
+behavior, how the transformation pipeline processes files, and how the
+underlying loader execution phases work.</p>
+<h2 id="the-principle-of-function-composition">The Principle of Function
+Composition</h2>
+<p>The primary reason Webpack executes loaders from right-to-left is
+functional programming composition. In mathematics and functional
+programming languages, composing two functions <span
+class="math inline">\(f\)</span> and <span
+class="math inline">\(g\)</span> is denoted as <span
+class="math inline">\((f \circ g)(x)\)</span>, which evaluates to:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">f</span>(<span class="fu">g</span>(x))</span></code></pre></div>
+<p>In this composition, the innermost function <code>g</code> must
+execute first to produce a result, which is then passed as an argument
+to the outer function <code>f</code>.</p>
+<p>When you configure loaders in <code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">css</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> [<span class="st">&#39;style-loader&#39;</span><span class="op">,</span> <span class="st">&#39;css-loader&#39;</span><span class="op">,</span> <span class="st">&#39;sass-loader&#39;</span>]<span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Webpack conceptually interprets this array as composed functions:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">styleLoader</span>(<span class="fu">cssLoader</span>(<span class="fu">sassLoader</span>(sourceCode)))</span></code></pre></div>
+<p>Because <code>sass-loader</code> is the innermost function, it must
+run first, followed by <code>css-loader</code>, and finally
+<code>style-loader</code>.</p>
+<h2 id="the-transformation-pipeline">The Transformation Pipeline</h2>
+<p>Loaders are designed to transform source code from one format to
+another in a step-by-step pipeline. For a Sass file to end up as styles
+applied on a web page, the transformation must happen in a specific
+order:</p>
+<ol type="1">
+<li><strong><code>sass-loader</code></strong>: Takes raw SCSS/Sass and
+compiles it into standard CSS.</li>
+<li><strong><code>css-loader</code></strong>: Takes that standard CSS,
+resolves <code>@import</code> and <code>url()</code> statements, and
+translates it into a JavaScript module.</li>
+<li><strong><code>style-loader</code></strong>: Takes the exported CSS
+string module and creates a <code>&lt;style&gt;</code> tag to inject the
+CSS into the DOM.</li>
+</ol>
+<p>If Webpack executed left-to-right, <code>style-loader</code> would
+attempt to inject uncompiled Sass directly into the DOM, breaking the
+build. Reading from right-to-left (or bottom-to-top when formatted
+vertically) ensures that each loader receives the transformed output of
+the loader that ran immediately before it.</p>
+<h2 id="pitching-vs-normal-phases">Pitching vs. Normal Phases</h2>
+<p>While loader transformations run from right-to-left, Webpack's loader
+runtime actually operates in two distinct phases: the
+<strong>pitching</strong> phase and the <strong>normal</strong>
+phase.</p>
+<pre class="text"><code>|- style-loader `pitch`
+  |- css-loader `pitch`
+    |- sass-loader `pitch`
+       [File is read from disk]
+    |- sass-loader (normal execution)
+  |- css-loader (normal execution)
+|- style-loader (normal execution)</code></pre>
+<ol type="1">
+<li><strong>Pitching Phase (Left-to-Right):</strong> Webpack iterates
+through the array from left to right (0 to <span
+class="math inline">\(n\)</span>), checking if each loader defines a
+<code>pitch</code> method. If a loader's <code>pitch</code> method
+returns a value, Webpack skips the remaining loaders, bypasses reading
+the source file, and immediately reverses execution to the normal phase
+of the preceding loaders.</li>
+<li><strong>Normal Phase (Right-to-Left):</strong> If no pitch method
+returns a result, Webpack reads the target file from the filesystem and
+executes each loader's normal export function from right to left (<span
+class="math inline">\(n\)</span> to 0), passing the transformed source
+down the line until the final module is generated.</li>
+</ol>
+<p>Webpack uses the right-to-left order for its normal phase to align
+directly with function composition, allowing developers to pipe data
+cleanly from one transform to the next.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/why-webpack-loaders-execute-right-to-left';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Service Worker Pre-Caching for Offline Apps - webpack</title>
+    <meta name="description" content="Building an offline-first web application requires intercepting network requests and serving cached assets when connectivity is lost. This article demonstrates how to configure Webpack with Google’s Workbox plugin to automatically pre-cache static assets">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-service-worker-pre-caching-for-offline-apps">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Service Worker Pre-Caching for Offline Apps - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-service-worker-pre-caching-for-offline-apps" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Building an offline-first web application requires intercepting network requests and serving cached assets when connectivity is lost. This article demonstrates how to configure Webpack with Google’s Workbox plugin to automatically pre-cache static assets" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-service-worker-pre-caching-for-offline-apps">Webpack
+Service Worker Pre-Caching for Offline Apps</h1>
+<p>Building an offline-first web application requires intercepting
+network requests and serving cached assets when connectivity is lost.
+This article demonstrates how to configure Webpack with Google’s Workbox
+plugin to automatically pre-cache static assets during the build
+process. By following this guide, you will learn how to install the
+required plugins, update your Webpack configuration, and register the
+service worker within your client-side application code.</p>
+<h3 id="1-install-the-workbox-webpack-plugin">1. Install the Workbox
+Webpack Plugin</h3>
+<p>The recommended tool for integrating service worker pre-caching into
+Webpack is <code>workbox-webpack-plugin</code>. Install it as a
+development dependency using npm:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install workbox-webpack-plugin <span class="at">--save-dev</span></span></code></pre></div>
+<h3 id="2-configure-webpack">2. Configure Webpack</h3>
+<p>The plugin provides two primary modes: <code>GenerateSW</code> and
+<code>InjectManifest</code>. For standard pre-caching without custom
+service worker code, <code>GenerateSW</code> is the simplest and most
+effective option. It automatically creates a service worker file and
+generates a pre-cache manifest containing your Webpack build
+outputs.</p>
+<p>Open your <code>webpack.config.js</code> and add the plugin:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> HtmlWebpackPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;html-webpack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> WorkboxPlugin <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;workbox-webpack-plugin&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].js&#39;</span><span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">clean</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">HtmlWebpackPlugin</span>({</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>      <span class="dt">template</span><span class="op">:</span> <span class="st">&#39;./src/index.html&#39;</span><span class="op">,</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> WorkboxPlugin<span class="op">.</span><span class="fu">GenerateSW</span>({</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Forces waiting service workers to become active immediately</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>      <span class="dt">clientsClaim</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>      <span class="dt">skipWaiting</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Name of the output service worker file</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>      <span class="dt">swDest</span><span class="op">:</span> <span class="st">&#39;service-worker.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When Webpack runs in production mode, <code>GenerateSW</code>
+analyzes all compiled bundles (JavaScript, CSS, images) and embeds their
+URLs along with content hashes into <code>service-worker.js</code>.</p>
+<h3 id="3-register-the-service-worker-in-your-application">3. Register
+the Service Worker in Your Application</h3>
+<p>A generated service worker will not run until it is explicitly
+registered by the client. Add registration logic to your application's
+entry point (such as <code>src/index.js</code>):</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="st">&#39;serviceWorker&#39;</span> <span class="kw">in</span> <span class="bu">navigator</span> <span class="op">&amp;&amp;</span> <span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">NODE_ENV</span> <span class="op">===</span> <span class="st">&#39;production&#39;</span>) {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="bu">window</span><span class="op">.</span><span class="fu">addEventListener</span>(<span class="st">&#39;load&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="bu">navigator</span><span class="op">.</span><span class="at">serviceWorker</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">register</span>(<span class="st">&#39;/service-worker.js&#39;</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">then</span>((registration) <span class="kw">=&gt;</span> {</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&#39;Service Worker registered: &#39;</span><span class="op">,</span> registration)<span class="op">;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      })</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">catch</span>((registrationError) <span class="kw">=&gt;</span> {</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="bu">console</span><span class="op">.</span><span class="fu">error</span>(<span class="st">&#39;Service Worker registration failed: &#39;</span><span class="op">,</span> registrationError)<span class="op">;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>      })<span class="op">;</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  })<span class="op">;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Registering on the <code>window</code> load event prevents the
+service worker registration process from contending with the initial
+page rendering performance.</p>
+<h3 id="4-customizing-pre-caching-limits-and-exclusions">4. Customizing
+Pre-Caching Limits and Exclusions</h3>
+<p>By default, Workbox ignores files larger than 2 MB. You can adjust
+limits or filter specific file formats using configuration flags in
+<code>GenerateSW</code>:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> WorkboxPlugin<span class="op">.</span><span class="fu">GenerateSW</span>({</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">clientsClaim</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">skipWaiting</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">swDest</span><span class="op">:</span> <span class="st">&#39;service-worker.js&#39;</span><span class="op">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Exclude map files or specific vendor files</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">exclude</span><span class="op">:</span> [<span class="ss">/</span><span class="sc">\.</span><span class="ss">map</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span> <span class="ss">/manifest</span><span class="sc">\.</span><span class="ss">json</span><span class="sc">$</span><span class="ss">/</span>]<span class="op">,</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Increase file size limit to 4MB if needed</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">maximumFileSizeToCacheInBytes</span><span class="op">:</span> <span class="dv">4</span> <span class="op">*</span> <span class="dv">1024</span> <span class="op">*</span> <span class="dv">1024</span><span class="op">,</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<h3 id="5-testing-the-offline-functionality">5. Testing the Offline
+Functionality</h3>
+<ol type="1">
+<li>Build your project using
+<code>npx webpack --mode production</code>.</li>
+<li>Serve the generated <code>dist</code> directory using a local web
+server (e.g., <code>npx serve dist</code>). Note that service workers
+require HTTPS or <code>localhost</code>.</li>
+<li>Open your browser's Developer Tools and navigate to the
+<strong>Application</strong> tab.</li>
+<li>Under <strong>Service Workers</strong>, verify that
+<code>service-worker.js</code> is installed and running.</li>
+<li>Check the <strong>Cache Storage</strong> tab to confirm that your
+compiled assets appear in the pre-cache list.</li>
+<li>Check the <strong>Offline</strong> checkbox in Developer Tools and
+reload the page; the application should load successfully without an
+active network connection.</li>
+</ol></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-service-worker-pre-caching-for-offline-apps';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

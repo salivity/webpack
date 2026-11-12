@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Version Mismatches in Webpack Module Federation - webpack</title>
+    <meta name="description" content="Managing shared dependencies across micro-frontends can lead to runtime crashes or redundant code downloads when hosts and remotes rely on conflicting package versions. This article explains how Webpack Module Federation negotiates library versions, how t">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/fix-version-mismatches-in-webpack-module-federation">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Fix Version Mismatches in Webpack Module Federation - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/fix-version-mismatches-in-webpack-module-federation" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Managing shared dependencies across micro-frontends can lead to runtime crashes or redundant code downloads when hosts and remotes rely on conflicting package versions. This article explains how Webpack Module Federation negotiates library versions, how t" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="fix-version-mismatches-in-webpack-module-federation">Fix Version
+Mismatches in Webpack Module Federation</h1>
+<p>Managing shared dependencies across micro-frontends can lead to
+runtime crashes or redundant code downloads when hosts and remotes rely
+on conflicting package versions. This article explains how Webpack
+Module Federation negotiates library versions, how to configure the
+<code>shared</code> option to enforce compatibility, and how to prevent
+multiple instances of stateful packages like React.</p>
+<h3 id="how-module-federation-resolves-versions">How Module Federation
+Resolves Versions</h3>
+<p>Webpack Module Federation uses a shared scope mechanism to register
+and negotiate dependencies at runtime. When a host or remote
+initializes, it registers its own shared dependencies and their
+respective versions into this shared scope.</p>
+<p>By default, Webpack determines whether to reuse an existing library
+or fetch a new one based on Semantic Versioning (SemVer):</p>
+<ul>
+<li>If the requested version satisfies the SemVer range required by the
+consuming container, Webpack reuses the already loaded version.</li>
+<li>If the versions are incompatible (for example, a major version
+difference such as <code>v17.x</code> vs. <code>v18.x</code>), Webpack
+will download and load the second version separately to avoid breaking
+the application.</li>
+</ul>
+<h3 id="enforcing-single-instances-with-singleton">Enforcing Single
+Instances with <code>singleton</code></h3>
+<p>Certain libraries rely on global state, contexts, or DOM access and
+cannot have more than one instance running in the application (e.g.,
+<code>react</code>, <code>react-dom</code>, <code>vue</code>, or state
+management libraries). Loading two copies of React, for example,
+typically causes the "Invalid Hook Call" error.</p>
+<p>To ensure only one instance is ever loaded, use the
+<code>singleton</code> flag:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;host&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">shared</span><span class="op">:</span> {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">react</span><span class="op">:</span> {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>          <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="st">&#39;react-dom&#39;</span><span class="op">:</span> {</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>          <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When <code>singleton: true</code> is set, Webpack will always choose
+the highest available version in the shared scope and provide that
+single instance to all containers.</p>
+<h3
+id="controlling-compatibility-with-requiredversion-and-strictversion">Controlling
+Compatibility with <code>requiredVersion</code> and
+<code>strictVersion</code></h3>
+<p>While <code>singleton: true</code> guarantees a single copy, it does
+not guarantee that the highest available version is backward-compatible
+with older containers. If an older micro-frontend requires React 17 and
+a newer one introduces React 18, forcing React 18 on the older container
+could introduce bugs.</p>
+<p>To control this behavior, combine <code>requiredVersion</code> with
+<code>strictVersion</code>:</p>
+<ul>
+<li><strong><code>requiredVersion</code></strong>: Explicitly defines
+the SemVer range accepted by the container. You can set this manually or
+read it dynamically from your <code>package.json</code>.</li>
+<li><strong><code>strictVersion</code></strong>: Dictates the behavior
+when a version check fails. If set to <code>true</code>, Webpack throws
+a runtime error instead of logging a console warning and proceeding with
+an incompatible version.</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> deps <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;./package.json&#39;</span>)<span class="op">.</span><span class="at">dependencies</span><span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;remote_app&#39;</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">shared</span><span class="op">:</span> {</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">react</span><span class="op">:</span> {</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>          <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>          <span class="dt">requiredVersion</span><span class="op">:</span> deps<span class="op">.</span><span class="at">react</span><span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>          <span class="dt">strictVersion</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> <span class="co">// Throws an error if versions do not match the range</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="st">&#39;react-dom&#39;</span><span class="op">:</span> {</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>          <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>          <span class="dt">requiredVersion</span><span class="op">:</span> deps[<span class="st">&#39;react-dom&#39;</span>]<span class="op">,</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>          <span class="dt">strictVersion</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3
+id="deciding-between-shared-instances-and-isolated-duplicates">Deciding
+Between Shared Instances and Isolated Duplicates</h3>
+<p>For stateless, utility-driven libraries (such as <code>lodash</code>
+or <code>date-fns</code>), having multiple versions loaded
+simultaneously is often acceptable and safer than forcing an
+incompatible update.</p>
+<ul>
+<li><strong>For stateful libraries:</strong> Always configure
+<code>singleton: true</code>, specify <code>requiredVersion</code>, and
+evaluate whether <code>strictVersion: true</code> is necessary to
+prevent silent regressions.</li>
+<li><strong>For stateless utility libraries:</strong> Omit
+<code>singleton</code>. Allow Webpack to resolve the highest compatible
+version, or fall back to loading duplicate copies if the versions
+diverge across major releases.</li>
+</ul>
+<h3 id="proactive-governance-and-tooling">Proactive Governance and
+Tooling</h3>
+<p>Relying entirely on runtime negotiation adds operational risk. To
+minimize version mismatches before reaching production:</p>
+<ol type="1">
+<li><strong>Monorepo Architecture:</strong> Use tools like Nx,
+Turborepo, or pnpm workspaces to enforce a single source of truth for
+core dependencies across all micro-frontends.</li>
+<li><strong>Automated CI Checks:</strong> Implement pull request checks
+that parse each micro-frontend's <code>package.json</code> to flag
+mismatched major or minor dependencies prior to merging.</li>
+<li><strong>Coordinated Upgrades:</strong> Establish an upgrade cadence
+across teams for critical foundation packages so that remotes and hosts
+stay within compatible version ranges.</li>
+</ol></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/fix-version-mismatches-in-webpack-module-federation';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

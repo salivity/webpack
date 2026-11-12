@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role of Remotes in Webpack Module Federation - webpack</title>
+    <meta name="description" content="Webpack Module Federation revolutionizes micro-frontend architectures by allowing distinct JavaScript builds to dynamically share code at runtime. Within the ModuleFederationPlugin configuration, the remotes option acts as the bridge connecting a host app">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/role-of-remotes-in-webpack-module-federation">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Role of Remotes in Webpack Module Federation - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/role-of-remotes-in-webpack-module-federation" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack Module Federation revolutionizes micro-frontend architectures by allowing distinct JavaScript builds to dynamically share code at runtime. Within the ModuleFederationPlugin configuration, the remotes option acts as the bridge connecting a host app" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="role-of-remotes-in-webpack-module-federation">Role of Remotes in
+Webpack Module Federation</h1>
+<p>Webpack Module Federation revolutionizes micro-frontend architectures
+by allowing distinct JavaScript builds to dynamically share code at
+runtime. Within the <code>ModuleFederationPlugin</code> configuration,
+the <code>remotes</code> option acts as the bridge connecting a host
+application to external builds. This article explores the precise role
+of the <code>remotes</code> configuration, detailing how it maps
+external entry points, resolves runtime dependencies, and enables
+seamless module consumption across separate applications.</p>
+<h2 id="defining-external-connections">Defining External
+Connections</h2>
+<p>The primary role of the <code>remotes</code> configuration is to
+inform the host application which foreign applications (remotes) it
+depends on and where to locate them. In micro-frontend architectures,
+separate builds need a mechanism to reference code that does not exist
+in their own bundle. The <code>remotes</code> object defines these
+external boundaries using a key-value structure.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;host_app&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">remotes</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">marketing</span><span class="op">:</span> <span class="st">&#39;marketing@https://cdn.example.com/marketing/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">checkout</span><span class="op">:</span> <span class="st">&#39;checkout@https://cdn.example.com/checkout/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<p>In this syntax:</p>
+<ul>
+<li><strong>Key (<code>marketing</code>):</strong> The internal
+identifier or alias used within the host application's import
+statements.</li>
+<li><strong>Value (<code>marketing@https://...</code>):</strong> A
+string containing the global name assigned to the remote's container, an
+<code>@</code> separator, and the URL to the remote's manifest file,
+typically named <code>remoteEntry.js</code>.</li>
+</ul>
+<h2 id="establishing-runtime-resolution">Establishing Runtime
+Resolution</h2>
+<p>Traditional bundling requires all dependencies to be resolved at
+build time. The <code>remotes</code> configuration defers this
+resolution to the client runtime. When the host application boots in the
+browser:</p>
+<ol type="1">
+<li>Webpack reads the <code>remotes</code> configuration.</li>
+<li>It injects a script tag to load the specified
+<code>remoteEntry.js</code> file over the network.</li>
+<li>The remote entry file initializes a global container on the
+<code>window</code> object containing the remote application's module
+map.</li>
+</ol>
+<p>By delegating resolution to runtime, the host can consume updates
+deployed to the remote application instantly without needing to rebuild
+or redeploy the host itself.</p>
+<h2 id="aliasing-and-transparent-module-imports">Aliasing and
+Transparent Module Imports</h2>
+<p>The <code>remotes</code> configuration creates an aliasing layer that
+makes importing federated code identical to importing standard npm
+packages or local files.</p>
+<p>When you configure <code>marketing: 'marketing@...'</code>,
+developers can write standard ECMAScript imports inside host files:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> PromotionalBanner <span class="im">from</span> <span class="st">&#39;marketing/PromotionalBanner&#39;</span><span class="op">;</span></span></code></pre></div>
+<p>Webpack intercepts any import starting with the alias declared in
+<code>remotes</code>, prevents the local build from failing due to a
+missing local file, and translates the import into an asynchronous
+request to the remote container.</p>
+<h2 id="facilitating-shared-dependency-management">Facilitating Shared
+Dependency Management</h2>
+<p>The <code>remotes</code> configuration plays an essential role in
+dependency negotiation. When a host imports a federated module via a
+declared remote, the host and the remote cross-reference their shared
+scope.</p>
+<p>If both the host and the remote specify a shared library (such as
+React), the runtime ensures only one version is downloaded and shared
+between both contexts, preventing duplicate downloads and runtime
+conflicts.</p>
+<h2 id="dynamic-remote-configuration">Dynamic Remote Configuration</h2>
+<p>Beyond static URL definitions, the <code>remotes</code> configuration
+can be defined dynamically for complex deployments where endpoints vary
+by environment (e.g., development, staging, production). Developers can
+configure <code>remotes</code> using promise-based syntax or load entry
+files manually at runtime via container factories, allowing dynamic
+routing of remote endpoints directly through configuration scripts.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/role-of-remotes-in-webpack-module-federation';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

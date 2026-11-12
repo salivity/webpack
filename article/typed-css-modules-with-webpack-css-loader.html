@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>typed-css-modules with Webpack css-loader - webpack</title>
+    <meta name="description" content="This article explains how Webpack&#39;s css-loader and the typed-css-modules utility interact to provide complete type safety for CSS Modules in a TypeScript project. It covers the division of responsibilities between compile-time static analysis and runtime">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/typed-css-modules-with-webpack-css-loader">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="typed-css-modules with Webpack css-loader - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/typed-css-modules-with-webpack-css-loader" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how Webpack&#39;s css-loader and the typed-css-modules utility interact to provide complete type safety for CSS Modules in a TypeScript project. It covers the division of responsibilities between compile-time static analysis and runtime" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="typed-css-modules-with-webpack-css-loader">typed-css-modules
+with Webpack css-loader</h1>
+<p>This article explains how Webpack's <code>css-loader</code> and the
+<code>typed-css-modules</code> utility interact to provide complete type
+safety for CSS Modules in a TypeScript project. It covers the division
+of responsibilities between compile-time static analysis and runtime
+asset bundling, detailing how type definitions are generated, consumed,
+and synchronized with your build pipeline.</p>
+<h3 id="the-role-of-css-loader">The Role of css-loader</h3>
+<p>Webpack’s <code>css-loader</code> interprets <code>@import</code> and
+<code>url()</code> statements within CSS and resolves them. When
+configured with the <code>modules</code> option enabled, it treats CSS
+files as CSS Modules.</p>
+<p>In this mode, <code>css-loader</code> scopes class names locally by
+replacing standard class selectors with uniquely hashed strings (for
+example, converting <code>.header</code> to
+<code>_header_1x8q9_1</code>). When you import a CSS file into a
+JavaScript or TypeScript file, <code>css-loader</code> returns a
+JavaScript object where the original class names serve as keys and the
+hashed class names serve as the corresponding string values.</p>
+<h3 id="the-problem-in-typescript">The Problem in TypeScript</h3>
+<p>TypeScript is unaware of CSS files by default. If you write:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> styles <span class="im">from</span> <span class="st">&#39;./Button.module.css&#39;</span><span class="op">;</span></span></code></pre></div>
+<p>The TypeScript compiler (<code>tsc</code>) will throw an error
+stating that the module cannot be found. While a common workaround is
+declaring a wildcard ambient module
+(<code>declare module '*.module.css'</code>), this solution assigns the
+<code>any</code> or <code>{ [key: string]: string }</code> type to the
+imported object. This eliminates type safety, preventing autocompletion
+and allowing invalid class names to pass compilation undetected.</p>
+<h3 id="the-role-of-typed-css-modules">The Role of
+typed-css-modules</h3>
+<p><code>typed-css-modules</code> (often run via the CLI as
+<code>tcm</code>) solves the static typing issue. It parses CSS files,
+extracts all declared class selectors, and automatically generates
+matching TypeScript definition files (<code>.d.ts</code>) alongside the
+original stylesheets.</p>
+<p>For example, given a file named <code>Button.module.css</code>:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode css"><code class="sourceCode css"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">.primaryButton</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">background-color</span><span class="ch">:</span> <span class="cn">blue</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">.label</span> {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">color</span><span class="ch">:</span> <span class="cn">white</span><span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p><code>typed-css-modules</code> generates
+<code>Button.module.css.d.ts</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode typescript"><code class="sourceCode typescript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">declare</span> <span class="kw">const</span> styles<span class="op">:</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">readonly</span> primaryButton<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">readonly</span> label<span class="op">:</span> <span class="dt">string</span><span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="im">default</span> styles<span class="op">;</span></span></code></pre></div>
+<h3 id="how-typed-css-modules-and-css-loader-interact">How
+typed-css-modules and css-loader Interact</h3>
+<p><code>typed-css-modules</code> and <code>css-loader</code> do not
+interact directly; instead, they operate in parallel to handle
+compile-time verification and runtime execution independently.</p>
+<ol type="1">
+<li><p><strong>Compile-Time Static Analysis (TypeScript +
+typed-css-modules):</strong><br />
+Before or during the TypeScript compilation step,
+<code>typed-css-modules</code> analyzes the source CSS and outputs
+<code>.d.ts</code> files. When TypeScript compiles your
+<code>.tsx</code> or <code>.ts</code> files, it reads these generated
+<code>.d.ts</code> files. TypeScript validates that any accessed
+properties (e.g., <code>styles.primaryButton</code>) actually exist,
+providing intellisense and catching typos during development.</p></li>
+<li><p><strong>Bundle-Time Processing (Webpack +
+css-loader):</strong><br />
+When Webpack bundles the application, it invokes
+<code>css-loader</code>. The loader ignores the generated
+<code>.d.ts</code> files and directly processes the source
+<code>.css</code> files, scoping the classes and creating the actual
+JavaScript module exports that supply class name strings at
+runtime.</p></li>
+</ol>
+<h3 id="ensuring-naming-consistency">Ensuring Naming Consistency</h3>
+<p>Because <code>typed-css-modules</code> creates types based on the raw
+CSS while <code>css-loader</code> transforms classes during bundling,
+configuration options must match between the two tools:</p>
+<ul>
+<li><strong>CamelCase Transformations:</strong> If you use kebab-case
+classes in your CSS (e.g., <code>.primary-button</code>) and configure
+<code>css-loader</code> with <code>localsConvention: 'camelCase'</code>
+or <code>exportLocalsConvention: 'camelCase'</code>,
+<code>css-loader</code> exports the key as <code>primaryButton</code>.
+You must also supply the <code>--camelCase</code> flag to
+<code>typed-css-modules</code> so that the generated <code>.d.ts</code>
+file reflects the camelCase property name instead of the kebab-case
+string.</li>
+<li><strong>Synchronization in Pipelines:</strong> In a typical
+development environment, <code>typed-css-modules</code> runs in a watch
+process (<code>tcm -w src</code>) alongside the Webpack development
+server, ensuring definitions are regenerated whenever a CSS file is
+modified.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/typed-css-modules-with-webpack-css-loader';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

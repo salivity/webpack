@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Processes CSS with css-loader and style-loader - webpack</title>
+    <meta name="description" content="Webpack treats all files as modules, but natively it only understands JavaScript and JSON. This article explains how Webpack processes stylesheets by chaining two essential loaders: css-loader and style-loader. You will learn the exact order of execution,">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-processes-css-with-css-loader-and-style-loader">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Processes CSS with css-loader and style-loader - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-processes-css-with-css-loader-and-style-loader" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack treats all files as modules, but natively it only understands JavaScript and JSON. This article explains how Webpack processes stylesheets by chaining two essential loaders: css-loader and style-loader. You will learn the exact order of execution," />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-processes-css-with-css-loader-and-style-loader">How
+Webpack Processes CSS with css-loader and style-loader</h1>
+<p>Webpack treats all files as modules, but natively it only understands
+JavaScript and JSON. This article explains how Webpack processes
+stylesheets by chaining two essential loaders: <code>css-loader</code>
+and <code>style-loader</code>. You will learn the exact order of
+execution, the specific responsibility of each loader, and how they
+convert raw CSS files into active styles rendered inside the browser's
+Document Object Model (DOM).</p>
+<h2 id="the-loader-execution-order">The Loader Execution Order</h2>
+<p>In a Webpack configuration, loaders are defined inside the
+<code>module.rules</code> array. When chaining multiple loaders for a
+single file type, Webpack executes them in reverse order: from right to
+left, or bottom to top.</p>
+<p>A standard CSS configuration looks like this:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">css</span><span class="sc">$</span><span class="ss">/i</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> [<span class="st">&#39;style-loader&#39;</span><span class="op">,</span> <span class="st">&#39;css-loader&#39;</span>]<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Because of the reverse execution order, Webpack passes the
+<code>.css</code> file to <code>css-loader</code> first. Once
+<code>css-loader</code> finishes its transformations, the resulting
+output is passed directly into <code>style-loader</code>.</p>
+<h2 id="step-1-parsing-styles-with-css-loader">Step 1: Parsing Styles
+with css-loader</h2>
+<p>The primary responsibility of <code>css-loader</code> is to interpret
+CSS syntax and convert it into a JavaScript module.</p>
+<p>When your JavaScript imports a stylesheet (e.g.,
+<code>import './main.css'</code>), <code>css-loader</code> performs the
+following tasks:</p>
+<ul>
+<li><strong>Resolves Dependencies:</strong> It interprets
+<code>@import</code> statements and internal asset paths like
+<code>url('./image.png')</code>, translating them into standard ES
+modules or <code>require()</code> statements that Webpack can
+bundle.</li>
+<li><strong>Converts to JavaScript:</strong> It reads the CSS file
+contents and outputs a JavaScript module that exports the CSS rules as a
+string, along with metadata needed to track source maps or CSS
+Modules.</li>
+</ul>
+<p>At this stage, the CSS has been translated into valid JavaScript, but
+it has not yet been applied to the webpage. If you use
+<code>css-loader</code> alone, the styling will exist inside your bundle
+as a JavaScript string, but the browser will not render it.</p>
+<h2 id="step-2-injecting-styles-with-style-loader">Step 2: Injecting
+Styles with style-loader</h2>
+<p>Once <code>css-loader</code> converts the CSS into a JavaScript
+module, <code>style-loader</code> takes over to make those styles active
+in the browser.</p>
+<p><code>style-loader</code> does not parse CSS rules itself. Instead,
+it adds runtime code to the final JavaScript bundle that:</p>
+<ol type="1">
+<li>Creates an HTML <code>&lt;style&gt;</code> element during
+runtime.</li>
+<li>Injects the CSS string generated by <code>css-loader</code> into
+that element.</li>
+<li>Appends the <code>&lt;style&gt;</code> tag directly to the
+<code>&lt;head&gt;</code> of the DOM when the bundle loads in the
+browser.</li>
+</ol>
+<p>By deferring the style injection to JavaScript runtime,
+<code>style-loader</code> enables features like Hot Module Replacement
+(HMR), allowing styles to update instantly during development without
+requiring a full page reload.</p>
+<h2 id="summary-of-the-processing-pipeline">Summary of the Processing
+Pipeline</h2>
+<ol type="1">
+<li><strong>Trigger:</strong> Webpack encounters an import such as
+<code>import './styles.css'</code> in the dependency graph.</li>
+<li><strong>css-loader:</strong> Reads the raw CSS, resolves all
+<code>@import</code> and <code>url()</code> references, and exports the
+CSS as a JavaScript module string.</li>
+<li><strong>style-loader:</strong> Takes the JavaScript string and wraps
+it with runtime instructions to dynamically inject a
+<code>&lt;style&gt;</code> tag into the DOM
+<code>&lt;head&gt;</code>.</li>
+<li><strong>Result:</strong> The browser executes the bundle, mounts the
+styles, and renders the styled page.</li>
+</ol></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-webpack-processes-css-with-css-loader-and-style-loader';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Is @loadable/webpack-plugin and How It Works - webpack</title>
+    <meta name="description" content="This article provides an in-depth look at @loadable/webpack-plugin, an essential build-time tool for React applications utilizing Server-Side Rendering (SSR) alongside dynamic code splitting. It explains the mechanics of how the plugin generates a build m">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/what-is-loadable-webpack-plugin-and-how-it-works">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="What Is @loadable/webpack-plugin and How It Works - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/what-is-loadable-webpack-plugin-and-how-it-works" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an in-depth look at @loadable/webpack-plugin, an essential build-time tool for React applications utilizing Server-Side Rendering (SSR) alongside dynamic code splitting. It explains the mechanics of how the plugin generates a build m" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="what-is-loadablewebpack-plugin-and-how-it-works">What Is <span
+class="citation"
+data-cites="loadable/webpack-plugin">@loadable/webpack-plugin</span> and
+How It Works</h1>
+<p>This article provides an in-depth look at
+<code>@loadable/webpack-plugin</code>, an essential build-time tool for
+React applications utilizing Server-Side Rendering (SSR) alongside
+dynamic code splitting. It explains the mechanics of how the plugin
+generates a build manifest and coordinates with server-side runtime
+utilities to map, track, and inject the precise JavaScript and CSS
+assets needed for seamless, error-free client hydration.</p>
+<h3 id="the-role-of-loadablewebpack-plugin">The Role of <span
+class="citation"
+data-cites="loadable/webpack-plugin">@loadable/webpack-plugin</span></h3>
+<p><code>@loadable/webpack-plugin</code> is the compilation companion to
+the Loadable Components ecosystem, the standard solution for code
+splitting in SSR React applications. In traditional client-only Single
+Page Applications (SPAs), dynamic imports (<code>import()</code>) allow
+splitting the application into smaller, on-demand bundles. However,
+applying code splitting in an SSR environment introduces a critical
+challenge: the server renders the initial HTML for a page containing
+lazy-loaded components, but the client does not yet have the
+corresponding JavaScript chunks loaded when hydration begins. This
+timing discrepancy causes hydration mismatches, broken UI states, and
+flashes of unstyled content.</p>
+<p><code>@loadable/webpack-plugin</code> solves this problem by
+inspecting the build output and exporting an asset manifest, typically
+named <code>loadable-stats.json</code>. This file acts as a map bridging
+the server-side render process with Webpack's client-side asset
+graph.</p>
+<h3 id="how-the-manifest-is-generated">How the Manifest Is
+Generated</h3>
+<p>During the client-side Webpack compilation,
+<code>@loadable/webpack-plugin</code> taps into the compilation hooks to
+analyze the module dependency tree. As Webpack constructs chunks for
+every dynamic import, the plugin records:</p>
+<ol type="1">
+<li><strong>Chunk Definitions:</strong> A full inventory of all
+generated chunks, their unique IDs, and associated output filenames
+(hashes).</li>
+<li><strong>Asset Mappings:</strong> A breakdown connecting chunks to
+their concrete assets, differentiating between JavaScript bundles, CSS
+stylesheets, and prefetch/preload assets.</li>
+<li><strong>Module-to-Chunk Relationships:</strong> A relational mapping
+linking each dynamically imported source file to the specific bundle or
+bundles required to execute it in the browser.</li>
+</ol>
+<p>Once compilation finishes, the plugin writes this structured data to
+disk as <code>loadable-stats.json</code>.</p>
+<h3 id="coordinating-client-and-server-manifests">Coordinating Client
+and Server Manifests</h3>
+<p>The coordination between the client build and the server render
+relies on a tight interaction between
+<code>@loadable/webpack-plugin</code> and <code>@loadable/server</code>
+through the following workflow:</p>
+<ol type="1">
+<li><strong>The Client Build Emits the Manifest:</strong> The client
+bundles are built first (or in parallel), producing
+<code>loadable-stats.json</code>. This file details every split module
+and its corresponding static files.</li>
+<li><strong>Server Reads the Manifest:</strong> In the Node.js server
+environment, the application initializes a <code>ChunkExtractor</code>
+instance provided by <code>@loadable/server</code>, passing it the path
+to <code>loadable-stats.json</code>.</li>
+<li><strong>Component Execution Tracking:</strong> When a request hits
+the server, the application wraps its root React element in the
+extractor's collector component (e.g.,
+<code>extractor.collectChunks(&lt;App /&gt;)</code>). As React renders
+the component tree to an HTML string, the extractor intercepts dynamic
+component calls and records the exact modules executed during that
+render cycle.</li>
+<li><strong>Targeted Tag Generation:</strong> By cross-referencing the
+recorded module IDs against the metadata loaded from
+<code>loadable-stats.json</code>, the <code>ChunkExtractor</code>
+determines precisely which JavaScript and CSS bundles are needed for
+that specific page. It provides helper methods—such as
+<code>extractor.getScriptTags()</code> and
+<code>extractor.getStyleTags()</code>—which emit the necessary HTML tags
+directly into the server's outgoing response.</li>
+<li><strong>Synchronized Hydration:</strong> In the browser, the runtime
+reads the injected asset links and pre-downloads the required chunks. By
+wrapping the client initialization logic in
+<code>loadableReady()</code>, the client waits for all chunks identified
+in the server-rendered HTML to finish loading before invoking React's
+hydration API.</li>
+</ol>
+<p>By centralizing asset dependency tracking in a single manifest and
+consuming it at runtime, <code>@loadable/webpack-plugin</code>
+eliminates guesswork on the server, ensuring that only the critical
+scripts and styles for the currently requested view are loaded before
+hydration begins.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/what-is-loadable-webpack-plugin-and-how-it-works';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

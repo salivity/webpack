@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Module Federation Across Different Domains - webpack</title>
+    <meta name="description" content="Webpack Module Federation enables independently built and deployed JavaScript applications to dynamically share code and run as a single composite application. When micro-frontends reside on different domain hosts with isolated deployment cycles, Webpack">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-module-federation-across-different-domains">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Module Federation Across Different Domains - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-module-federation-across-different-domains" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack Module Federation enables independently built and deployed JavaScript applications to dynamically share code and run as a single composite application. When micro-frontends reside on different domain hosts with isolated deployment cycles, Webpack" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-module-federation-across-different-domains">Webpack
+Module Federation Across Different Domains</h1>
+<p>Webpack Module Federation enables independently built and deployed
+JavaScript applications to dynamically share code and run as a single
+composite application. When micro-frontends reside on different domain
+hosts with isolated deployment cycles, Webpack bridges the gap using
+runtime manifest resolution, asynchronous chunk loading, cross-origin
+communication, and runtime dependency negotiation. This article examines
+the architectural mechanics that make cross-domain module federation
+work seamlessly without synchronized deployments.</p>
+<h3 id="dynamic-remote-resolution-via-remoteentryjs">Dynamic Remote
+Resolution via <code>remoteEntry.js</code></h3>
+<p>At the center of cross-domain federation is the
+<code>remoteEntry.js</code> manifest file. Each federated application
+(the "remote") generates this manifest upon compilation. Rather than
+bundling remote code into the host application at build time, the host
+fetches the remote's <code>remoteEntry.js</code> file over HTTP at
+runtime.</p>
+<p>When micro-frontends are hosted on distinct domains, hardcoding
+remote URLs at build time is often impractical. Webpack supports dynamic
+remotes, allowing the host application to determine the remote domain
+programmatically at runtime using utility functions or dynamic
+<code>import()</code> statements.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> loadComponent <span class="op">=</span> (scope<span class="op">,</span> module<span class="op">,</span> url) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="kw">async</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> <span class="fu">__webpack_init_sharing__</span>(<span class="st">&#39;default&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> <span class="kw">new</span> <span class="bu">Promise</span>((resolve<span class="op">,</span> reject) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> script <span class="op">=</span> <span class="bu">document</span><span class="op">.</span><span class="fu">createElement</span>(<span class="st">&#39;script&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      script<span class="op">.</span><span class="at">src</span> <span class="op">=</span> url<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      script<span class="op">.</span><span class="at">onload</span> <span class="op">=</span> resolve<span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      script<span class="op">.</span><span class="at">onerror</span> <span class="op">=</span> reject<span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      <span class="bu">document</span><span class="op">.</span><span class="at">head</span><span class="op">.</span><span class="fu">appendChild</span>(script)<span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> container <span class="op">=</span> <span class="bu">window</span>[scope]<span class="op">;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> container<span class="op">.</span><span class="fu">init</span>(__webpack_share_scopes__<span class="op">.</span><span class="at">default</span>)<span class="op">;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> factory <span class="op">=</span> <span class="cf">await</span> container<span class="op">.</span><span class="fu">get</span>(module)<span class="op">;</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="fu">factory</span>()<span class="op">;</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  }<span class="op">;</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This dynamic initialization ensures that the host container can
+resolve the remote entry points based on environment variables, API
+lookups, or user roles across multiple distinct domains.</p>
+<h3 id="managing-distinct-deployment-cycles-and-caching">Managing
+Distinct Deployment Cycles and Caching</h3>
+<p>Because each domain host operates on its own deployment schedule, the
+host and remotes must decouple their asset versioning strategies:</p>
+<ol type="1">
+<li><strong>Non-Cached Manifests:</strong> The entry point file
+(<code>remoteEntry.js</code>) should be served with
+<code>Cache-Control: no-cache, no-store, must-revalidate</code>. This
+ensures the host always receives the latest map of chunks immediately
+after a remote deploys.</li>
+<li><strong>Immutable Chunks:</strong> The actual code chunks referenced
+by <code>remoteEntry.js</code> should feature unique content hashes in
+their filenames and be served with aggressive, long-term caching headers
+(<code>Cache-Control: immutable, max-age=31536000</code>).</li>
+<li><strong>Public Path Configuration:</strong> The remote's
+<code>output.publicPath</code> must be set explicitly to its fully
+qualified domain name (or <code>publicPath: 'auto'</code>) rather than a
+relative path. This ensures that when the host initiates requests for
+secondary chunks, the browser requests them from the remote's domain
+host instead of the host's domain.</li>
+</ol>
+<h3 id="cross-origin-resource-sharing-cors">Cross-Origin Resource
+Sharing (CORS)</h3>
+<p>Since assets are loaded across distinct domain boundaries (e.g., the
+host at <code>app.example.com</code> fetching chunks from
+<code>cdn.microfrontends.com</code>), the remote server or CDN must be
+configured with proper CORS headers.</p>
+<p>The remote host must return:</p>
+<pre class="http"><code>Access-Control-Allow-Origin: https://app.example.com</code></pre>
+<p>Or a wildcard <code>*</code> for public assets. Without this header,
+browser security policies will block the execution of Webpack's
+dynamically injected scripts and JSONP chunk loading calls.</p>
+<h3 id="runtime-dependency-negotiation">Runtime Dependency
+Negotiation</h3>
+<p>With independent deployment schedules, different remotes may declare
+different versions of shared libraries, such as React or Lodash. Webpack
+Module Federation resolves this using its <code>shared</code>
+configuration:</p>
+<ul>
+<li><strong>Semantic Versioning Negotiation:</strong> When a remote is
+loaded, Webpack compares the version requirements in the remote's
+manifest against the versions already initialized in the host's runtime
+sharing scope.</li>
+<li><strong>Singleton Enforcement:</strong> For libraries that require a
+single instance in memory (like React's context), the configuration sets
+<code>singleton: true</code>. If a remote requires a version that
+violates the host's version constraint, Webpack warns in the console and
+falls back to loading a separate instance unless
+<code>strictVersion: true</code> is enforced.</li>
+</ul>
+<h3 id="resiliency-and-failure-handling">Resiliency and Failure
+Handling</h3>
+<p>Independent deployment cycles create the risk of a remote domain
+becoming unreachable due to network latency, server downtime, or
+deployment rollbacks.</p>
+<p>To prevent a failed remote from breaking the entire host application,
+federated imports should be wrapped in boundary layers. This includes
+combining dynamic <code>React.lazy()</code> with native JavaScript
+<code>try/catch</code> handlers or React <code>ErrorBoundary</code>
+components. If a remote domain fails to respond, the host can catch the
+loading error gracefully and render a fallback user interface without
+interrupting the rest of the application.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-module-federation-across-different-domains';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Cache Serialization Failures in Custom Plugins - webpack</title>
+    <meta name="description" content="Persistent cache serialization failures in custom Webpack plugins occur when Webpack 5 attempts to save build artifacts to disk but encounters data structures it cannot convert into a storable binary format. This article explores the root causes of these">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-cache-serialization-failures-in-custom-plugins">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Cache Serialization Failures in Custom Plugins - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-cache-serialization-failures-in-custom-plugins" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Persistent cache serialization failures in custom Webpack plugins occur when Webpack 5 attempts to save build artifacts to disk but encounters data structures it cannot convert into a storable binary format. This article explores the root causes of these" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-cache-serialization-failures-in-custom-plugins">Webpack
+Cache Serialization Failures in Custom Plugins</h1>
+<p>Persistent cache serialization failures in custom Webpack plugins
+occur when Webpack 5 attempts to save build artifacts to disk but
+encounters data structures it cannot convert into a storable binary
+format. This article explores the root causes of these serialization
+errors—including unregistered custom classes, non-serializable runtime
+data, circular references, and improper lifecycle management—and
+outlines practical methods to ensure your plugin data persists
+correctly.</p>
+<h2 id="the-webpack-persistent-caching-mechanism">The Webpack Persistent
+Caching Mechanism</h2>
+<p>Webpack 5 introduced persistent disk caching to significantly improve
+build performance on subsequent runs. Instead of relying solely on
+in-memory caches, Webpack writes module graphs, compilation states, and
+asset metadata to the filesystem using its built-in binary
+serializer.</p>
+<p>When a custom plugin attaches custom objects, classes, or state to
+entities like <code>NormalModule</code>, <code>Compilation</code>, or
+custom tap states, Webpack tries to serialize that data. If the
+serializer does not know how to handle the data structure, the entire
+caching process throws an error and fails to write the cache to
+disk.</p>
+<h2 id="common-causes-of-serialization-failures">Common Causes of
+Serialization Failures</h2>
+<h3 id="1-unregistered-custom-classes">1. Unregistered Custom
+Classes</h3>
+<p>The most common cause of serialization errors is storing instances of
+custom JavaScript classes inside modules or compilation metadata without
+registering them. Webpack’s serializer does not automatically
+reconstruct arbitrary class prototypes.</p>
+<p>If a plugin creates an instance of <code>MyPluginData</code> and
+attaches it to <code>module.buildInfo</code>, Webpack does not know how
+to serialize or deserialize the prototype methods and properties unless
+explicitly instructed.</p>
+<h3 id="2-attaching-functions-and-closures">2. Attaching Functions and
+Closures</h3>
+<p>Functions cannot be natively serialized into persistent binary
+storage. Plugins often accidentally attach callbacks, hooks, or objects
+containing closures to cached metadata (such as within
+<code>buildInfo</code> or asset objects). When Webpack encounters a
+function reference during the cache-pack phase, serialization aborts
+immediately.</p>
+<h3 id="3-circular-references-and-complex-graphs">3. Circular References
+and Complex Graphs</h3>
+<p>While standard JSON serialization fails on circular references,
+Webpack's internal serializer can handle certain graph relationships.
+However, if a custom plugin links two custom objects circularly without
+providing explicit serialization handlers, the serializer can exceed the
+call stack or fail to resolve the dependency order between the
+objects.</p>
+<h3 id="4-direct-references-to-active-webpack-entities">4. Direct
+References to Active Webpack Entities</h3>
+<p>Custom plugins often attempt to cache objects that hold references to
+runtime Webpack instances, such as the <code>Compiler</code>,
+<code>Compilation</code>, or file system resolvers. These runtime
+instances are deeply stateful, contain open file handles, event
+emitters, and complex internal states that cannot and should not be
+saved to disk. Storing an object that maintains a reference to the
+compilation context causes cascading serialization failures.</p>
+<h3 id="5-using-unhandled-native-or-non-plain-objects">5. Using
+Unhandled Native or Non-Plain Objects</h3>
+<p>Webpack provides built-in serializers for basic primitives, plain
+objects (POJOs), Arrays, Sets, Maps, and Buffers. However, using complex
+data structures such as <code>WeakMap</code>, <code>WeakSet</code>,
+<code>Symbol</code>, or external library object instances (like custom
+AST nodes or parser states) will break serialization if they lack a
+defined serialization schema.</p>
+<h2 id="how-to-prevent-serialization-failures">How to Prevent
+Serialization Failures</h2>
+<h3 id="keep-cache-data-as-plain-objects">Keep Cache Data as Plain
+Objects</h3>
+<p>The simplest way to avoid serialization issues is to keep all custom
+data stored in <code>module.buildInfo</code> or
+<code>module.buildMeta</code> strictly limited to plain JSON-compatible
+types:</p>
+<ul>
+<li>Strings, numbers, and booleans</li>
+<li>Plain objects (<code>{}</code>)</li>
+<li>Arrays</li>
+</ul>
+<p>Avoid storing class instances, functions, or external references in
+these spaces.</p>
+<h3 id="register-custom-classes-with-makeserializable">Register Custom
+Classes with <code>makeSerializable</code></h3>
+<p>If a custom class must be preserved across builds, register it with
+Webpack’s internal serialization registry. Webpack exports helper
+utilities to handle class registration:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> makeSerializable <span class="op">=</span> <span class="pp">require</span>(<span class="st">&quot;webpack/lib/util/makeSerializable&quot;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MyCustomPluginData {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">constructor</span>(identifier<span class="op">,</span> count) {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="at">identifier</span> <span class="op">=</span> identifier<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="at">count</span> <span class="op">=</span> count<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">serialize</span>(context) {</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> { write } <span class="op">=</span> context<span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="fu">write</span>(<span class="kw">this</span><span class="op">.</span><span class="at">identifier</span>)<span class="op">;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="fu">write</span>(<span class="kw">this</span><span class="op">.</span><span class="at">count</span>)<span class="op">;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">deserialize</span>(context) {</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> { read } <span class="op">=</span> context<span class="op">;</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="at">identifier</span> <span class="op">=</span> <span class="fu">read</span>()<span class="op">;</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>        <span class="kw">this</span><span class="op">.</span><span class="at">count</span> <span class="op">=</span> <span class="fu">read</span>()<span class="op">;</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="fu">makeSerializable</span>(MyCustomPluginData<span class="op">,</span> <span class="st">&quot;path/to/my-plugin/MyCustomPluginData&quot;</span>)<span class="op">;</span></span></code></pre></div>
+<p>To implement this correctly:</p>
+<ul>
+<li>The class must implement a <code>serialize</code> method that writes
+values to the provided context.</li>
+<li>The class must implement a <code>deserialize</code> method that
+reads values back in the identical order they were written.</li>
+<li>The second parameter of <code>makeSerializable</code> must be a
+unique module path identifier that allows Webpack to require and
+instantiate the class upon cache restoration.</li>
+</ul>
+<h3 id="separate-runtime-state-from-build-state">Separate Runtime State
+from Build State</h3>
+<p>Maintain a clear separation between data needed only during the
+current compilation run and data required for subsequent cached builds.
+Use internal <code>WeakMap</code> structures inside the plugin closure
+to map modules to runtime state (like callbacks or compiler instances)
+instead of directly attaching them to persistent module objects.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-cache-serialization-failures-in-custom-plugins';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

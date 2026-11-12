@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Rule: Test vs Include vs Exclude - webpack</title>
+    <meta name="description" content="In Webpack, module rules define how different types of files are processed by loaders during the bundling process. The test, include, and exclude properties act as filtering conditions that determine whether a specific file should be transformed by a give">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-rule-test-vs-include-vs-exclude">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Rule: Test vs Include vs Exclude - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-rule-test-vs-include-vs-exclude" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Webpack, module rules define how different types of files are processed by loaders during the bundling process. The test, include, and exclude properties act as filtering conditions that determine whether a specific file should be transformed by a give" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-rule-test-vs-include-vs-exclude">Webpack Rule: Test vs
+Include vs Exclude</h1>
+<p>In Webpack, module rules define how different types of files are
+processed by loaders during the bundling process. The <code>test</code>,
+<code>include</code>, and <code>exclude</code> properties act as
+filtering conditions that determine whether a specific file should be
+transformed by a given loader. While they all evaluate file paths, they
+serve different functional roles, operate with specific priority rules,
+and directly impact your build performance.</p>
+<h3 id="the-test-property">The <code>test</code> Property</h3>
+<p>The <code>test</code> property specifies a condition that a file path
+must match to be considered by the loader. It is typically defined using
+a regular expression that targets file extensions.</p>
+<ul>
+<li><strong>Purpose:</strong> Identifies the file type.</li>
+<li><strong>Common Use:</strong> Setting <code>test: /\.jsx?$/</code> to
+target <code>.js</code> and <code>.jsx</code> files, or
+<code>test: /\.css$/</code> for stylesheets.</li>
+<li><strong>Behavior:</strong> It checks the absolute path of the
+resource. Without <code>include</code> or <code>exclude</code>,
+<code>test</code> will apply the loader to every matching file across
+the entire project, including dependencies.</li>
+</ul>
+<h3 id="the-include-property">The <code>include</code> Property</h3>
+<p>The <code>include</code> property restricts the loader to only match
+files within a specific directory or set of paths.</p>
+<ul>
+<li><strong>Purpose:</strong> Whitelists directories that should be
+processed.</li>
+<li><strong>Common Use:</strong> Setting
+<code>include: path.resolve(__dirname, 'src')</code> to ensure only your
+application's source code is transformed.</li>
+<li><strong>Behavior:</strong> If a file matches <code>test</code> but
+is located outside the <code>include</code> path, Webpack will not pass
+it to the loader. Using <code>include</code> is considered a performance
+best practice because it prevents loaders from needlessly analyzing
+external files.</li>
+</ul>
+<h3 id="the-exclude-property">The <code>exclude</code> Property</h3>
+<p>The <code>exclude</code> property specifies files or directories that
+must be skipped, even if they match the <code>test</code> condition.</p>
+<ul>
+<li><strong>Purpose:</strong> Blacklists specific directories from
+processing.</li>
+<li><strong>Common Use:</strong> Setting
+<code>exclude: /node_modules/</code> to prevent third-party packages
+from being re-compiled by heavy loaders like Babel.</li>
+<li><strong>Behavior:</strong> Any file located inside an excluded path
+is immediately bypassed by the loader.</li>
+</ul>
+<h3 id="key-differences-and-precedence">Key Differences and
+Precedence</h3>
+<p>The main difference lies in how Webpack evaluates these properties
+together:</p>
+<ol type="1">
+<li><strong>Filtering Mechanism:</strong> <code>test</code> checks the
+file extension, <code>include</code> specifies the allowed file
+locations (whitelist), and <code>exclude</code> specifies forbidden file
+locations (blacklist).</li>
+<li><strong>Priority:</strong> <code>exclude</code> takes precedence
+over <code>include</code>. If a file path matches both an
+<code>include</code> rule and an <code>exclude</code> rule, the file
+will be excluded.</li>
+<li><strong>Execution Condition:</strong> For a loader to execute on a
+file, the file must match the <code>test</code> condition, match the
+<code>include</code> condition (if one is provided), and not match the
+<code>exclude</code> condition.</li>
+</ol>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">js</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">include</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;src&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">exclude</span><span class="op">:</span> <span class="ss">/node_modules/</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> {</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>          <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;babel-loader&#39;</span><span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>In this configuration, Babel will only process files that end in
+<code>.js</code>, reside within the <code>src</code> directory, and are
+not located inside <code>node_modules</code>. While specifying both
+<code>include</code> and <code>exclude</code> works, using an explicit
+<code>include</code> pointing to your source directory often makes
+<code>exclude: /node_modules/</code> redundant, as
+<code>node_modules</code> is already outside the <code>src</code>
+folder.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-rule-test-vs-include-vs-exclude';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

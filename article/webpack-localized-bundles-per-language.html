@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack: Localized Bundles per Language - webpack</title>
+    <meta name="description" content="Generating separate localized bundles per language from a single codebase allows web applications to deliver optimized, locale-specific code without the runtime overhead of shipping massive translation dictionaries to the client. This article explains how">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-localized-bundles-per-language">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack: Localized Bundles per Language - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-localized-bundles-per-language" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Generating separate localized bundles per language from a single codebase allows web applications to deliver optimized, locale-specific code without the runtime overhead of shipping massive translation dictionaries to the client. This article explains how" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-localized-bundles-per-language">Webpack: Localized
+Bundles per Language</h1>
+<p>Generating separate localized bundles per language from a single
+codebase allows web applications to deliver optimized, locale-specific
+code without the runtime overhead of shipping massive translation
+dictionaries to the client. This article explains how to configure
+Webpack's multi-compiler mode and use compile-time replacements to
+output distinct static builds for every supported language.</p>
+<h3 id="why-compile-time-localization">Why Compile-Time
+Localization?</h3>
+<p>Traditional client-side internationalization (i18n) typically loads a
+single JavaScript bundle alongside external JSON translation files or
+embeds all translations directly into the application. While flexible,
+this approach increases memory usage, slows down initial rendering, and
+forces clients to download unused language strings.</p>
+<p>Compile-time localization replaces translation identifiers with
+static strings during the build process. Webpack generates separate
+artifacts for each language (e.g., <code>bundle.en.js</code>,
+<code>bundle.es.js</code>), resulting in smaller bundle sizes, faster
+execution, and zero client-side localization lookup overhead.</p>
+<hr />
+<h3 id="implementation-the-multi-compiler-approach">Implementation: The
+Multi-Compiler Approach</h3>
+<p>Webpack natively supports exporting an array of configuration objects
+instead of a single configuration object. When Webpack detects an array,
+it runs in multi-compiler mode, executing each build in parallel or
+sequence and generating unique assets for each target language.</p>
+<h4 id="1-directory-structure">1. Directory Structure</h4>
+<p>Assume a project structure where translation strings are stored in
+locale-specific JSON files:</p>
+<pre><code>src/
+  ├── index.js
+  └── locales/
+      ├── en.json
+      ├── es.json
+      └── de.json
+webpack.config.js</code></pre>
+<h4 id="2-writing-the-webpack-configuration">2. Writing the Webpack
+Configuration</h4>
+<p>In your <code>webpack.config.js</code>, define the list of supported
+locales, map over them, and return a distinct configuration object for
+each language. Use <code>webpack.DefinePlugin</code> or
+<code>webpack.NormalModuleReplacementPlugin</code> to inject the proper
+language data.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpack <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> supportedLocales <span class="op">=</span> [<span class="st">&#39;en&#39;</span><span class="op">,</span> <span class="st">&#39;es&#39;</span><span class="op">,</span> <span class="st">&#39;de&#39;</span>]<span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> supportedLocales<span class="op">.</span><span class="fu">map</span>((locale) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> translations <span class="op">=</span> <span class="pp">require</span>(<span class="vs">`./src/locales/</span><span class="sc">${</span>locale<span class="sc">}</span><span class="vs">.json`</span>)<span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">name</span><span class="op">:</span> <span class="vs">`build-</span><span class="sc">${</span>locale<span class="sc">}</span><span class="vs">`</span><span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;production&#39;</span><span class="op">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>      <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span><span class="op">,</span> locale)<span class="op">,</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>      <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;bundle.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>      <span class="dt">clean</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>      <span class="kw">new</span> webpack<span class="op">.</span><span class="fu">DefinePlugin</span>({</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        <span class="dt">__LOCALE__</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(locale)<span class="op">,</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>        <span class="dt">__I18N__</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(translations)<span class="op">,</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>      })<span class="op">,</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>  }<span class="op">;</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p>In this setup, each build outputs its artifacts to a
+language-specific directory (<code>dist/en/</code>,
+<code>dist/es/</code>, etc.), using the same entry point.</p>
+<hr />
+<h3 id="accessing-translations-in-code">Accessing Translations in
+Code</h3>
+<p>With <code>webpack.DefinePlugin</code>, the placeholder variables are
+replaced at build time with literal values.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// src/index.js</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">getGreeting</span>(name) {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">// __I18N__ is inlined directly at compile time</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> template <span class="op">=</span> __I18N__<span class="op">.</span><span class="at">greeting</span> <span class="op">||</span> <span class="st">&#39;Hello, {name}!&#39;</span><span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> template<span class="op">.</span><span class="fu">replace</span>(<span class="st">&#39;{name}&#39;</span><span class="op">,</span> name)<span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="vs">`Current Locale: </span><span class="sc">${</span>__LOCALE__<span class="sc">}</span><span class="vs">`</span>)<span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="fu">getGreeting</span>(<span class="st">&#39;Alice&#39;</span>))<span class="op">;</span></span></code></pre></div>
+<p>When Webpack compiles the bundle for <code>es</code>,
+<code>__I18N__.greeting</code> is directly substituted with the Spanish
+string, removing the need for a runtime translation registry.</p>
+<hr />
+<h3 id="alternative-compile-time-ast-transformations">Alternative:
+Compile-Time AST Transformations</h3>
+<p>For large-scale applications where defining global variables creates
+maintainability challenges, use Babel plugins such as
+<code>babel-plugin-react-intl</code> or custom Abstract Syntax Tree
+(AST) transforms.</p>
+<ol type="1">
+<li><p>Write standard i18n function calls in your code:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> { t } <span class="im">from</span> <span class="st">&#39;./i18n&#39;</span><span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> label <span class="op">=</span> <span class="fu">t</span>(<span class="st">&#39;submit_button&#39;</span>)<span class="op">;</span></span></code></pre></div></li>
+<li><p>Configure Babel to run during the Webpack build, passing the
+target locale via loader options:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Inside the Webpack config map function</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">:</span> {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    {</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">js</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">use</span><span class="op">:</span> {</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;babel-loader&#39;</span><span class="op">,</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">options</span><span class="op">:</span> {</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>          <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>            [<span class="st">&#39;babel-plugin-i18n-replace&#39;</span><span class="op">,</span> { locale<span class="op">,</span> <span class="dt">file</span><span class="op">:</span> <span class="vs">`./src/locales/</span><span class="sc">${</span>locale<span class="sc">}</span><span class="vs">.json`</span> }]</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>          ]</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>This pattern replaces the function calls directly with the raw
+translated string literals, removing unused translation functions from
+the production bundle entirely.</p></li>
+</ol>
+<hr />
+<h3 id="serving-localized-bundles">Serving Localized Bundles</h3>
+<p>Once the bundles are generated, serve them via a reverse proxy (e.g.,
+NGINX, Cloudflare Workers, or Apache) based on:</p>
+<ol type="1">
+<li><strong>URL Subpaths:</strong> Route <code>/en/*</code> requests to
+<code>/dist/en/</code> and <code>/es/*</code> requests to
+<code>/dist/es/</code>.</li>
+<li><strong>Accept-Language Header:</strong> Inspect incoming HTTP
+headers at the edge to serve the corresponding localized directory
+automatically.</li>
+<li><strong>User Preferences:</strong> Read a locale cookie or session
+state to determine the appropriate asset directory to serve.</li>
+</ol></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-localized-bundles-per-language';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Side Effects Optimization in Loader Chains - webpack</title>
+    <meta name="description" content="This article explores how Webpack detects, tracks, and processes side-effect-free files as they pass through individual loader chains. It covers the interaction between Webpack&#39;s module graph, loader execution stages, rule-level configurations, and the Si">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-side-effects-optimization-in-loader-chains">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Side Effects Optimization in Loader Chains - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-side-effects-optimization-in-loader-chains" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores how Webpack detects, tracks, and processes side-effect-free files as they pass through individual loader chains. It covers the interaction between Webpack&#39;s module graph, loader execution stages, rule-level configurations, and the Si" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-side-effects-optimization-in-loader-chains">Webpack Side
+Effects Optimization in Loader Chains</h1>
+<p>This article explores how Webpack detects, tracks, and processes
+side-effect-free files as they pass through individual loader chains. It
+covers the interaction between Webpack's module graph, loader execution
+stages, rule-level configurations, and the
+<code>SideEffectsFlagPlugin</code>. You will learn how loader outputs
+affect static analysis, how Webpack determines whether to prune modules
+from the bundle graph, and how custom loader pipelines can maintain
+tree-shaking integrity.</p>
+<h2 id="the-side-effect-identification-architecture">The Side-Effect
+Identification Architecture</h2>
+<p>Webpack handles side-effect identification primarily through the
+<code>SideEffectsFlagPlugin</code>, which evaluates modules at the
+dependency graph level rather than evaluating loaders individually in
+isolation. When Webpack encounters a module, it checks two primary
+sources to determine if that module is free of side effects:</p>
+<ol type="1">
+<li>The nearest <code>package.json</code> containing the
+<code>"sideEffects"</code> property (set to <code>false</code> or an
+array of file glob patterns).</li>
+<li>The <code>module.rules</code> configuration in
+<code>webpack.config.js</code>, where specific loaders are matched to
+file patterns alongside an explicit <code>sideEffects: false</code>
+flag.</li>
+</ol>
+<p>This identification occurs during the module resolution phase before
+loader transformations or immediately after the module object is
+initialized by the <code>NormalModuleFactory</code>.</p>
+<h2 id="module-initialization-and-loader-execution">Module
+Initialization and Loader Execution</h2>
+<p>When a file enters a loader chain (e.g., <code>sass-loader</code> →
+<code>postcss-loader</code> → <code>css-loader</code> →
+<code>style-loader</code>, or <code>babel-loader</code> /
+<code>ts-loader</code>):</p>
+<ol type="1">
+<li><strong>Resolution &amp; Tagging</strong>: Webpack’s
+<code>NormalModuleFactory</code> resolves the module path and checks
+rule conditions. If a matching rule or package manifest specifies
+<code>sideEffects: false</code>, the resulting <code>NormalModule</code>
+instance is tagged internally with
+<code>factoryMeta.sideEffectFree = true</code>.</li>
+<li><strong>Chain Execution</strong>: Webpack executes the loader chain
+from right-to-left (or bottom-to-top). Individual loaders process the
+raw source code and return transformed strings or ASTs.</li>
+<li><strong>Internal Module State Preservation</strong>: By default,
+intermediate loaders do not strip or reset the module-level
+<code>sideEffectFree</code> flag. The module retains its classification
+unless a loader dynamically alters internal compilation metadata or
+injects code that forces the JavaScript parser to detect unmanaged
+runtime side effects.</li>
+</ol>
+<h2 id="ast-parsing-and-re-export-optimization">AST Parsing and
+Re-Export Optimization</h2>
+<p>After the final loader in the chain produces JavaScript source code,
+Webpack passes the output to <code>JavascriptParser</code>. The parser
+builds the dependency map by scanning import and export
+declarations.</p>
+<p>If a module is tagged as <code>sideEffectFree</code>, Webpack’s
+optimization step activates special handling for re-exports:</p>
+<ul>
+<li><strong>Direct Import Redirection</strong>: When module
+<code>A</code> imports a binding from module <code>B</code>, and module
+<code>B</code> simply re-exports that binding from module
+<code>C</code>, Webpack checks if <code>B</code> is marked
+side-effect-free.</li>
+<li><strong>Bypassing Intermediate Code</strong>: If <code>B</code> has
+no side effects and none of its own unique exports are consumed, Webpack
+rewrites the dependency connection so that <code>A</code> imports
+directly from <code>C</code>.</li>
+<li><strong>Pruning Intermediate Loader Output</strong>: Even though the
+loader chain for module <code>B</code> fully executed during
+compilation, module <code>B</code>'s transformed output is completely
+excluded from the final asset chunks during the module graph
+optimization phase.</li>
+</ul>
+<h2 id="handling-injected-code-within-loaders">Handling Injected Code
+Within Loaders</h2>
+<p>Individual loaders can disrupt the side-effect-free status of a file
+if they generate runtime side effects that Webpack cannot statically
+eliminate.</p>
+<ul>
+<li><strong>Global Injections</strong>: If a loader inserts polyfills,
+modifies global prototypes (such as <code>window</code> or
+<code>Array.prototype</code>), or invokes top-level functions that
+cannot be proven pure, standard dead-code elimination (Terser/TSEarly)
+cannot safely remove the module unless the module itself was marked with
+<code>sideEffects: false</code>.</li>
+<li><strong>Preserving Purity via Annotations</strong>: Loaders that
+inject call expressions should emit <code>/*#__PURE__*/</code> comments
+preceding those calls. This informs minifiers and Webpack's inner-graph
+analysis that the invocation produces no side effects if the assigned
+variable remains unused.</li>
+<li><strong>Granular Rule Overrides</strong>: When a loader chain
+necessarily creates side effects in files that originate from a package
+marked <code>"sideEffects": false</code>, developers must override the
+behavior in <code>webpack.config.js</code> by targeting that loader
+chain with <code>sideEffects: true</code> to prevent improper
+tree-shaking.</li>
+</ul>
+<h2 id="best-practices-for-custom-loader-chains">Best Practices for
+Custom Loader Chains</h2>
+<p>To ensure that custom loader pipelines cooperate with Webpack’s
+side-effect pruning mechanisms:</p>
+<ul>
+<li><strong>Preserve Pure ESM</strong>: Design loaders to output native
+ES module syntax (<code>import</code> and <code>export</code>) rather
+than transpiling down to CommonJS (<code>require</code> and
+<code>module.exports</code>). Webpack cannot map side-effect-free
+re-exports across CommonJS boundaries.</li>
+<li><strong>Avoid Implicit State</strong>: Loaders should not emit code
+relying on module-level initialization routines if the intended
+consumers expect individual exports to be tree-shakeable.</li>
+<li><strong>Leverage Rule-Level Flags</strong>: Explicitly configure
+<code>sideEffects: false</code> directly within the rule object for
+loader chains that process non-JavaScript assets (like CSS modules,
+SVGs, or custom template formats) if unused imports of those assets
+should be discarded entirely.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-side-effects-optimization-in-loader-chains';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

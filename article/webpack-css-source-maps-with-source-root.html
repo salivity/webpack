@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack CSS Source Maps with sourceRoot - webpack</title>
+    <meta name="description" content="This article explains how Webpack processes and outputs CSS source maps when the sourceRoot configuration is applied. It details the pipeline between CSS loaders and Webpack&#39;s map generator, shows how sourceRoot alters file paths in source map JSON output">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-css-source-maps-with-source-root">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack CSS Source Maps with sourceRoot - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-css-source-maps-with-source-root" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains how Webpack processes and outputs CSS source maps when the sourceRoot configuration is applied. It details the pipeline between CSS loaders and Webpack&#39;s map generator, shows how sourceRoot alters file paths in source map JSON output" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-css-source-maps-with-sourceroot">Webpack CSS Source Maps
+with sourceRoot</h1>
+<p>This article explains how Webpack processes and outputs CSS source
+maps when the <code>sourceRoot</code> configuration is applied. It
+details the pipeline between CSS loaders and Webpack's map generator,
+shows how <code>sourceRoot</code> alters file paths in source map JSON
+outputs, and clarifies how modern browser developer tools interpret
+these modified paths to locate your original stylesheets.</p>
+<h2 id="the-role-of-sourceroot-in-source-maps">The Role of sourceRoot in
+Source Maps</h2>
+<p>Under the Source Map Revision 3 specification,
+<code>sourceRoot</code> is an optional string property prepended to each
+relative path listed in the <code>sources</code> array. In CSS
+compilation, Webpack and its associated loaders often assign virtual
+paths (such as <code>webpack:///./src/styles.css</code>) to represent
+original files inside the bundle’s internal module graph.</p>
+<p>Configuring <code>sourceRoot</code> overrides or refines this base
+directory, directing browser developer tools to look in a specific local
+folder, web server path, or URL structure when fetching original source
+files for debugging.</p>
+<h2 id="how-webpack-processes-css-maps">How Webpack Processes CSS
+Maps</h2>
+<p>CSS generation typically relies on a loader chain such as
+<code>sass-loader</code>, <code>postcss-loader</code>, and
+<code>css-loader</code>, followed by either <code>style-loader</code> or
+<code>mini-css-extract-plugin</code>.</p>
+<ol type="1">
+<li><strong>Loader Generation:</strong> Each intermediate loader
+produces a partial source map. <code>css-loader</code> combines these
+maps into an intermediate representation.</li>
+<li><strong>Webpack Ingestion:</strong> Webpack takes the incoming map
+and reconciles it within the overall compilation graph.</li>
+<li><strong>Serialization and Plugin Execution:</strong> Webpack applies
+configurations defined via <code>devtool</code> or directly via plugins
+such as <code>SourceMapDevToolPlugin</code>.</li>
+</ol>
+<p>If <code>sourceRoot</code> is not defined, Webpack defaults to using
+its internal protocol (<code>webpack://</code>) or leaves the
+<code>sources</code> array relative to the generated bundle.</p>
+<h2 id="configuring-sourceroot-via-sourcemapdevtoolplugin">Configuring
+sourceRoot via SourceMapDevToolPlugin</h2>
+<p>The <code>sourceRoot</code> property is most directly managed in
+Webpack using the <code>SourceMapDevToolPlugin</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpack <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">mode</span><span class="op">:</span> <span class="st">&#39;development&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">css</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">use</span><span class="op">:</span> [</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>          <span class="st">&#39;style-loader&#39;</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>          {</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>            <span class="dt">loader</span><span class="op">:</span> <span class="st">&#39;css-loader&#39;</span><span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>            <span class="dt">options</span><span class="op">:</span> { <span class="dt">sourceMap</span><span class="op">:</span> <span class="kw">true</span> }</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>          }</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        ]</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> webpack<span class="op">.</span><span class="fu">SourceMapDevToolPlugin</span>({</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>      <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">\.</span><span class="ss">css</span><span class="sc">$</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>      <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[file].map&#39;</span><span class="op">,</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>      <span class="dt">sourceRoot</span><span class="op">:</span> <span class="st">&#39;https://example.com/src/&#39;</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>When this runs, Webpack constructs the resulting
+<code>.css.map</code> file with the specified property:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;version&quot;</span><span class="fu">:</span> <span class="dv">3</span><span class="fu">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;file&quot;</span><span class="fu">:</span> <span class="st">&quot;main.css&quot;</span><span class="fu">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;sourceRoot&quot;</span><span class="fu">:</span> <span class="st">&quot;https://example.com/src/&quot;</span><span class="fu">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;sources&quot;</span><span class="fu">:</span> <span class="ot">[</span><span class="st">&quot;components/button.css&quot;</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;mappings&quot;</span><span class="fu">:</span> <span class="st">&quot;AAAA...&quot;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<h2 id="how-browser-devtools-resolve-the-final-path">How Browser
+DevTools Resolve the Final Path</h2>
+<p>When the browser loads the CSS and its corresponding
+<code>.map</code> file, it constructs the canonical location for each
+source file using the following logic:</p>
+<ul>
+<li>If <code>sourceRoot</code> is an absolute URL (e.g.,
+<code>https://example.com/src/</code>), the browser fetches original
+sources by joining that URL with each path in <code>sources</code>.</li>
+<li>If <code>sourceRoot</code> is a relative path (e.g.,
+<code>/source/</code>), the browser resolves it against the URL where
+the <code>.map</code> file is hosted.</li>
+<li>If a path in <code>sources</code> is already absolute, the
+<code>sourceRoot</code> is ignored for that particular entry.</li>
+</ul>
+<h2 id="important-considerations-for-css">Important Considerations for
+CSS</h2>
+<ul>
+<li><strong>Asset URL Resolution:</strong> <code>sourceRoot</code> only
+controls the location of source files inside the developer tools
+debugger. It does not rewrite runtime assets (like
+<code>background-image: url(...)</code>) referenced inside the CSS;
+those are handled separately by Webpack’s
+<code>output.publicPath</code>.</li>
+<li><strong>Loader Compatibility:</strong> Ensure all CSS-related
+loaders in your chain have <code>sourceMap: true</code> enabled. If an
+intermediate loader omits its map, Webpack cannot backtrace the original
+code accurately, leading to missing mappings regardless of
+<code>sourceRoot</code> settings.</li>
+<li><strong>Extraction:</strong> When using
+<code>mini-css-extract-plugin</code>, the map file is emitted to disk
+rather than inlined as a data URI, making <code>sourceRoot</code>
+configurations especially useful for production diagnostics where
+original source code is hosted on an external debugging server.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-css-source-maps-with-source-root';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

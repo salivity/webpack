@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Remote Versions with Feature Flags in Webpack - webpack</title>
+    <meta name="description" content="Integrating feature flags with Webpack Module Federation enables engineering teams to dynamically switch, test, and safely roll out different versions of remote micro-frontends at runtime without redeploying the host container. This article covers how dyn">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/control-remote-versions-with-feature-flags-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Control Remote Versions with Feature Flags in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/control-remote-versions-with-feature-flags-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Integrating feature flags with Webpack Module Federation enables engineering teams to dynamically switch, test, and safely roll out different versions of remote micro-frontends at runtime without redeploying the host container. This article covers how dyn" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="control-remote-versions-with-feature-flags-in-webpack">Control
+Remote Versions with Feature Flags in Webpack</h1>
+<p>Integrating feature flags with Webpack Module Federation enables
+engineering teams to dynamically switch, test, and safely roll out
+different versions of remote micro-frontends at runtime without
+redeploying the host container. This article covers how dynamic remote
+resolution works, how to evaluate feature flags to determine remote
+URLs, and how to execute this pattern reliably in modern web
+applications.</p>
+<h3 id="the-limitation-of-static-remotes">The Limitation of Static
+Remotes</h3>
+<p>By default, Webpack Module Federation configurations define remotes
+statically within the <code>webpack.config.js</code> file:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Static declaration</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>remotes<span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">dashboard</span><span class="op">:</span> <span class="st">&#39;dashboard@https://cdn.example.com/v1/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Static assignment prevents runtime flexibility. Every client receives
+the exact same remote version unless the host application is rebuilt and
+redeployed. To control versions via feature flags, the application must
+transition from static declarations to dynamic remote loading.</p>
+<h3 id="dynamic-remote-loading-mechanism">Dynamic Remote Loading
+Mechanism</h3>
+<p>Webpack exposes low-level runtime
+APIs—<code>__webpack_init_sharing__</code> and
+<code>__webpack_share_scopes__</code>—that allow micro-frontends to be
+registered and initialized on demand. By decoupling the remote URL from
+the build-time configuration, the host can query a feature flagging
+service (such as LaunchDarkly, Unleash, or a custom API) to decide which
+<code>remoteEntry.js</code> file to load.</p>
+<p>A typical runtime loading utility follows this sequence:</p>
+<ol type="1">
+<li>Create a <code>&lt;script&gt;</code> tag pointing to the resolved
+remote URL.</li>
+<li>Append the script to the DOM and wait for it to load.</li>
+<li>Initialize the shared scope using
+<code>__webpack_init_sharing__('default')</code>.</li>
+<li>Initialize the remote container via
+<code>container.init(__webpack_share_scopes__.default)</code>.</li>
+<li>Call <code>container.get(module)</code> to retrieve and render the
+federated component.</li>
+</ol>
+<h3 id="step-by-step-implementation">Step-by-Step Implementation</h3>
+<h4 id="1-evaluate-the-feature-flag">1. Evaluate the Feature Flag</h4>
+<p>Before mounting a remote component, evaluate the flag with user
+context (e.g., user ID, tenant, or rollout percentage).</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Fetch flag value from your provider</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> remoteVersion <span class="op">=</span> <span class="cf">await</span> featureFlagClient<span class="op">.</span><span class="fu">variation</span>(</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;dashboard-microfrontend-version&#39;</span><span class="op">,</span> </span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  { <span class="dt">fallback</span><span class="op">:</span> <span class="st">&#39;v1&#39;</span> }</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co">// Map flag variations to deployment URLs</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> REMOTE_URLS <span class="op">=</span> {</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="dt">v1</span><span class="op">:</span> <span class="st">&#39;https://cdn.example.com/dashboard/v1/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="dt">v2</span><span class="op">:</span> <span class="st">&#39;https://cdn.example.com/dashboard/v2/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">canary</span><span class="op">:</span> <span class="st">&#39;https://cdn.example.com/dashboard/canary/remoteEntry.js&#39;</span><span class="op">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> targetUrl <span class="op">=</span> REMOTE_URLS[remoteVersion]<span class="op">;</span></span></code></pre></div>
+<h4 id="2-load-the-remote-container-dynamically">2. Load the Remote
+Container Dynamically</h4>
+<p>Use a helper function to inject the determined remote entry point
+into the browser runtime:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">async</span> <span class="kw">function</span> <span class="fu">loadComponent</span>(scope<span class="op">,</span> module<span class="op">,</span> url) {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Inject remoteEntry script if not already present</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="op">!</span><span class="bu">window</span>[scope]) {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">await</span> <span class="kw">new</span> <span class="bu">Promise</span>((resolve<span class="op">,</span> reject) <span class="kw">=&gt;</span> {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> script <span class="op">=</span> <span class="bu">document</span><span class="op">.</span><span class="fu">createElement</span>(<span class="st">&#39;script&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>      script<span class="op">.</span><span class="at">src</span> <span class="op">=</span> url<span class="op">;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>      script<span class="op">.</span><span class="at">onload</span> <span class="op">=</span> resolve<span class="op">;</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      script<span class="op">.</span><span class="at">onerror</span> <span class="op">=</span> reject<span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>      <span class="bu">document</span><span class="op">.</span><span class="at">head</span><span class="op">.</span><span class="fu">appendChild</span>(script)<span class="op">;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    })<span class="op">;</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Initialize sharing and the container</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  <span class="cf">await</span> <span class="fu">__webpack_init_sharing__</span>(<span class="st">&#39;default&#39;</span>)<span class="op">;</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> container <span class="op">=</span> <span class="bu">window</span>[scope]<span class="op">;</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>  <span class="cf">await</span> container<span class="op">.</span><span class="fu">init</span>(__webpack_share_scopes__<span class="op">.</span><span class="at">default</span>)<span class="op">;</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Return the exported module factory</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> factory <span class="op">=</span> <span class="cf">await</span> container<span class="op">.</span><span class="fu">get</span>(module)<span class="op">;</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="fu">factory</span>()<span class="op">;</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h4 id="3-render-the-component-with-fallbacks">3. Render the Component
+with Fallbacks</h4>
+<p>In framework environments such as React, wrap the dynamic loader
+inside <code>React.lazy</code> and <code>Suspense</code>, backed by an
+Error Boundary to handle missing scripts or network failures.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode jsx"><code class="sourceCode javascriptreact"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> React<span class="op">,</span> { Suspense<span class="op">,</span> useMemo } <span class="im">from</span> <span class="st">&#39;react&#39;</span><span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">DynamicRemoteView</span>({ user }) {</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> version <span class="op">=</span> <span class="fu">useFeatureFlag</span>(<span class="st">&#39;dashboard-version&#39;</span><span class="op">,</span> user)<span class="op">;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> Component <span class="op">=</span> <span class="fu">useMemo</span>(() <span class="kw">=&gt;</span> {</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> url <span class="op">=</span> <span class="vs">`https://cdn.example.com/dashboard/</span><span class="sc">${</span>version<span class="sc">}</span><span class="vs">/remoteEntry.js`</span><span class="op">;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> React<span class="op">.</span><span class="fu">lazy</span>(() <span class="kw">=&gt;</span> <span class="fu">loadComponent</span>(<span class="st">&#39;dashboard&#39;</span><span class="op">,</span> <span class="st">&#39;./Widget&#39;</span><span class="op">,</span> url))<span class="op">;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span> [version])<span class="op">;</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> (</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">&lt;ErrorBoundary</span> <span class="ot">fallback</span><span class="op">=</span><span class="va">{</span><span class="kw">&lt;div&gt;</span>Failed to load module.<span class="kw">&lt;/div&gt;</span><span class="va">}</span><span class="fu">&gt;</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>      <span class="fu">&lt;Suspense</span> <span class="ot">fallback</span><span class="op">=</span><span class="va">{</span><span class="kw">&lt;div&gt;</span>Loading remote...<span class="kw">&lt;/div&gt;</span><span class="va">}</span><span class="fu">&gt;</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        <span class="fu">&lt;Component</span> <span class="fu">/&gt;</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>      <span class="fu">&lt;/Suspense&gt;</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">&lt;/ErrorBoundary&gt;</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3
+id="alternative-using-dynamic-remotes-in-webpack-configuration">Alternative:
+Using Dynamic Remotes in Webpack Configuration</h3>
+<p>Webpack also supports runtime expression resolution directly in
+configuration when using external global variables:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;host&#39;</span><span class="op">,</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">remotes</span><span class="op">:</span> {</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dashboard</span><span class="op">:</span> <span class="vs">`external new Promise((resolve) =&gt; {</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="vs">          const url = window.__REMOTE_URLS__?.dashboard || &#39;https://cdn.example.com/v1/remoteEntry.js&#39;;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="vs">          const script = document.createElement(&#39;script&#39;);</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="vs">          script.src = url;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="vs">          script.onload = () =&gt; {</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="vs">            resolve({</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="vs">              get: (request) =&gt; window.dashboard.get(request),</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="vs">              init: (arg) =&gt; {</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="vs">                try {</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="vs">                  return window.dashboard.init(arg);</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="vs">                } catch (e) {</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="vs">                  console.error(e);</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="vs">                }</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a><span class="vs">              }</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="vs">            });</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="vs">          };</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a><span class="vs">          document.head.appendChild(script);</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a><span class="vs">        })`</span><span class="op">,</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>In this pattern, the host resolves feature flags before executing the
+main Webpack bootstrap chunk, populating
+<code>window.__REMOTE_URLS__</code> before any federated module imports
+occur.</p>
+<h3 id="key-considerations">Key Considerations</h3>
+<ul>
+<li><strong>Shared Dependency Mismatches:</strong> When serving multiple
+remote versions, ensure shared dependencies (such as React or component
+libraries) define wide semantic version ranges in <code>shared</code>
+configurations to avoid version conflicts and duplicate library
+instances.</li>
+<li><strong>Cache Management:</strong> Remote versions should be
+deployed to immutable, versioned paths (such as
+<code>/v1.0.4/remoteEntry.js</code> or content-hashed subdirectories)
+rather than overwriting a static asset. This avoids browser cache
+poisoning during flag evaluation transitions.</li>
+<li><strong>Resilience:</strong> Feature flag systems can fail or
+experience latency. Always implement a stable default remote entry URL
+to fall back on if the flag evaluation times out or encounters network
+errors.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/control-remote-versions-with-feature-flags-in-webpack';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

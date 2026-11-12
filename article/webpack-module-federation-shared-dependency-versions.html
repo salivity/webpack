@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Module Federation Shared Dependency Versions - webpack</title>
+    <meta name="description" content="Webpack Module Federation manages shared dependencies by negotiating and resolving library versions at runtime across distinct builds. This article explains how Webpack&#39;s shared scope coordinates dependencies, handles semantic versioning (SemVer) constrai">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-module-federation-shared-dependency-versions">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Module Federation Shared Dependency Versions - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-module-federation-shared-dependency-versions" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack Module Federation manages shared dependencies by negotiating and resolving library versions at runtime across distinct builds. This article explains how Webpack&#39;s shared scope coordinates dependencies, handles semantic versioning (SemVer) constrai" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-module-federation-shared-dependency-versions">Webpack
+Module Federation Shared Dependency Versions</h1>
+<p>Webpack Module Federation manages shared dependencies by negotiating
+and resolving library versions at runtime across distinct builds. This
+article explains how Webpack's shared scope coordinates dependencies,
+handles semantic versioning (SemVer) constraints, enforces singleton
+instances to prevent runtime conflicts, and manages fallback strategies
+to optimize bundle sizes across host and remote micro-frontend
+applications.</p>
+<h3 id="the-share-scope-and-version-negotiation">The Share Scope and
+Version Negotiation</h3>
+<p>When configuring Module Federation, developers declare dependencies
+in the <code>shared</code> array or object within the
+<code>ModuleFederationPlugin</code>. At runtime, Webpack establishes a
+global "share scope" (defaulting to the <code>default</code> scope).</p>
+<p>When federated applications load, they register their available
+shared packages, along with their respective versions and loader
+functions, into this central registry. Before an application executes
+code requiring a shared module, Webpack consults the share scope:</p>
+<ol type="1">
+<li>It collects all registered versions of the requested dependency
+across the host and all loaded remotes.</li>
+<li>It evaluates the version requirements defined by the requesting
+container.</li>
+<li>It resolves to the highest compatible version matching the semantic
+version range.</li>
+<li>It initializes that single version and provides it to all modules
+that accept that version range.</li>
+</ol>
+<h3 id="managing-singletons-and-state-sensitive-libraries">Managing
+Singletons and State-Sensitive Libraries</h3>
+<p>Certain libraries, such as React, React DOM, or state management
+tools, fail if multiple instances exist simultaneously in memory.
+Webpack provides the <code>singleton</code> configuration to handle this
+constraint:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> <span class="fu">ModuleFederationPlugin</span>({</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">name</span><span class="op">:</span> <span class="st">&#39;app&#39;</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">shared</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">react</span><span class="op">:</span> {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">requiredVersion</span><span class="op">:</span> <span class="st">&#39;^18.2.0&#39;</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">&#39;react-dom&#39;</span><span class="op">:</span> {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">singleton</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">requiredVersion</span><span class="op">:</span> <span class="st">&#39;^18.2.0&#39;</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p>When <code>singleton: true</code> is set, Webpack ensures that only
+one instance of the package is loaded across all federated containers.
+If two remotes provide incompatible versions under a singleton
+constraint, Webpack still selects only the highest version, but logs a
+runtime console warning to alert developers of the mismatch.</p>
+<h3 id="strict-version-enforcement">Strict Version Enforcement</h3>
+<p>To prevent breaking changes caused by loose SemVer matching or
+singleton fallbacks, Webpack provides the <code>strictVersion</code>
+option.</p>
+<p>When <code>strictVersion: true</code> is enabled alongside
+<code>requiredVersion</code>, Webpack will throw a runtime error rather
+than proceed if a compatible version cannot be found in the share scope.
+Conversely, if <code>strictVersion</code> is set to <code>false</code>
+(the default) and <code>singleton</code> is not enforced, Webpack falls
+back to loading a separate, container-specific version of the library,
+isolating the micro-frontend without crashing the system.</p>
+<h3 id="asynchronous-loading-and-the-eager-flag">Asynchronous Loading
+and the <code>eager</code> Flag</h3>
+<p>By default, shared dependencies are loaded asynchronously through
+dynamic imports (<code>import()</code>). This asynchronous boundary
+gives Webpack the execution pause necessary to inspect the share scope,
+negotiate versions, and download the negotiated chunks before any
+application code executes.</p>
+<p>Marking a dependency with <code>eager: true</code> bundles that
+library directly into the initial entry chunk of the application rather
+than creating an asynchronous chunk. While this removes the need for
+asynchronous bootstrap boundaries, it bypasses standard runtime
+negotiation for that dependency, often forcing other remotes to consume
+that specific bundled version or load their own duplicates. For optimal
+sharing, keeping dependencies non-eager and wrapping the application
+entry point in an asynchronous <code>import('./bootstrap')</code> is the
+recommended pattern.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-module-federation-shared-dependency-versions';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

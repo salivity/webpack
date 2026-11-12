@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resolve CSS Ordering Conflicts in Webpack - webpack</title>
+    <meta name="description" content="CSS ordering conflicts in Webpack arise when asynchronous chunking, code splitting, and differing import orders cause style sheets to compile in non-deterministic sequences. This article examines the root causes of these conflicts within complex dependenc">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/resolve-css-ordering-conflicts-in-webpack">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Resolve CSS Ordering Conflicts in Webpack - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/resolve-css-ordering-conflicts-in-webpack" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="CSS ordering conflicts in Webpack arise when asynchronous chunking, code splitting, and differing import orders cause style sheets to compile in non-deterministic sequences. This article examines the root causes of these conflicts within complex dependenc" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="resolve-css-ordering-conflicts-in-webpack">Resolve CSS Ordering
+Conflicts in Webpack</h1>
+<p>CSS ordering conflicts in Webpack arise when asynchronous chunking,
+code splitting, and differing import orders cause style sheets to
+compile in non-deterministic sequences. This article examines the root
+causes of these conflicts within complex dependency graphs and outlines
+practical architectural, tooling, and configuration-level
+solutions—including <code>mini-css-extract-plugin</code> optimizations,
+CSS Modules, CSS Cascade Layers, and Webpack <code>cacheGroups</code>—to
+establish predictable, conflict-free styling.</p>
+<h3 id="understanding-the-root-cause">Understanding the Root Cause</h3>
+<p>Webpack builds a dependency graph starting from your entry points.
+When multiple JavaScript files import the same CSS files in different
+sequences—or when dynamic <code>import()</code> statements load chunks
+asynchronously—Webpack may extract styles into a bundle order that
+differs from your local development environment. Because standard CSS
+relies heavily on source order to break specificity ties, an
+unpredictable build order leads to inconsistent UI rendering and
+regression bugs across production deployments.</p>
+<h3 id="1-leverage-css-cascade-layers-layer">1. Leverage CSS Cascade
+Layers (<code>@layer</code>)</h3>
+<p>The most robust modern solution to ordering conflicts is using native
+CSS Cascade Layers. Layers eliminate reliance on source order by giving
+developers explicit control over rule priority.</p>
+<p>Wrap your styles into declared layers:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode css"><code class="sourceCode css"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">@layer</span> reset<span class="op">,</span> framework<span class="op">,</span> components<span class="op">,</span> utilities<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">@layer</span> reset {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">/* Lowest priority styles */</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="im">@layer</span> components {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="co">/* Mid-level component styles */</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="im">@layer</span> utilities {</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="co">/* Highest priority overrides */</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Even if Webpack bundles a <code>reset</code> rule after a
+<code>components</code> rule in the final CSS file, the browser respects
+the explicit layer order, effectively neutralizing source-order
+bugs.</p>
+<h3 id="2-isolate-scopes-with-css-modules">2. Isolate Scopes with CSS
+Modules</h3>
+<p>Global class names are inherently vulnerable to ordering issues. By
+switching to CSS Modules (or CSS-in-JS), class names are automatically
+hashed (e.g., <code>.button_a8f9d</code>), ensuring styles are uniquely
+scoped to their respective components. When two selectors never target
+the exact same class name, the order in which Webpack compiles them
+becomes irrelevant.</p>
+<p>To enforce this, configure <code>css-loader</code> in your Webpack
+configuration:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">loader</span><span class="op">:</span> <span class="st">&quot;css-loader&quot;</span><span class="op">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">options</span><span class="op">:</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">modules</span><span class="op">:</span> {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">localIdentName</span><span class="op">:</span> <span class="st">&quot;[name]__[local]--[hash:base64:5]&quot;</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<h3 id="3-normalize-component-import-orders">3. Normalize Component
+Import Orders</h3>
+<p>If global or utility classes must be used, import order conflicts can
+often be detected and prevented through static analysis. The
+<code>mini-css-extract-plugin</code> outputs a
+<code>Conflicting order</code> warning when modules import the same CSS
+files in disparate sequences.</p>
+<p>Instead of silencing the warning with <code>ignoreOrder: true</code>,
+audit the dependency tree:</p>
+<ul>
+<li>Ensure base styles, resets, and third-party libraries are
+exclusively imported once at the primary entry point (e.g.,
+<code>index.js</code>).</li>
+<li>Never re-import global styles inside leaf components.</li>
+<li>Use ESLint rules such as <code>import/order</code> to enforce a
+deterministic sorting convention for imports across the entire
+repository.</li>
+</ul>
+<h3 id="4-configure-splitchunksplugin-cache-groups">4. Configure
+<code>SplitChunksPlugin</code> Cache Groups</h3>
+<p>You can force Webpack to group CSS assets into deterministic bundles
+using <code>optimization.splitChunks.cacheGroups</code>. This prevents
+asynchronous chunks from generating their own conflicting
+mini-stylesheets by collapsing styles into designated, sequential
+chunks.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">splitChunks</span><span class="op">:</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">cacheGroups</span><span class="op">:</span> {</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">styles</span><span class="op">:</span> {</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>          <span class="dt">name</span><span class="op">:</span> <span class="st">&quot;styles&quot;</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>          <span class="dt">type</span><span class="op">:</span> <span class="st">&quot;css/mini-extract&quot;</span><span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>          <span class="dt">chunks</span><span class="op">:</span> <span class="st">&quot;all&quot;</span><span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>          <span class="dt">enforce</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This configuration extracts all CSS across your application into a
+single, predictably ordered stylesheet, completely bypassing
+chunk-to-chunk race conditions caused by code splitting.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/resolve-css-ordering-conflicts-in-webpack';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

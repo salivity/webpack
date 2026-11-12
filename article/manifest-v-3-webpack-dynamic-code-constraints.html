@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manifest V3 Webpack Dynamic Code Constraints - webpack</title>
+    <meta name="description" content="Chrome’s Manifest V3 (MV3) introduces strict security policies that fundamentally change how browser extensions handle JavaScript, prohibiting remotely hosted code and the dynamic evaluation of strings as code. When bundling with Webpack, these rules dire">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/manifest-v-3-webpack-dynamic-code-constraints">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Manifest V3 Webpack Dynamic Code Constraints - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/manifest-v-3-webpack-dynamic-code-constraints" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Chrome’s Manifest V3 (MV3) introduces strict security policies that fundamentally change how browser extensions handle JavaScript, prohibiting remotely hosted code and the dynamic evaluation of strings as code. When bundling with Webpack, these rules dire" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="manifest-v3-webpack-dynamic-code-constraints">Manifest V3
+Webpack Dynamic Code Constraints</h1>
+<p>Chrome’s Manifest V3 (MV3) introduces strict security policies that
+fundamentally change how browser extensions handle JavaScript,
+prohibiting remotely hosted code and the dynamic evaluation of strings
+as code. When bundling with Webpack, these rules directly disrupt
+standard dynamic code generation techniques, such as on-demand chunk
+loading, dynamic imports via standard DOM injection, and
+<code>eval</code>-based source maps. Developing extensions under MV3
+requires specific Webpack configuration changes to ensure that all
+assets are pre-packaged, statically verifiable, and compliant with MV3's
+Content Security Policy (CSP).</p>
+<h3 id="the-ban-on-dynamic-evaluation-and-remote-code">The Ban on
+Dynamic Evaluation and Remote Code</h3>
+<p>Manifest V3 enforces a CSP that forbids the execution of arbitrary
+strings as code. Functions such as <code>eval()</code>,
+<code>new Function()</code>, and <code>setTimeout([string])</code> are
+blocked entirely.</p>
+<p>For Webpack users, this constraint directly impacts development
+tooling:</p>
+<ul>
+<li><strong>Source Maps:</strong> Webpack’s default development
+configuration often uses <code>eval</code>-based source maps (e.g.,
+<code>eval-cheap-module-source-map</code>) to increase build speeds.
+Under MV3, any bundle using an <code>eval</code> variant will
+immediately trigger a CSP violation and fail to execute. Developers must
+switch to MV3-compliant alternatives such as <code>source-map</code> or
+<code>inline-cheap-source-map</code>.</li>
+<li><strong>String-to-Code Compilers:</strong> In-browser templating
+engines or dynamic runtime code generation libraries bundled by Webpack
+will fail unless configured to pre-compile templates during the Webpack
+build step.</li>
+</ul>
+<h3
+id="limitations-on-dynamic-chunk-loading-and-code-splitting">Limitations
+on Dynamic Chunk Loading and Code Splitting</h3>
+<p>Webpack typically handles dynamic imports (<code>import()</code>) by
+creating separate chunks that are loaded on demand at runtime. In
+standard web environments, Webpack achieves this by injecting
+<code>&lt;script&gt;</code> tags into the DOM or fetching scripts over a
+network.</p>
+<p>MV3 restricts this behavior in multiple ways:</p>
+<ul>
+<li><strong>Background Service Workers:</strong> MV3 replaces persistent
+background pages with Service Workers, which do not have access to the
+DOM. Consequently, Webpack's default chunk-loading mechanism (JSONP via
+<code>&lt;script&gt;</code> element injection) fails in the background
+context.</li>
+<li><strong>Importing Local Chunks:</strong> While dynamic
+<code>import()</code> is partially supported in ES module-based Service
+Workers, Webpack must be explicitly instructed to handle chunk loading
+via service worker-compatible APIs, such as <code>importScripts</code>
+for traditional service worker scripts, using
+<code>output.chunkLoading = 'importScripts'</code>.</li>
+<li><strong>External CDNs:</strong> All code executed by an MV3
+extension must be packaged locally within the extension
+<code>.crx</code> bundle. Webpack’s <code>output.publicPath</code>
+cannot point to an external CDN to fetch chunks dynamically; all
+dynamically split files must reside locally within the extension
+directory and be declared in the <code>web_accessible_resources</code>
+field if loaded outside the extension's privileged context.</li>
+</ul>
+<h3 id="required-webpack-adjustments-for-manifest-v3">Required Webpack
+Adjustments for Manifest V3</h3>
+<p>To navigate these constraints, Webpack configurations for MV3
+extensions typically require:</p>
+<ol type="1">
+<li><strong>Disabling Dynamic Chunking for Specific Contexts:</strong>
+For background workers and content scripts, developers often disable
+code splitting entirely by configuring
+<code>optimization.splitChunks = false</code> or generating isolated
+entry points to ensure each target executes from a single,
+self-contained bundle.</li>
+<li><strong>Targeting the Right Environments:</strong> Configuring
+separate Webpack compiler configurations for different extension
+contexts—such as configuring <code>target: 'webworker'</code> for the
+background service worker and <code>target: 'web'</code> for popups and
+options pages.</li>
+<li><strong>Strict Source Map Selection:</strong> Explicitly setting
+<code>devtool: 'cheap-module-source-map'</code> or
+<code>devtool: 'source-map'</code> across both development and
+production builds to avoid generating code that triggers CSP evaluation
+blocks.</li>
+</ol></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/manifest-v-3-webpack-dynamic-code-constraints';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

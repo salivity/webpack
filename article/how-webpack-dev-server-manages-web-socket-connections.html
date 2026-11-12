@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Dev Server Manages WebSocket Connections - webpack</title>
+    <meta name="description" content="Webpack Dev Server relies on a persistent WebSocket connection to bridge the local development server with the browser runtime, enabling real-time features like automatic page reloading and Hot Module Replacement (HMR). This article breaks down the intern">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-dev-server-manages-web-socket-connections">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Dev Server Manages WebSocket Connections - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-dev-server-manages-web-socket-connections" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack Dev Server relies on a persistent WebSocket connection to bridge the local development server with the browser runtime, enabling real-time features like automatic page reloading and Hot Module Replacement (HMR). This article breaks down the intern" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-dev-server-manages-websocket-connections">How
+Webpack Dev Server Manages WebSocket Connections</h1>
+<p>Webpack Dev Server relies on a persistent WebSocket connection to
+bridge the local development server with the browser runtime, enabling
+real-time features like automatic page reloading and Hot Module
+Replacement (HMR). This article breaks down the internal mechanism of
+how Webpack injects the client-side communication script, establishes
+the WebSocket transport layer, broadcasts compiler lifecycle events, and
+dispatches updates to the application.</p>
+<h2 id="client-script-injection">Client Script Injection</h2>
+<p>When Webpack Dev Server (<code>webpack-dev-server</code>) launches,
+it does not merely serve static assets; it dynamically modifies your
+build configuration. The server hooks into Webpack's compiler and
+prepends runtime scripts directly into your bundle’s entry points.</p>
+<p>These injected scripts include:</p>
+<ol type="1">
+<li><strong>The Dev Server Client
+(<code>webpack-dev-server/client</code>):</strong> The script
+responsible for establishing the WebSocket connection, handling
+transport protocols, and parsing messages sent from the Node.js
+server.</li>
+<li><strong>The Hot Runtime (<code>webpack/hot/dev-server</code> or
+<code>webpack/hot/only-dev-server</code>):</strong> The module
+responsible for interfacing with Webpack’s internal HMR API
+(<code>module.hot</code>) to apply patches without reloading the
+page.</li>
+</ol>
+<p>Because these files are compiled into the output bundle, the client
+logic executes immediately when the application loads in the
+browser.</p>
+<h2 id="establishing-the-transport-layer">Establishing the Transport
+Layer</h2>
+<p>On the server side, <code>webpack-dev-server</code> uses Node.js
+WebSocket implementations—typically the <code>ws</code> package by
+default, or optionally <code>sockjs</code> for fallback support. It
+attaches this WebSocket server to the underlying Node HTTP/HTTPS server,
+typically listening on a designated path such as <code>/ws</code>.</p>
+<p>During bundle initialization in the browser, the injected client
+script reads configuration options (such as the hostname, port, and
+WebSocket path configured in <code>devServer.client.webSocketURL</code>)
+and initiates a handshake by creating a native <code>WebSocket</code>
+instance:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> socket <span class="op">=</span> <span class="kw">new</span> <span class="bu">WebSocket</span>(<span class="st">&#39;ws://localhost:8080/ws&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<p>Once the handshake completes, a bidirectional messaging channel is
+kept open for the duration of the development session. Heartbeat
+messages (pings/pongs) are periodically sent to ensure the connection
+remains alive.</p>
+<h2 id="listening-to-compiler-hooks">Listening to Compiler Hooks</h2>
+<p>The server coordinates with Webpack's build lifecycle via compiler
+tap hooks. When files change on disk, Webpack triggers specific
+compilation events that <code>webpack-dev-server</code> intercepts:</p>
+<ul>
+<li><strong><code>compiler.hooks.invalid</code>:</strong> Fires as soon
+as a file change is detected and recompilation begins. The server
+broadcasts a <code>still-ok</code> or <code>invalid</code> notification
+over the WebSocket to alert the browser that a build is underway.</li>
+<li><strong><code>compiler.hooks.done</code>:</strong> Fires after
+compilation completes. The server inspects the resulting
+<code>Stats</code> object to retrieve the compilation hash, warnings,
+and errors.</li>
+</ul>
+<h2 id="message-serialization-and-dispatch">Message Serialization and
+Dispatch</h2>
+<p>Once compilation concludes, the server formats the build state into a
+structured JSON payload and broadcasts it through the active WebSocket
+connections. Common message types include:</p>
+<ul>
+<li><strong><code>hot</code>:</strong> Informs the client that Hot
+Module Replacement is enabled.</li>
+<li><strong><code>liveReload</code>:</strong> Informs the client whether
+automatic page reloading is active.</li>
+<li><strong><code>hash</code>:</strong> Sends the unique compilation
+hash generated by Webpack for that build run.</li>
+<li><strong><code>ok</code>:</strong> Indicates a successful compilation
+without errors.</li>
+<li><strong><code>warnings</code>:</strong> Dispatches compilation
+warnings to be printed in the browser console.</li>
+<li><strong><code>errors</code>:</strong> Dispatches compilation errors
+to be printed in the console or rendered on the browser overlay.</li>
+</ul>
+<h2 id="client-side-execution-hmr-and-live-reloading">Client-Side
+Execution: HMR and Live Reloading</h2>
+<p>Upon receiving a message, the client-side runtime evaluates the
+payload:</p>
+<ol type="1">
+<li><strong>Processing the Hash:</strong> The client stores the new
+compilation hash sent in the <code>hash</code> message.</li>
+<li><strong>Handling Build State:</strong> When the <code>ok</code>
+message arrives, the client checks whether HMR is enabled:
+<ul>
+<li><strong>If HMR is enabled:</strong> The client uses an internal
+event emitter to trigger the HMR runtime, passing the new hash. The HMR
+runtime then requests the update manifest and updated chunk files via
+standard HTTP requests (<code>fetch</code> or JSONP). The WebSocket
+itself is not used to transmit the actual JavaScript code updates—only
+the signals and hashes.</li>
+<li><strong>If HMR is disabled or fails:</strong> If the module graph
+cannot be patched dynamically, or if <code>liveReload</code> is
+configured, the client falls back to triggering a hard browser refresh
+via <code>window.location.reload()</code>.</li>
+</ul></li>
+</ol></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-webpack-dev-server-manages-web-socket-connections';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

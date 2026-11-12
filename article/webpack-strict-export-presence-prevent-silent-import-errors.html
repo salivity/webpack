@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack strictExportPresence: Prevent Silent Import Errors - webpack</title>
+    <meta name="description" content="This article explains why configuring strictExportPresence in Webpack is essential for preventing missing export bugs from silently slipping into production. You will learn how Webpack&#39;s default behavior handles non-existent imports as warnings rather tha">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-strict-export-presence-prevent-silent-import-errors">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack strictExportPresence: Prevent Silent Import Errors - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-strict-export-presence-prevent-silent-import-errors" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explains why configuring strictExportPresence in Webpack is essential for preventing missing export bugs from silently slipping into production. You will learn how Webpack&#39;s default behavior handles non-existent imports as warnings rather tha" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1
+id="webpack-strictexportpresence-prevent-silent-import-errors">Webpack
+strictExportPresence: Prevent Silent Import Errors</h1>
+<p>This article explains why configuring
+<code>strictExportPresence</code> in Webpack is essential for preventing
+missing export bugs from silently slipping into production. You will
+learn how Webpack's default behavior handles non-existent imports as
+warnings rather than errors, the runtime risks this creates, and how
+enabling this flag enforces strict build-time validation to ensure code
+reliability across development and deployment pipelines.</p>
+<h3 id="the-problem-with-default-import-handling">The Problem with
+Default Import Handling</h3>
+<p>By default, Webpack often treats imports of non-existent named
+exports as non-fatal warnings rather than hard compilation errors. When
+a developer attempts to import an export that does not exist in the
+target module—whether due to a typo, an outdated refactor, or an
+incomplete re-export—Webpack will complete the build and emit a bundle
+where the missing imported value resolves to <code>undefined</code>.</p>
+<p>This permissive behavior creates a silent failure. Because the build
+succeeds with an exit code of <code>0</code>, continuous integration
+(CI) pipelines and automated deployment scripts continue as normal. The
+bug only surfaces at runtime when application code attempts to call,
+render, or inspect the missing export, resulting in fatal runtime
+exceptions like
+<code>TypeError: Cannot read property of undefined</code> or
+<code>(0 , _module.foo) is not a function</code>.</p>
+<h3 id="how-strictexportpresence-fixes-the-issue">How
+strictExportPresence Fixes the Issue</h3>
+<p>The <code>strictExportPresence</code> setting instructs Webpack to
+treat missing exports as hard compilation errors instead of warnings.
+When set to <code>true</code>, if any file attempts to import an
+identifier that is not explicitly exported by the source module, Webpack
+immediately halts the compilation and fails the build process.</p>
+<p>By shifting failure detection from runtime to build time, this option
+provides several key benefits:</p>
+<ul>
+<li><strong>Immediate Feedback:</strong> Developers are notified
+instantly within their local development server or terminal that an
+import path or name is incorrect.</li>
+<li><strong>CI/CD Reliability:</strong> Builds with broken references
+fail during the build step, preventing broken code from ever being
+bundled or deployed to staging and production environments.</li>
+<li><strong>Safer Refactoring:</strong> Renaming or removing an export
+will automatically highlight every consumer file that still references
+the old name during the standard build.</li>
+</ul>
+<h3 id="interaction-with-typescript-and-babel">Interaction with
+TypeScript and Babel</h3>
+<p>While static analysis tools such as TypeScript can detect missing
+exports during type checking, development workflows frequently bypass
+full type checking for speed. For instance, teams often use Babel or
+Webpack's <code>ts-loader</code> in <code>transpileOnly</code> mode to
+improve compilation performance.</p>
+<p>In these configurations, TypeScript's type verification is skipped
+during the bundling phase. If <code>strictExportPresence</code> is not
+enabled, missing exports will bypass the build unnoticed even in a
+TypeScript codebase. Enabling <code>strictExportPresence</code>
+guarantees that Webpack enforces module boundaries independently of
+external type-checking tools.</p>
+<h3 id="configuration">Configuration</h3>
+<p>To enable strict export checking, set
+<code>strictExportPresence: true</code> inside the <code>module</code>
+section of your Webpack configuration:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... other webpack configuration</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">module</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">strictExportPresence</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">rules</span><span class="op">:</span> [</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="co">// loaders and rules</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Once enabled, any import mismatch will emit a clear, descriptive
+compilation error pointing directly to the offending file, line number,
+and export identifier.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-strict-export-presence-prevent-silent-import-errors';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

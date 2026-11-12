@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How React Refresh Preserves Component State in HMR - webpack</title>
+    <meta name="description" content="React Refresh enables stateful React components to maintain their state during Webpack Hot Module Replacement (HMR) by decoupling component execution from the underlying component state tree. By combining a compiler transform to track component identities">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-react-refresh-preserves-component-state-in-hmr">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How React Refresh Preserves Component State in HMR - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-react-refresh-preserves-component-state-in-hmr" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="React Refresh enables stateful React components to maintain their state during Webpack Hot Module Replacement (HMR) by decoupling component execution from the underlying component state tree. By combining a compiler transform to track component identities" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-react-refresh-preserves-component-state-in-hmr">How React
+Refresh Preserves Component State in HMR</h1>
+<p>React Refresh enables stateful React components to maintain their
+state during Webpack Hot Module Replacement (HMR) by decoupling
+component execution from the underlying component state tree. By
+combining a compiler transform to track component identities and hook
+signatures with a specialized runtime module integrated into Webpack's
+update lifecycle, React Refresh safely patches rendered components in
+place without re-mounting them or wiping their in-memory Fiber
+nodes.</p>
+<h3 id="the-problem-with-traditional-hmr">The Problem with Traditional
+HMR</h3>
+<p>In standard Webpack HMR, updating a module typically invalidates the
+file and re-evaluates the code from scratch. When a React component is
+redefined this way, React treats it as an entirely new component type.
+This triggers a full unmount and remount cycle, destroying DOM nodes,
+discarding existing state, and resetting any active effects.</p>
+<h3 id="the-architecture-of-react-refresh">The Architecture of React
+Refresh</h3>
+<p>React Refresh overcomes this by operating at three distinct
+levels:</p>
+<ol type="1">
+<li><strong>The Compiler Transform
+(<code>react-refresh/babel</code>):</strong> Injects code registration
+calls around React components and hooks during the build step.</li>
+<li><strong>The Runtime (<code>react-refresh/runtime</code>):</strong>
+Manages the global registry of components and handles reconciliation
+logic for hot updates.</li>
+<li><strong>The Webpack Integration
+(<code>@pmmmwh/react-refresh-webpack-plugin</code>):</strong> Intercepts
+Webpack’s native HMR events to feed updated modules into the React
+Refresh runtime instead of triggering a full page reload.</li>
+</ol>
+<h3 id="step-by-step-state-preservation-process">Step-by-Step State
+Preservation Process</h3>
+<h4 id="1-component-registration-and-hook-signatures">1. Component
+Registration and Hook Signatures</h4>
+<p>During compilation, the Babel transform analyzes files for React
+component exports and hook usage. It registers every component using a
+generated ID via <code>$RefreshReg$</code> and creates a unique
+signature for its hooks via <code>$RefreshSig$</code>.</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Conceptual output of the transform</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">var</span> _s <span class="op">=</span> <span class="fu">$RefreshSig$</span>()<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">Counter</span>() {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">_s</span>()<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> [count<span class="op">,</span> setCount] <span class="op">=</span> <span class="fu">useState</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="op">&lt;</span>button onClick<span class="op">=</span>{() <span class="kw">=&gt;</span> <span class="fu">setCount</span>(count <span class="op">+</span> <span class="dv">1</span>)}<span class="op">&gt;</span>{count}<span class="op">&lt;/</span>button<span class="op">&gt;;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">_s</span>(Counter<span class="op">,</span> <span class="st">&quot;useState{[count, setCount](0)}&quot;</span>)<span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">$RefreshReg$</span>(Counter<span class="op">,</span> <span class="st">&quot;Counter&quot;</span>)<span class="op">;</span></span></code></pre></div>
+<p>The hook signature captures the sequence, types, and primary keys of
+hooks inside the component. This metadata allows the runtime to verify
+whether the internal state structure remains compatible across
+changes.</p>
+<h4 id="2-hot-update-interception">2. Hot Update Interception</h4>
+<p>When you edit a component, Webpack identifies the changed module and
+generates a hot update chunk. Instead of bubbling the update up the
+dependency tree, the Webpack plugin automatically injects
+<code>module.hot.accept()</code> boundaries around files that only
+export React components. Webpack loads the new module code and executes
+it, invoking the new <code>$RefreshReg$</code> calls.</p>
+<h4 id="3-component-identity-mapping">3. Component Identity Mapping</h4>
+<p>The React Refresh runtime intercepts the new component definition and
+maps it back to the existing registration ID. Because the component's
+identity is retained through the runtime's internal registry, React
+understands that the incoming function is an update to an existing
+component rather than an entirely new entity.</p>
+<h4 id="4-hook-signature-validation">4. Hook Signature Validation</h4>
+<p>Before applying the update, the runtime inspects the component's hook
+signature:</p>
+<ul>
+<li><strong>Signature matches:</strong> If the order, type, and count of
+hooks remain unchanged (e.g., editing JSX or non-hook helper logic),
+React Refresh considers the state structure safe.</li>
+<li><strong>Signature changes:</strong> If a hook is added, removed, or
+reordered, state persistence could lead to runtime errors or memory
+corruption. The runtime deliberately marks the component as invalidated,
+resetting its state while keeping the rest of the component tree
+intact.</li>
+</ul>
+<h4 id="5-fiber-tree-patching">5. Fiber Tree Patching</h4>
+<p>React renders components using an internal tree of nodes called
+Fibers. Each Fiber holds the component's current DOM reference, props,
+and a linked list of hook states.</p>
+<p>Once the runtime validates that the update is safe, it patches the
+component's type reference directly in the existing Fiber tree. It then
+signals the React reconciler to perform a shallow re-render of only the
+affected components. Because the Fiber nodes remain untouched, the
+linked list of hook states persists, resulting in an updated UI that
+retains its current state.</p>
+<h3 id="conditions-that-trigger-a-state-reset">Conditions That Trigger a
+State Reset</h3>
+<p>State cannot always be preserved. React Refresh resets component
+state to prevent inconsistent behavior when:</p>
+<ul>
+<li>Hook types, counts, or execution orders are modified.</li>
+<li>A file exports both React components and regular JavaScript values
+or utilities (which breaks HMR boundary detection).</li>
+<li>Class components are edited, as React Refresh is primarily designed
+around functional components and hooks.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-react-refresh-preserves-component-state-in-hmr';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

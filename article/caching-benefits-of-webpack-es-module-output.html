@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caching Benefits of Webpack ES Module Output - webpack</title>
+    <meta name="description" content="Configuring Webpack to output native ES modules (ESM) significantly improves web application performance by modernizing how assets are delivered and cached by the browser. By moving away from legacy Immediately Invoked Function Expressions (IIFEs) and cus">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/caching-benefits-of-webpack-es-module-output">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Caching Benefits of Webpack ES Module Output - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/caching-benefits-of-webpack-es-module-output" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Configuring Webpack to output native ES modules (ESM) significantly improves web application performance by modernizing how assets are delivered and cached by the browser. By moving away from legacy Immediately Invoked Function Expressions (IIFEs) and cus" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="caching-benefits-of-webpack-es-module-output">Caching Benefits
+of Webpack ES Module Output</h1>
+<p>Configuring Webpack to output native ES modules (ESM) significantly
+improves web application performance by modernizing how assets are
+delivered and cached by the browser. By moving away from legacy
+Immediately Invoked Function Expressions (IIFEs) and custom module
+registries, ESM output reduces bundle overhead, limits the impact of
+cache-busting changes, and leverages native browser-level caching
+mechanisms for faster repeat visits.</p>
+<h3 id="reduced-cache-invalidation-from-runtime-overhead">Reduced Cache
+Invalidation from Runtime Overhead</h3>
+<p>Traditional Webpack outputs bundle all modules into an internal
+runtime registry, typically using global wrappers, factory functions,
+and internal identifier mappings (like
+<code>__webpack_require__</code>). When a single module changes, Webpack
+often updates this shared runtime manifest or internal module IDs,
+causing the hashes of unrelated chunks to change and needlessly
+invalidating them in user caches.</p>
+<p>With native ES module output
+(<code>experiments.outputModule: true</code>), Webpack relies directly
+on standard JavaScript <code>import</code> and <code>export</code>
+statements. This drastically reduces the size of the Webpack runtime and
+eliminates internal module registries. Because there is less shared
+boilerplate coupling different chunks, a change in one file is far less
+likely to cause a hash mismatch in adjacent or parent chunks, preserving
+existing client-side cache entries.</p>
+<h3 id="granular-module-invalidation">Granular Module Invalidation</h3>
+<p>Native ESM output facilitates finer-grained code splitting. When
+scripts are loaded as modern modules via
+<code>&lt;script type="module"&gt;</code>, the browser handles the
+dependency graph resolution directly. Because Webpack can emit static,
+standard import paths between split chunks:</p>
+<ul>
+<li><strong>Vendor chunks remain cached longer:</strong> Stable
+third-party libraries remain completely untouched in the browser cache
+even when application logic frequently updates.</li>
+<li><strong>Micro-updates preserve macro bundles:</strong> Modifying a
+localized component invalidates only that specific module's chunk,
+rather than invalidating a massive bundled wrapper containing multiple
+unrelated components.</li>
+</ul>
+<h3 id="elimination-of-duplicate-dependency-executions">Elimination of
+Duplicate Dependency Executions</h3>
+<p>Browsers inherently cache the resolution and execution of ES modules.
+When multiple dynamic imports or chunks reference the same ES module
+URL, the browser fetches, compiles, and evaluates it exactly once per
+session and caches the result natively in memory.</p>
+<p>In non-ESM Webpack bundles, shared dependencies duplicated across
+non-optimized split chunks might be parsed and executed repeatedly in
+different scope closures. Native ESM ensures both HTTP-level caching via
+HTTP headers and in-memory execution caching handled directly by the
+JavaScript engine.</p>
+<h3 id="smaller-payloads-and-faster-cache-hits">Smaller Payloads and
+Faster Cache Hits</h3>
+<p>Webpack's ESM output eliminates unnecessary wrapper functions and
+polyfilled module loaders, resulting in overall smaller file sizes
+across every chunk. Smaller files download faster on the initial cache
+miss and require significantly less disk-to-memory overhead when
+retrieved from the browser cache on subsequent page views. This enables
+lower memory consumption and faster warm-load execution times on
+performance-constrained devices.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/caching-benefits-of-webpack-es-module-output';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

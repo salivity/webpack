@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack DefinePlugin vs EnvironmentPlugin - webpack</title>
+    <meta name="description" content="Webpack provides multiple built-in plugins to inject configuration settings into client-side code at build time. While both DefinePlugin and EnvironmentPlugin replace occurrences of variables in your source code with compile-time values, they serve differ">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-define-plugin-vs-environment-plugin">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack DefinePlugin vs EnvironmentPlugin - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-define-plugin-vs-environment-plugin" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack provides multiple built-in plugins to inject configuration settings into client-side code at build time. While both DefinePlugin and EnvironmentPlugin replace occurrences of variables in your source code with compile-time values, they serve differ" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-defineplugin-vs-environmentplugin">Webpack DefinePlugin
+vs EnvironmentPlugin</h1>
+<p>Webpack provides multiple built-in plugins to inject configuration
+settings into client-side code at build time. While both
+<code>DefinePlugin</code> and <code>EnvironmentPlugin</code> replace
+occurrences of variables in your source code with compile-time values,
+they serve different operational scopes. <code>DefinePlugin</code> is a
+low-level, highly flexible tool that allows arbitrary code and value
+replacements across any namespace. In contrast,
+<code>EnvironmentPlugin</code> is a specialized, higher-level wrapper
+around <code>DefinePlugin</code> tailored specifically for handling
+<code>process.env</code> variables with cleaner syntax and automatic
+value serialization.</p>
+<h3 id="what-is-defineplugin">What is DefinePlugin?</h3>
+<p><code>DefinePlugin</code> performs direct text replacement on source
+code during compilation. It allows you to declare global constants
+accessible anywhere within your application bundle.</p>
+<p>Because it performs literal code replacement rather than variable
+assignment, values must be properly serialized:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpack <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> webpack<span class="op">.</span><span class="fu">DefinePlugin</span>({</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="co">// String values must be stringified or quoted</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="st">&#39;process.env.NODE_ENV&#39;</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(<span class="st">&#39;production&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">API_URL</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(<span class="st">&#39;https://api.example.com&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Numbers, booleans, and expressions are inserted as raw code</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>      <span class="dt">FEATURE_FLAG</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>      <span class="dt">BUILD_TIMESTAMP</span><span class="op">:</span> <span class="bu">Date</span><span class="op">.</span><span class="fu">now</span>()<span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Custom global objects</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>      <span class="dt">CONFIG</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({ <span class="dt">version</span><span class="op">:</span> <span class="st">&#39;1.0.0&#39;</span> })<span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>If a string is passed without <code>JSON.stringify()</code> (e.g.,
+<code>'production'</code>), Webpack treats the value as a code fragment
+or variable name rather than a string literal, resulting in a runtime
+<code>ReferenceError</code>.</p>
+<h3 id="what-is-environmentplugin">What is EnvironmentPlugin?</h3>
+<p><code>EnvironmentPlugin</code> is a convenience utility built on top
+of <code>DefinePlugin</code>. It is strictly dedicated to mapping values
+from the Node.js execution environment (<code>process.env</code>) to the
+client-side bundle.</p>
+<p><code>EnvironmentPlugin</code> eliminates the need for manual
+<code>JSON.stringify()</code> calls and automatically falls back to
+system environment variables:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> webpack <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;webpack&#39;</span>)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">plugins</span><span class="op">:</span> [</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Array syntax: Reads directly from the host environment</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> webpack<span class="op">.</span><span class="fu">EnvironmentPlugin</span>([<span class="st">&#39;NODE_ENV&#39;</span><span class="op">,</span> <span class="st">&#39;DEBUG&#39;</span>])<span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Object syntax: Reads from environment with fallbacks</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">new</span> webpack<span class="op">.</span><span class="fu">EnvironmentPlugin</span>({</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">NODE_ENV</span><span class="op">:</span> <span class="st">&#39;development&#39;</span><span class="op">,</span> <span class="co">// default value if not set in process.env</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>      <span class="dt">API_URL</span><span class="op">:</span> <span class="st">&#39;https://staging.example.com&#39;</span><span class="op">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Under the hood,
+<code>new webpack.EnvironmentPlugin(['NODE_ENV'])</code> compiles down
+to:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">new</span> webpack<span class="op">.</span><span class="fu">DefinePlugin</span>({</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;process.env.NODE_ENV&#39;</span><span class="op">:</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">NODE_ENV</span>)<span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<h3 id="key-differences">Key Differences</h3>
+<h4 id="1-scope-and-namespace">1. Scope and Namespace</h4>
+<ul>
+<li><strong><code>DefinePlugin</code></strong>: Can define any
+identifier or namespace (e.g., <code>process.env.VAR</code>,
+<code>MY_GLOBAL</code>, <code>window.__CONFIG__</code>).</li>
+<li><strong><code>EnvironmentPlugin</code></strong>: Restriced entirely
+to properties on the <code>process.env</code> object.</li>
+</ul>
+<h4 id="2-value-formatting-and-quoting">2. Value Formatting and
+Quoting</h4>
+<ul>
+<li><strong><code>DefinePlugin</code></strong>: Requires explicit string
+serialization using <code>JSON.stringify(value)</code> or nested quotes
+(<code>"'value'"</code>).</li>
+<li><strong><code>EnvironmentPlugin</code></strong>: Automatically
+stringifies values passed from the environment or default config.</li>
+</ul>
+<h4 id="3-default-values-and-system-environment-integration">3. Default
+Values and System Environment Integration</h4>
+<ul>
+<li><strong><code>DefinePlugin</code></strong>: Requires manual
+resolution logic if you want to pull from <code>process.env</code> with
+a fallback (e.g.,
+<code>JSON.stringify(process.env.PORT || 3000)</code>).</li>
+<li><strong><code>EnvironmentPlugin</code></strong>: Natively accepts an
+object map where values serve as default fallbacks if the host
+environment lacks that variable.</li>
+</ul>
+<h4 id="4-type-of-values-injected">4. Type of Values Injected</h4>
+<ul>
+<li><strong><code>DefinePlugin</code></strong>: Can inject numbers,
+booleans, functions, raw JavaScript expressions, and arbitrary
+objects.</li>
+<li><strong><code>EnvironmentPlugin</code></strong>: Strictly injects
+string values (or converts defaults to strings), as standard environment
+variables are strings.</li>
+</ul>
+<h3 id="when-to-use-which">When to Use Which</h3>
+<p>Use <strong><code>EnvironmentPlugin</code></strong> when:</p>
+<ul>
+<li>You only need to pass standard environment variables into your
+application.</li>
+<li>You want a concise syntax with built-in default values and automatic
+stringification.</li>
+<li>You want Webpack to warn you when an expected environment variable
+is undefined and lacks a fallback.</li>
+</ul>
+<p>Use <strong><code>DefinePlugin</code></strong> when:</p>
+<ul>
+<li>You need to inject non-string constants, complex objects, or raw
+code expressions.</li>
+<li>You are declaring globals outside of the <code>process.env</code>
+namespace.</li>
+<li>You need granular control over exactly how the tokens are replaced
+during the AST parsing phase.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-define-plugin-vs-environment-plugin';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

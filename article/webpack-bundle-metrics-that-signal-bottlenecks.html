@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Bundle Metrics That Signal Bottlenecks - webpack</title>
+    <meta name="description" content="Analyzing Webpack bundles is essential for maintaining fast web applications, as bloated JavaScript directly degrades loading speeds and runtime responsiveness. Webpack bundle analysis tools—such as webpack-bundle-analyzer—visualize the composition of you">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-bundle-metrics-that-signal-bottlenecks">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Bundle Metrics That Signal Bottlenecks - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-bundle-metrics-that-signal-bottlenecks" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Analyzing Webpack bundles is essential for maintaining fast web applications, as bloated JavaScript directly degrades loading speeds and runtime responsiveness. Webpack bundle analysis tools—such as webpack-bundle-analyzer—visualize the composition of you" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-bundle-metrics-that-signal-bottlenecks">Webpack Bundle
+Metrics That Signal Bottlenecks</h1>
+<p>Analyzing Webpack bundles is essential for maintaining fast web
+applications, as bloated JavaScript directly degrades loading speeds and
+runtime responsiveness. Webpack bundle analysis tools—such as
+<code>webpack-bundle-analyzer</code>—visualize the composition of your
+output files, highlighting heavy dependencies, redundant code, and
+structural inefficiencies. By evaluating metrics like parsed size,
+gzipped transfer size, initial chunk volume, and package duplication,
+developers can identify the exact bottlenecks harming application
+performance and implement targeted optimizations like code splitting and
+tree shaking.</p>
+<h2 id="stat-parsed-and-gzipped-sizes">Stat, Parsed, and Gzipped
+Sizes</h2>
+<p>Webpack bundle visualizers typically report three distinct size
+metrics for each asset and dependency:</p>
+<ul>
+<li><strong>Stat Size:</strong> The input size of the file before
+Webpack applies transformations, minification, or dead-code elimination.
+A disproportionately large stat size compared to the parsed size usually
+indicates effective minification, but an excessively large initial input
+often signals inefficient source code or massive third-party
+dependencies.</li>
+<li><strong>Parsed Size:</strong> The size of the code after Webpack has
+processed, bundled, and minified it (e.g., via Terser). This is the most
+critical metric for evaluating JavaScript execution time. Browsers must
+parse, compile, and execute this entire volume of code. High parsed
+sizes directly degrade CPU metrics such as Total Blocking Time (TBT) and
+Time to Interactive (TTI).</li>
+<li><strong>Gzipped (Transfer) Size:</strong> The compressed file size
+sent over the network. A spike in gzipped size signals network latency
+issues, especially on mobile or constrained networks, delaying the First
+Contentful Paint (FCP).</li>
+</ul>
+<h2 id="entry-point-and-initial-chunk-size">Entry Point and Initial
+Chunk Size</h2>
+<p>The entry point bundle represents the critical path assets required
+to render the initial view.</p>
+<ul>
+<li><strong>Initial Bundle Bloat:</strong> If the initial chunk exceeds
+recommended budgets (typically 200–250 KB compressed), the browser
+spends critical early seconds downloading and executing non-essential
+code.</li>
+<li><strong>Synchronous Imports of Route-Specific Code:</strong> When
+bundle analysis maps show route-specific components bundled inside the
+main entry chunk instead of separate dynamic chunks, it indicates a
+failure to implement route-based code splitting.</li>
+</ul>
+<h2 id="duplicate-module-instances">Duplicate Module Instances</h2>
+<p>Bundle visualizers display hierarchical block maps where duplicate
+modules become instantly visible across different chunks.</p>
+<ul>
+<li><strong>Version Mismatches:</strong> Multiple versions of the same
+library (e.g., two distinct releases of <code>lodash</code> or
+<code>date-fns</code> imported by different nested dependencies)
+increase bundle size unnecessarily.</li>
+<li><strong>Shared Code Isolation Failures:</strong> When common
+application modules appear across multiple asynchronous chunks rather
+than being extracted into a shared vendor or commons chunk (via
+<code>SplitChunksPlugin</code>), users repeatedly download redundant
+code.</li>
+</ul>
+<h2 id="tree-shaking-and-dead-code-indicators">Tree-Shaking and Dead
+Code Indicators</h2>
+<p>Certain libraries are structured in ways that prevent Webpack from
+stripping out unused functions.</p>
+<ul>
+<li><strong>Monolithic Imports:</strong> If importing a single function
+from a library causes the entire library to appear in the bundle map
+(common with CommonJS modules like older versions of <code>lodash</code>
+or legacy charting libraries), tree shaking has failed.</li>
+<li><strong>Heavy Utility and Localization Packages:</strong> Modules
+such as <code>moment.js</code> bundling all global locale files by
+default represent avoidable overhead that will dominate bundle
+visualizations.</li>
+</ul>
+<h2 id="chunk-distribution-and-granularity">Chunk Distribution and
+Granularity</h2>
+<p>The relationship between the number of chunks and their individual
+sizes reveals structural architectural bottlenecks:</p>
+<ul>
+<li><strong>Monolithic Vendor Chunks:</strong> A single massive vendor
+bundle creates a high barrier to initial load and invalidates the
+browser cache entirely whenever any minor dependency updates.</li>
+<li><strong>Micro-Chunks (Over-Splitting):</strong> Creating dozens of
+extremely small chunks (under 10–20 KB) introduces performance overhead
+due to high HTTP request volume and suboptimal compression ratios, even
+over HTTP/2 or HTTP/3 connections.</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-bundle-metrics-that-signal-bottlenecks';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

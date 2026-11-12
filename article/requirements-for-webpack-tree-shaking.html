@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Requirements for Webpack Tree Shaking - webpack</title>
+    <meta name="description" content="Tree shaking is Webpack&#39;s mechanism for dead-code elimination, allowing developers to remove unused exports from the final bundle to significantly reduce file size and improve loading performance. To enable Webpack to analyze and prune unreferenced code e">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/requirements-for-webpack-tree-shaking">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Requirements for Webpack Tree Shaking - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/requirements-for-webpack-tree-shaking" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Tree shaking is Webpack&#39;s mechanism for dead-code elimination, allowing developers to remove unused exports from the final bundle to significantly reduce file size and improve loading performance. To enable Webpack to analyze and prune unreferenced code e" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="requirements-for-webpack-tree-shaking">Requirements for Webpack
+Tree Shaking</h1>
+<p>Tree shaking is Webpack's mechanism for dead-code elimination,
+allowing developers to remove unused exports from the final bundle to
+significantly reduce file size and improve loading performance. To
+enable Webpack to analyze and prune unreferenced code effectively, your
+project must fulfill specific structural and configuration criteria.
+Below are the essential requirements your JavaScript code and build
+setup must satisfy for Webpack to successfully perform tree shaking.</p>
+<h3 id="1-use-static-es2015-module-syntax">1. Use Static ES2015 Module
+Syntax</h3>
+<p>Webpack's tree shaking algorithm relies on static analysis. Your code
+must strictly use standard ES6 module syntax (<code>import</code> and
+<code>export</code>) rather than CommonJS (<code>require()</code> and
+<code>module.exports</code>). Because CommonJS modules are dynamic and
+can be imported conditionally or modified at runtime, Webpack cannot
+reliably determine which exports are unused during the build phase.</p>
+<h3 id="2-prevent-compilers-from-transpiling-modules-to-commonjs">2.
+Prevent Compilers from Transpiling Modules to CommonJS</h3>
+<p>If you use transpilers like Babel or TypeScript, you must configure
+them to preserve ES module syntax. By default, older configurations
+often convert ES modules into CommonJS, breaking Webpack's ability to
+analyze exports.</p>
+<ul>
+<li><strong>Babel:</strong> In <code>@babel/preset-env</code>,
+explicitly set <code>{ "modules": false }</code>.</li>
+<li><strong>TypeScript:</strong> In <code>tsconfig.json</code>, set
+<code>"module": "ES2015"</code>, <code>"ES2020"</code>, or
+<code>"ESNext"</code>.</li>
+</ul>
+<h3 id="3-configure-the-sideeffects-flag">3. Configure the
+<code>sideEffects</code> Flag</h3>
+<p>Even if an exported function is not used, Webpack will retain it if
+it believes importing the file executes side effects (such as modifying
+global variables, setting up polyfills, or injecting CSS). You must
+signal to Webpack that your files are pure:</p>
+<ul>
+<li><p>In your <code>package.json</code>, set
+<code>"sideEffects": false</code> if all unused exports can safely be
+dropped.</p></li>
+<li><p>If specific files contain side effects (like CSS files or
+polyfills), specify them in an array:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;sideEffects&quot;</span><span class="er">:</span> <span class="ot">[</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;*.css&quot;</span><span class="ot">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;./src/polyfills.js&quot;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="ot">]</span></span></code></pre></div></li>
+</ul>
+<h3 id="4-enable-production-mode">4. Enable Production Mode</h3>
+<p>Tree shaking is a two-step process: Webpack first marks unused
+exports during bundling, and then a minifier (such as Terser) removes
+them. Setting your Webpack configuration to
+<code>mode: 'production'</code> automatically enables the necessary
+optimization settings:</p>
+<ul>
+<li><code>optimization.usedExports: true</code> (identifies and marks
+unused code)</li>
+<li><code>optimization.minimize: true</code> (strips out the dead
+code)</li>
+</ul>
+<p>If configuring manually, both flags must be enabled for unused code
+to be physically deleted from the output bundle.</p>
+<h3 id="5-avoid-side-effect-prone-code-patterns">5. Avoid
+Side-Effect-Prone Code Patterns</h3>
+<p>Ensure individual functions and modules avoid top-level side effects.
+Creating functions that modify global state, running computations
+immediately upon module execution, or assigning methods dynamically to
+objects can prevent Terser and Webpack from recognizing the code as safe
+to eliminate. Keeping modules pure and composed of isolated exports
+ensures reliable tree shaking.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/requirements-for-webpack-tree-shaking';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

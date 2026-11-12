@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack resolve preserveSymlinks Explained - webpack</title>
+    <meta name="description" content="The resolve.preserveSymlinks option in Webpack controls whether module resolution follows symbolic links to their real disk paths or treats the symlinked path as the actual module location. By default, Webpack resolves symlinks to their canonical filesyst">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-resolve-preserve-symlinks-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack resolve preserveSymlinks Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-resolve-preserve-symlinks-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The resolve.preserveSymlinks option in Webpack controls whether module resolution follows symbolic links to their real disk paths or treats the symlinked path as the actual module location. By default, Webpack resolves symlinks to their canonical filesyst" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-resolve-preservesymlinks-explained">Webpack resolve
+preserveSymlinks Explained</h1>
+<p>The <code>resolve.preserveSymlinks</code> option in Webpack controls
+whether module resolution follows symbolic links to their real disk
+paths or treats the symlinked path as the actual module location. By
+default, Webpack resolves symlinks to their canonical filesystem
+targets, which can lead to duplicate package instances or unexpected
+dependency resolution in monorepos and locally linked packages. Setting
+<code>preserveSymlinks: true</code> tells Webpack to maintain the
+symlink path during resolution, ensuring dependencies are imported
+relative to the link's directory rather than the physical folder.</p>
+<h3 id="default-behavior-vs-preserving-symlinks">Default Behavior vs.
+Preserving Symlinks</h3>
+<p>By default, Node.js and Webpack have <code>preserveSymlinks</code>
+set to <code>false</code>. When Webpack encounters a symbolic link (such
+as a package linked via <code>npm link</code> or
+<code>yarn link</code>), it resolves the link to its canonical physical
+path on the filesystem.</p>
+<p>For example, if your application resides in
+<code>/projects/app</code> and links a local library from
+<code>/projects/library</code> into
+<code>/projects/app/node_modules/library</code>, Webpack naturally
+traces imports inside that library to <code>/projects/library</code>.
+Consequently, any dependencies required by the library will be looked up
+inside <code>/projects/library/node_modules</code> rather than
+<code>/projects/app/node_modules</code>.</p>
+<p>When <code>resolve.preserveSymlinks</code> is set to
+<code>true</code>, Webpack keeps the path as
+<code>/projects/app/node_modules/library</code>. Dependencies imported
+by the library are resolved starting from the application’s directory
+hierarchy, matching how regular installed packages behave.</p>
+<h3 id="how-to-configure-preservesymlinks">How to Configure
+<code>preserveSymlinks</code></h3>
+<p>You can configure this option within the <code>resolve</code> block
+of your <code>webpack.config.js</code> file:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">preserveSymlinks</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>This mirrors Node.js's runtime flag
+<code>--preserve-symlinks</code>.</p>
+<h3 id="common-use-cases">Common Use Cases</h3>
+<ul>
+<li><strong>Local Package Development (<code>npm link</code> /
+<code>yarn link</code>):</strong> When testing shared components or
+utilities locally, libraries often rely on singleton instances of
+packages like <code>react</code> or <code>vue</code>. Default symlink
+resolution can cause duplicate instances of these dependencies to be
+loaded from both projects, triggering runtime errors. Enabling
+<code>preserveSymlinks</code> allows the linked package to consume the
+host project's versions.</li>
+<li><strong>Monorepos:</strong> Package managers that heavily rely on
+symlinks—such as pnpm, Lerna, or Yarn Workspaces—sometimes encounter
+issues where nested dependencies fail to resolve correctly if the
+canonical path isolates them from the consumer's environment.</li>
+</ul>
+<h3 id="considerations-and-trade-offs">Considerations and
+Trade-offs</h3>
+<p>While <code>resolve.preserveSymlinks: true</code> resolves issues
+with duplicate dependencies in linked packages, it can also lead to
+cases where a package cannot find its own internal dependencies if they
+are not explicitly installed in the parent project's
+<code>node_modules</code>. Additionally, if multiple symlinks point to
+the same physical file from different locations, Webpack may bundle that
+file multiple times under each unique symlink path.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-resolve-preserve-symlinks-explained';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

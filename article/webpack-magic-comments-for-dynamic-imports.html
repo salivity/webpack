@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack Magic Comments for Dynamic Imports - webpack</title>
+    <meta name="description" content="This article explores Webpack magic comments, explaining what they are and how they allow developers to customize code-splitting behavior during dynamic imports. By placing specific inline comments within dynamic import() statements, you can control chunk">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-magic-comments-for-dynamic-imports">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack Magic Comments for Dynamic Imports - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-magic-comments-for-dynamic-imports" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores Webpack magic comments, explaining what they are and how they allow developers to customize code-splitting behavior during dynamic imports. By placing specific inline comments within dynamic import() statements, you can control chunk" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-magic-comments-for-dynamic-imports">Webpack Magic
+Comments for Dynamic Imports</h1>
+<p>This article explores Webpack magic comments, explaining what they
+are and how they allow developers to customize code-splitting behavior
+during dynamic imports. By placing specific inline comments within
+dynamic <code>import()</code> statements, you can control chunk names,
+adjust loading priorities, manage how modules are bundled, and optimize
+overall application performance.</p>
+<h2 id="what-are-webpack-magic-comments">What Are Webpack Magic
+Comments?</h2>
+<p>Webpack magic comments are inline JavaScript comments placed directly
+inside the <code>import()</code> function call. Because dynamic imports
+default to generating automatically named chunks with standard
+lazy-loading behavior, Webpack uses these comments as configuration
+flags at compile time.</p>
+<p>The syntax uses standard comment blocks with specific Webpack
+directives:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span>(<span class="co">/* webpackDirective: value */</span> <span class="st">&#39;./module.js&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<h2 id="key-magic-comments-and-how-they-customize-imports">Key Magic
+Comments and How They Customize Imports</h2>
+<h3 id="1-webpackchunkname">1. <code>webpackChunkName</code></h3>
+<p>By default, Webpack generates chunks identified by auto-incremented
+IDs or content hashes (e.g., <code>1.bundle.js</code>). The
+<code>webpackChunkName</code> comment assigns a human-readable name to
+the output bundle.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> UserProfile <span class="op">=</span> React<span class="op">.</span><span class="fu">lazy</span>(() <span class="kw">=&gt;</span> </span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="im">import</span>(<span class="co">/* webpackChunkName: &quot;user-profile&quot; */</span> <span class="st">&#39;./UserProfile&#39;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<p>This produces an asset named <code>user-profile.js</code> instead of
+an arbitrary ID, which simplifies debugging, asset tracking, and caching
+strategies.</p>
+<h3 id="2-webpackmode">2. <code>webpackMode</code></h3>
+<p>The <code>webpackMode</code> comment determines how the imported
+module is resolved and bundled. Webpack supports four modes:</p>
+<ul>
+<li><strong><code>lazy</code> (default):</strong> Generates a separate
+chunk that is fetched on demand when the <code>import()</code> is
+executed.</li>
+<li><strong><code>lazy-once</code>:</strong> Generates a single chunk
+that satisfies all possible dynamic import requests matching a specific
+pattern.</li>
+<li><strong><code>eager</code>:</strong> Prevents an extra chunk from
+being created. The module is included in the current bundle, but
+execution is deferred until the <code>import()</code> is called.</li>
+<li><strong><code>weak</code>:</strong> Attempts to load the module only
+if it has already been loaded elsewhere. It does not trigger a network
+request and rejects if the module is unavailable.</li>
+</ul>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span>(<span class="co">/* webpackMode: &quot;lazy-once&quot; */</span> <span class="vs">`./locales/</span><span class="sc">${</span>language<span class="sc">}</span><span class="vs">.json`</span>)<span class="op">;</span></span></code></pre></div>
+<h3 id="3-webpackprefetch-and-webpackpreload">3.
+<code>webpackPrefetch</code> and <code>webpackPreload</code></h3>
+<p>These comments instruct the browser to prioritize resource fetching
+using standard browser prefetch and preload resource hints.</p>
+<ul>
+<li><strong><code>webpackPrefetch: true</code>:</strong> Downloads the
+asset in the background during browser idle time, anticipating that the
+user will need it in a subsequent navigation.</li>
+<li><strong><code>webpackPreload: true</code>:</strong> Fetches the
+chunk in parallel with the parent chunk with medium priority, intended
+for assets immediately needed during the current page lifecycle.</li>
+</ul>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Prefetched for future use</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span>(<span class="co">/* webpackPrefetch: true, webpackChunkName: &quot;checkout&quot; */</span> <span class="st">&#39;./Checkout&#39;</span>)<span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Preloaded for immediate upcoming use</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="im">import</span>(<span class="co">/* webpackPreload: true, webpackChunkName: &quot;critical-chart&quot; */</span> <span class="st">&#39;./Chart&#39;</span>)<span class="op">;</span></span></code></pre></div>
+<h3 id="4-webpackinclude-and-webpackexclude">4.
+<code>webpackInclude</code> and <code>webpackExclude</code></h3>
+<p>When dynamic imports use template literals containing variables
+(e.g., <code>import(`./components/${name}`)</code>), Webpack bundles all
+matching files by default. <code>webpackInclude</code> and
+<code>webpackExclude</code> accept regular expressions to filter which
+files should be bundled into chunks.</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">/* webpackInclude: /\.json$/ */</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">/* webpackExclude: /test\.json$/ */</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="vs">`./data/</span><span class="sc">${</span>fileName<span class="sc">}</span><span class="vs">`</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<h3 id="5-webpackexports">5. <code>webpackExports</code></h3>
+<p>This comment tells Webpack to bundle only the specified exports from
+a dynamically imported module. This optimizes bundle size by enabling
+tree-shaking on dynamic imports, discarding unused code from the target
+file.</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">/* webpackExports: [&quot;calculateTotal&quot;, &quot;formatCurrency&quot;] */</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;./heavy-utils&#39;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<h2 id="combining-magic-comments">Combining Magic Comments</h2>
+<p>Magic comments can be combined using comma separation within a single
+comment block or across multiple comment blocks:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">/* webpackChunkName: &quot;admin-dashboard&quot; */</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">/* webpackMode: &quot;lazy&quot; */</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">/* webpackPrefetch: true */</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;./AdminDashboard&#39;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div>
+<p>Through these directives, Webpack gives developers fine-grained
+control over network requests, file naming, and bundle splitting without
+requiring changes to the global <code>webpack.config.js</code> file.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-magic-comments-for-dynamic-imports';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

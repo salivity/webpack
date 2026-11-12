@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Can Webpack Match Vite Speed with Persistent Caching? - webpack</title>
+    <meta name="description" content="This article examines whether Webpack 5&#39;s filesystem-based persistent caching allows it to rival the development server performance of Vite. While Vite fundamentally transformed modern web development by leveraging native ES modules (ESM) and esbuild to d">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/can-webpack-match-vite-speed-with-persistent-caching">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Can Webpack Match Vite Speed with Persistent Caching? - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/can-webpack-match-vite-speed-with-persistent-caching" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article examines whether Webpack 5&#39;s filesystem-based persistent caching allows it to rival the development server performance of Vite. While Vite fundamentally transformed modern web development by leveraging native ES modules (ESM) and esbuild to d" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="can-webpack-match-vite-speed-with-persistent-caching">Can
+Webpack Match Vite Speed with Persistent Caching?</h1>
+<p>This article examines whether Webpack 5's filesystem-based persistent
+caching allows it to rival the development server performance of Vite.
+While Vite fundamentally transformed modern web development by
+leveraging native ES modules (ESM) and esbuild to deliver near-instant
+startup times and Hot Module Replacement (HMR), Webpack's persistent
+disk caching significantly narrows the performance gap during daily
+development routines. Below is a direct comparison of how persistent
+caching works in Webpack, where it succeeds in matching Vite, and where
+architectural limitations prevent it from doing so completely.</p>
+<h3 id="the-fundamental-architectural-difference">The Fundamental
+Architectural Difference</h3>
+<p>To understand the speed difference, you must look at how each tool
+handles code during development:</p>
+<ul>
+<li><strong>Vite:</strong> Operates as an unbundled development server.
+It pre-bundles external dependencies once using esbuild (written in Go)
+and serves your application source code natively over browser-level ES
+modules. Source files are transformed on-demand only when requested by
+the browser.</li>
+<li><strong>Webpack:</strong> Operates as a traditional bundler. By
+default, it must parse, resolve, and bundle the entire dependency graph
+into one or more JavaScript bundles before the development server can
+serve the application.</li>
+</ul>
+<h3 id="how-webpack-persistent-disk-caching-works">How Webpack
+Persistent Disk Caching Works</h3>
+<p>Introduced in Webpack 5, persistent caching allows Webpack to
+serialize compilation snapshots directly to the disk
+(<code>node_modules/.cache/webpack</code> by default) rather than
+keeping them purely in memory.</p>
+<p>When you enable filesystem caching:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">cache</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">type</span><span class="op">:</span> <span class="st">&#39;filesystem&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Webpack tracks module file hashes, resolve configurations, and build
+dependencies. During subsequent runs, Webpack skips parsing and
+compiling unchanged modules, reading the intermediate compiled results
+directly from disk.</p>
+<h3 id="cold-starts-vs-warm-starts">Cold Starts vs. Warm Starts</h3>
+<p>The comparison between Webpack and Vite changes drastically depending
+on the state of the cache:</p>
+<ul>
+<li><strong>Cold Starts (No Cache):</strong> Vite wins by a wide margin.
+A completely fresh build in Webpack requires walking the entire
+dependency graph, running all configured loaders (e.g., Babel,
+TypeScript, PostCSS), and generating bundles. Vite only pre-bundles
+dependencies using esbuild, meaning it routinely boots in a few hundred
+milliseconds, whereas Webpack can take 15 to 60+ seconds on large
+applications.</li>
+<li><strong>Warm Starts (Cache Present):</strong> Webpack with
+persistent caching achieves speeds comparable to Vite. When the cache is
+valid, Webpack skips re-processing thousands of unchanged files. A warm
+startup that previously took 45 seconds can drop to 1 to 3 seconds,
+putting it in the same practical tier of day-to-day usability as
+Vite.</li>
+</ul>
+<h3 id="hot-module-replacement-hmr-and-incremental-rebuilds">Hot Module
+Replacement (HMR) and Incremental Rebuilds</h3>
+<p>Persistent disk caching primarily optimizes server startup times
+between restarts; it does not change how in-memory HMR works while the
+dev server is actively running.</p>
+<ul>
+<li><strong>Vite:</strong> When you edit a file, Vite only needs to
+invalidate that single module and push the updated ESM module to the
+browser. The update time remains constant (usually under 50ms),
+regardless of application size.</li>
+<li><strong>Webpack:</strong> When you edit a file, Webpack recalculates
+the module graph and creates an updated chunk patch. While Webpack's
+in-memory compilation makes small edits fast (often 100ms to 500ms),
+large, tightly coupled codebases can still experience noticeable latency
+as the bundle size scales.</li>
+</ul>
+<h3 id="where-webpack-persistent-caching-falls-short">Where Webpack
+Persistent Caching Falls Short</h3>
+<p>Even with filesystem caching optimized, Webpack cannot fully
+replicate Vite's development experience due to specific constraints:</p>
+<ol type="1">
+<li><strong>Cache Invalidation Overhead:</strong> Any change to your
+<code>webpack.config.js</code>, Babel config, or dependency versions
+triggers a cache invalidation. When this happens, you are forced back
+into a full cold start.</li>
+<li><strong>Disk I/O Bottlenecks:</strong> On systems with slower
+storage or constrained continuous integration (CI) environments, reading
+and writing large cache directories introduces significant
+overhead.</li>
+<li><strong>Loader Performance:</strong> Webpack transforms still rely
+on JavaScript-based loaders unless supplemented with native tooling like
+SWC (<code>swc-loader</code>) or esbuild
+(<code>esbuild-loader</code>).</li>
+</ol>
+<h3 id="the-verdict">The Verdict</h3>
+<p>Webpack cannot achieve parity with Vite on cold starts or raw HMR
+update speeds in massive applications. However, for everyday development
+across standard-sized codebases, enabling Webpack's persistent
+filesystem caching reduces warm startup times by 80% to 90%. Combined
+with modern native loaders like SWC, persistent caching makes Webpack
+fast enough that migrating an existing, complex enterprise codebase
+purely for development speed is often unnecessary.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/can-webpack-match-vite-speed-with-persistent-caching';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

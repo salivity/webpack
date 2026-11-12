@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Webpack Handles Conditional Exports in package.json - webpack</title>
+    <meta name="description" content="This article explores how Webpack 5 natively parses and resolves the exports field in modern package.json files. You will learn the mechanics behind Webpack&#39;s condition matching—such as differentiating between CommonJS and ES modules or browser and Node.j">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-webpack-handles-conditional-exports-in-package-json">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Webpack Handles Conditional Exports in package.json - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-webpack-handles-conditional-exports-in-package-json" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article explores how Webpack 5 natively parses and resolves the exports field in modern package.json files. You will learn the mechanics behind Webpack&#39;s condition matching—such as differentiating between CommonJS and ES modules or browser and Node.j" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-webpack-handles-conditional-exports-in-packagejson">How
+Webpack Handles Conditional Exports in package.json</h1>
+<p>This article explores how Webpack 5 natively parses and resolves the
+<code>exports</code> field in modern <code>package.json</code> files.
+You will learn the mechanics behind Webpack's condition matching—such as
+differentiating between CommonJS and ES modules or browser and Node.js
+runtimes—how configuration settings like <code>target</code> affect
+these decisions, and how to customize condition resolution using the
+<code>resolve.conditionNames</code> option.</p>
+<hr />
+<h3 id="understanding-the-exports-field">Understanding the
+<code>exports</code> Field</h3>
+<p>The <code>exports</code> field in <code>package.json</code> is a
+modern alternative to <code>main</code>, providing encapsulation and the
+ability to define conditional entry points based on the consumer's
+environment. A basic package structure looks like this:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;example-package&quot;</span><span class="fu">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;exports&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;.&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;import&quot;</span><span class="fu">:</span> <span class="st">&quot;./dist/index.mjs&quot;</span><span class="fu">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;require&quot;</span><span class="fu">:</span> <span class="st">&quot;./dist/index.cjs&quot;</span><span class="fu">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">&quot;default&quot;</span><span class="fu">:</span> <span class="st">&quot;./dist/index.cjs&quot;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>When an external module executes
+<code>import from 'example-package'</code> or
+<code>require('example-package')</code>, modern bundlers and runtimes
+use these conditions to select the correct file.</p>
+<h3 id="native-support-in-webpack-5">Native Support in Webpack 5</h3>
+<p>Webpack 5 natively supports the Node.js <code>exports</code>
+specification out of the box (Webpack 4 required third-party plugins or
+experimental flags). When Webpack encounters an import or require
+statement pointing to a dependency, its internal resolver
+(<code>enhanced-resolve</code>) checks the package's
+<code>exports</code> field before falling back to <code>module</code> or
+<code>main</code>.</p>
+<p>If an <code>exports</code> field exists:</p>
+<ol type="1">
+<li>Subpath imports that are not explicitly defined in
+<code>exports</code> are blocked, preventing consumers from reaching
+internal files.</li>
+<li>Webpack matches the current build context against the keys provided
+in the conditions object.</li>
+</ol>
+<h3 id="how-webpack-matches-conditions">How Webpack Matches
+Conditions</h3>
+<p>Webpack determines which export branch to load based on several
+factors:</p>
+<h4 id="1-import-syntax-import-vs-require">1. Import Syntax
+(<code>import</code> vs. <code>require</code>)</h4>
+<p>Webpack checks how the file is imported in the source code:</p>
+<ul>
+<li>An <code>import</code> statement or dynamic <code>import()</code>
+enables the <code>import</code> condition.</li>
+<li>A CommonJS <code>require()</code> call enables the
+<code>require</code> condition.</li>
+</ul>
+<h4 id="2-build-target-target">2. Build Target
+(<code>target</code>)</h4>
+<p>The <code>target</code> specified in <code>webpack.config.js</code>
+dictates environmental conditions:</p>
+<ul>
+<li><code>target: 'web'</code> (or <code>webworker</code>) automatically
+enables the <code>browser</code> condition.</li>
+<li><code>target: 'node'</code> disables <code>browser</code> and
+matches Node-specific conditions where applicable.</li>
+</ul>
+<h4 id="3-execution-context">3. Execution Context</h4>
+<p>Conditions such as <code>production</code> or
+<code>development</code> can be matched based on the active Webpack
+<code>mode</code>. The <code>default</code> condition acts as a
+catch-all and is matched when no other specific condition applies.</p>
+<h3 id="evaluation-order">Evaluation Order</h3>
+<p>Order matters in conditional exports. Webpack follows the Node.js
+export resolution specification: conditions are evaluated in the order
+they are defined in <code>package.json</code>, not by specificity.</p>
+<p>If a key like <code>default</code> or a broad condition appears
+before a narrower one like <code>import</code>, the earlier condition
+takes precedence if it matches the current environment.</p>
+<h3 id="customizing-resolution-via-resolveconditionnames">Customizing
+Resolution via <code>resolve.conditionNames</code></h3>
+<p>You can manually control which condition names Webpack evaluates by
+modifying the <code>resolve.conditionNames</code> array in your
+<code>webpack.config.js</code>.</p>
+<p>By default, Webpack configures condition names based on your
+<code>target</code> and module type. You can extend or override this
+behavior to support custom flags (such as <code>source</code>,
+<code>development</code>, or custom runtime environments):</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ...</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Webpack will match &#39;custom-condition&#39; first, then &#39;import&#39;, then any defaults</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">conditionNames</span><span class="op">:</span> [<span class="st">&#39;custom-condition&#39;</span><span class="op">,</span> <span class="st">&#39;import&#39;</span><span class="op">,</span> <span class="st">&#39;require&#39;</span><span class="op">,</span> <span class="st">&#39;node&#39;</span>]</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>If you wish to maintain Webpack’s default condition list while
+prepending a custom condition, you can use the spread operator with
+<code>...</code>:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">conditionNames</span><span class="op">:</span> [<span class="st">&#39;custom-condition&#39;</span><span class="op">,</span> <span class="st">&#39;...&#39;</span>]</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<h3 id="disabling-exports-field-resolution">Disabling
+<code>exports</code> Field Resolution</h3>
+<p>If you need to bypass the <code>exports</code> field entirely—for
+instance, to support legacy packages with broken export maps—you can
+disable it globally in the resolver:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// webpack.config.js</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">resolve</span><span class="op">:</span> {</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">exportsFields</span><span class="op">:</span> [] <span class="co">// Defaults to [&#39;exports&#39;]</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Setting <code>exportsFields</code> to an empty array forces Webpack
+to resolve files using standard legacy fields like <code>module</code>
+and <code>main</code>.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-webpack-handles-conditional-exports-in-package-json';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

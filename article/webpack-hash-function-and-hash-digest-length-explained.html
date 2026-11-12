@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack hashFunction and hashDigestLength Explained - webpack</title>
+    <meta name="description" content="This article provides an overview of Webpack&#39;s output.hashFunction and output.hashDigestLength configuration options, explaining how they control asset fingerprinting for cache management. You will learn the purpose of each setting, their default values,">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-hash-function-and-hash-digest-length-explained">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack hashFunction and hashDigestLength Explained - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-hash-function-and-hash-digest-length-explained" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="This article provides an overview of Webpack&#39;s output.hashFunction and output.hashDigestLength configuration options, explaining how they control asset fingerprinting for cache management. You will learn the purpose of each setting, their default values," />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-hashfunction-and-hashdigestlength-explained">Webpack
+hashFunction and hashDigestLength Explained</h1>
+<p>This article provides an overview of Webpack's
+<code>output.hashFunction</code> and
+<code>output.hashDigestLength</code> configuration options, explaining
+how they control asset fingerprinting for cache management. You will
+learn the purpose of each setting, their default values, common use
+cases, and how to configure them in your Webpack build to optimize build
+performance and prevent filename collisions.</p>
+<h2 id="what-is-outputhashfunction">What is output.hashFunction?</h2>
+<p>In Webpack, <code>output.hashFunction</code> specifies the
+cryptographic hashing algorithm used to generate unique hashes for
+emitted assets, chunks, and modules. These hashes are typically used in
+filenames (such as <code>[contenthash]</code> or
+<code>[chunkhash]</code>) to facilitate long-term browser caching and
+cache busting.</p>
+<h3 id="supported-algorithms-and-defaults">Supported Algorithms and
+Defaults</h3>
+<ul>
+<li><strong>Webpack 5:</strong> The default algorithm is
+<code>'xxhash64'</code>, a non-cryptographic hash function designed for
+high performance and speed during compilation.</li>
+<li><strong>Webpack 4:</strong> The default algorithm was
+<code>'md4'</code>.</li>
+</ul>
+<p>Webpack supports any algorithm provided by Node.js's built-in
+<code>crypto.createHash</code> module (such as <code>'sha256'</code>,
+<code>'sha512'</code>, or <code>'md5'</code>), as well as custom hash
+functions.</p>
+<h3 id="when-to-change-hashfunction">When to Change hashFunction</h3>
+<ol type="1">
+<li><strong>Node.js Compatibility:</strong> Older configurations using
+<code>'md4'</code> often encounter errors like
+<code>error:0308010C:digital envelope routines::unsupported</code> on
+Node.js 17 and above due to OpenSSL 3.0 restrictions. Explicitly setting
+<code>hashFunction: 'xxhash64'</code> or <code>'sha256'</code> resolves
+this issue.</li>
+<li><strong>Security and Compliance:</strong> If your deployment
+environment enforces Federal Information Processing Standards (FIPS),
+algorithms like <code>md4</code> and <code>md5</code> are disallowed.
+Switching to <code>'sha256'</code> ensures compliance.</li>
+<li><strong>Build Speed:</strong> Keeping or switching to
+<code>'xxhash64'</code> provides significantly faster compilation times
+compared to cryptographically secure algorithms like SHA-256.</li>
+</ol>
+<hr />
+<h2 id="what-is-outputhashdigestlength">What is
+output.hashDigestLength?</h2>
+<p><code>output.hashDigestLength</code> defines the maximum character
+length of the generated hash prefix when injected into asset
+filenames.</p>
+<p>Instead of printing a full-length 64-character hash into your output
+files, Webpack truncates the hash to the length specified by this
+option.</p>
+<h3 id="defaults-and-collision-trade-offs">Defaults and Collision
+Trade-offs</h3>
+<ul>
+<li><strong>Default Value:</strong> Webpack defaults to <code>20</code>
+characters.</li>
+<li><strong>Customizing Length:</strong> You can specify any integer
+value. For instance, setting <code>hashDigestLength: 8</code> produces
+concise filenames like <code>main.a1b2c3d4.js</code>.</li>
+</ul>
+<h3 id="why-adjust-hashdigestlength">Why Adjust hashDigestLength?</h3>
+<ul>
+<li><strong>Shorter URLs and Filenames:</strong> Lowering the digest
+length (e.g., between 8 and 16 characters) produces cleaner URLs and
+reduces file path lengths while maintaining enough entropy to avoid hash
+collisions across builds.</li>
+<li><strong>Collision Avoidance:</strong> For massive enterprise
+projects with tens of thousands of split chunks, increasing the length
+reduces the mathematical probability of two distinct files generating
+identical hash prefixes.</li>
+</ul>
+<hr />
+<h2 id="configuration-example">Configuration Example</h2>
+<p>Both properties are set under the <code>output</code> object in
+<code>webpack.config.js</code>:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> path <span class="op">=</span> <span class="pp">require</span>(<span class="st">&#39;path&#39;</span>)<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">entry</span><span class="op">:</span> <span class="st">&#39;./src/index.js&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">output</span><span class="op">:</span> {</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">path</span><span class="op">:</span> path<span class="op">.</span><span class="fu">resolve</span>(<span class="bu">__dirname</span><span class="op">,</span> <span class="st">&#39;dist&#39;</span>)<span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">filename</span><span class="op">:</span> <span class="st">&#39;[name].[contenthash].js&#39;</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Algorithm used to generate the hash</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">hashFunction</span><span class="op">:</span> <span class="st">&#39;xxhash64&#39;</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Number of characters to retain in the hash</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">hashDigestLength</span><span class="op">:</span> <span class="dv">10</span><span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>In this setup, Webpack hashes file contents using
+<code>xxhash64</code> and truncates the resulting
+<code>[contenthash]</code> to 10 characters (for example,
+<code>main.4f8a2b9c1d.js</code>).</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-hash-function-and-hash-digest-length-explained';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

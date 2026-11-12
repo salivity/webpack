@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Does Webpack Use Loaders in Asset Compilation? - webpack</title>
+    <meta name="description" content="Webpack relies on loaders as module-level preprocessors that translate non-JavaScript assets into valid modules ready for the dependency graph. During asset compilation, Webpack resolves dependencies, matches source files against defined module rules, exe">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-does-webpack-use-loaders-in-asset-compilation">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Does Webpack Use Loaders in Asset Compilation? - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-does-webpack-use-loaders-in-asset-compilation" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack relies on loaders as module-level preprocessors that translate non-JavaScript assets into valid modules ready for the dependency graph. During asset compilation, Webpack resolves dependencies, matches source files against defined module rules, exe" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-does-webpack-use-loaders-in-asset-compilation">How Does
+Webpack Use Loaders in Asset Compilation?</h1>
+<p>Webpack relies on loaders as module-level preprocessors that
+translate non-JavaScript assets into valid modules ready for the
+dependency graph. During asset compilation, Webpack resolves
+dependencies, matches source files against defined module rules,
+executes loader pipelines across distinct pitching and normal execution
+phases, and finally passes standard JavaScript or asset structures to
+its internal parser.</p>
+<h3 id="resolution-and-rule-matching">Resolution and Rule Matching</h3>
+<p>Asset compilation begins when Webpack traces an import statement from
+an entry point or intermediate module. By default, Webpack natively
+understands standard JavaScript and JSON. When it encounters other file
+formats—such as TypeScript, SCSS, or static SVGs—it consults the
+<code>module.rules</code> array declared in the configuration.</p>
+<p>Each rule typically defines a regular expression in the
+<code>test</code> property and an array of transformers in the
+<code>use</code> field. Webpack matches the file’s absolute path against
+these conditions. Once a match is confirmed, Webpack resolves the
+necessary loader packages from <code>node_modules</code> and constructs
+an execution pipeline specifically tailored to that resource.</p>
+<h3 id="the-two-phase-pipeline-pitching-vs-normal">The Two-Phase
+Pipeline: Pitching vs. Normal</h3>
+<p>Loaders do not simply execute linearly; they operate in two distinct
+stages known as the <strong>pitching phase</strong> and the
+<strong>normal phase</strong>.</p>
+<pre><code>Loader Pipeline: [Loader A, Loader B, Loader C]
+
+1. Pitch Phase (Left-to-Right)
+   Loader A.pitch() -&gt; Loader B.pitch() -&gt; Loader C.pitch()
+                                                 |
+                                         Fetch raw resource
+                                                 |
+2. Normal Phase (Right-to-Left)
+   Loader A()       &lt;- Loader B()       &lt;- Loader C()
+</code></pre>
+<ol type="1">
+<li><strong>The Pitching Phase (Left to Right):</strong> Execution
+traverses forward through the loader chain. If a loader exports a
+<code>pitch</code> method, Webpack executes it before reading the target
+file. If a <code>pitch</code> method returns a defined value, Webpack
+immediately short-circuits the pipeline, skipping the remaining pitch
+methods, bypassing reading the resource from disk, and passing that
+returned value directly to the previous loader's normal phase. This
+mechanism is crucial for caching, metadata inspection, and loaders like
+<code>style-loader</code> that inject inline runtime scripts without
+reading raw source code directly through the rest of the chain.</li>
+<li><strong>The Normal Phase (Right to Left / Bottom to Top):</strong>
+If no loader short-circuits during the pitch stage, Webpack reads the
+target file from the filesystem into memory as a string or Buffer. The
+loader chain then executes in reverse. The first loader in this phase
+(the last listed in configuration) receives the raw file contents,
+transforms it, and returns the modified result. Each preceding loader
+takes the output of its predecessor as input, progressively compiling
+the asset.</li>
+</ol>
+<h3 id="concrete-transformation-an-scss-pipeline">Concrete
+Transformation: An SCSS Pipeline</h3>
+<p>Consider a standard style pipeline configured as
+<code>use: ['style-loader', 'css-loader', 'sass-loader']</code>:</p>
+<ul>
+<li><code>sass-loader</code> executes first in the normal phase, turning
+raw SCSS syntax into standard CSS text.</li>
+<li><code>css-loader</code> accepts the resulting CSS string and
+resolves <code>@import</code> rules, local url paths, and CSS Module
+mappings into CommonJS/ES module syntax.</li>
+<li><code>style-loader</code> wraps that output into runtime JavaScript
+code that creates `</li>
+</ul></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-does-webpack-use-loaders-in-asset-compilation';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

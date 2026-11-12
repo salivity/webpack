@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>When to Set __webpack_public_path__ at Runtime - webpack</title>
+    <meta name="description" content="Webpack&#39;s webpackpublicpath is a free global variable that allows developers to dynamically configure the base path for loading dynamic assets and on-demand code chunks at runtime instead of compile time. While Webpack traditionally relies on the static o">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/when-to-set-webpack-public-path-at-runtime">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="When to Set __webpack_public_path__ at Runtime - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/when-to-set-webpack-public-path-at-runtime" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="Webpack&#39;s webpackpublicpath is a free global variable that allows developers to dynamically configure the base path for loading dynamic assets and on-demand code chunks at runtime instead of compile time. While Webpack traditionally relies on the static o" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="when-to-set-webpack_public_path-at-runtime">When to Set
+<strong>webpack_public_path</strong> at Runtime</h1>
+<p>Webpack's <code>__webpack_public_path__</code> is a free global
+variable that allows developers to dynamically configure the base path
+for loading dynamic assets and on-demand code chunks at runtime instead
+of compile time. While Webpack traditionally relies on the static
+<code>output.publicPath</code> setting in
+<code>webpack.config.js</code>, several modern architecture patterns and
+deployment pipelines require dynamic path resolution. This article
+outlines the primary scenarios where dynamically assigning
+<code>__webpack_public_path__</code> is necessary and how it benefits
+application delivery.</p>
+<h2 id="micro-frontend-architectures">Micro-Frontend Architectures</h2>
+<p>In a micro-frontend setup, multiple independently deployed
+applications share the browser window. A host application frequently
+loads remote child modules hosted on separate domains or paths.</p>
+<p>If a micro-frontend utilizes code splitting, Webpack will attempt to
+fetch its dynamic chunks from the root domain of the host container by
+default. By dynamically assigning <code>__webpack_public_path__</code>
+at the entry point of the remote module, the child application ensures
+that all its lazy-loaded chunks are fetched from its own origin rather
+than the host application's origin.</p>
+<h2 id="build-once-deploy-anywhere-cicd-pipelines">"Build Once, Deploy
+Anywhere" CI/CD Pipelines</h2>
+<p>Modern deployment workflows often use containerization (such as
+Docker) to promote an identical build artifact across multiple
+environments (development, staging, UAT, and production).</p>
+<p>Setting <code>output.publicPath</code> at build time ties the bundle
+to a specific URL or CDN bucket, requiring a complete rebuild for every
+environment. By setting <code>__webpack_public_path__</code>
+dynamically, the application can read the asset base path from a runtime
+environment variable, a global configuration object injected into
+<code>window</code>, or a server-rendered <code>&lt;meta&gt;</code> tag
+before loading any dynamic chunks.</p>
+<h2 id="third-party-widgets-and-embedded-scripts">Third-Party Widgets
+and Embedded Scripts</h2>
+<p>Applications distributed as embeddable third-party scripts (such as
+chat widgets, analytics trackers, or payment modals) are loaded directly
+into client websites over which the developer has no domain control.</p>
+<p>When the embedded widget uses code splitting, it cannot rely on
+relative paths like <code>/assets/</code>, as the browser would resolve
+them against the host website's domain. Instead, the script can
+determine its own location at runtime—often via
+<code>document.currentScript.src</code>—and assign that base URL to
+<code>__webpack_public_path__</code> so all supplementary chunks load
+from the provider's server.</p>
+<h2 id="dynamic-and-multi-region-cdns">Dynamic and Multi-Region
+CDNs</h2>
+<p>Global applications often direct users to regionally distributed
+Content Delivery Networks (CDNs) to reduce latency, or they implement
+automatic failover systems across multiple cloud storage providers.</p>
+<p>In these architectures, the optimal CDN URL cannot be known during
+the build phase. At runtime, the server can supply the fastest,
+geographically closest CDN endpoint in the initial HTML payload, and the
+client script sets <code>__webpack_public_path__</code> accordingly to
+route all subsequent chunk requests to that endpoint.</p>
+<h2 id="multi-tenant-and-white-label-platforms">Multi-Tenant and
+White-Label Platforms</h2>
+<p>Enterprise SaaS platforms that serve multiple tenants from a single
+frontend codebase often serve distinct branding, localized assets, and
+static files from tenant-specific subdomains or dedicated asset
+buckets.</p>
+<p>Setting <code>__webpack_public_path__</code> at runtime allows the
+application to detect the current tenant—via subdomain or session
+data—and fetch dynamic assets from that tenant's designated storage
+bucket without requiring separate build artifacts for each customer.</p>
+<h2 id="implementation-requirement">Implementation Requirement</h2>
+<p>To ensure dynamic resolution works correctly,
+<code>__webpack_public_path__</code> must be defined before any dynamic
+imports (<code>import()</code>) or split chunks are requested. It is
+typically set at the very top of the application's entry file or
+imported from a dedicated bootstrap file executed before the main bundle
+logic.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/when-to-set-webpack-public-path-at-runtime';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

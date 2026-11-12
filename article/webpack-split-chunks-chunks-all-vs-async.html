@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webpack splitChunks: chunks &#39;all&#39; vs &#39;async&#39; - webpack</title>
+    <meta name="description" content="In Webpack, the optimization.splitChunks.chunks configuration dictates which types of chunks are evaluated for code splitting and vendor deduplication. Choosing between the default value &#39;async&#39; and the broader value &#39;all&#39; fundamentally alters how Webpack">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/webpack-split-chunks-chunks-all-vs-async">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Webpack splitChunks: chunks &#39;all&#39; vs &#39;async&#39; - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/webpack-split-chunks-chunks-all-vs-async" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="In Webpack, the optimization.splitChunks.chunks configuration dictates which types of chunks are evaluated for code splitting and vendor deduplication. Choosing between the default value &#39;async&#39; and the broader value &#39;all&#39; fundamentally alters how Webpack" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="webpack-splitchunks-chunks-all-vs-async">Webpack splitChunks:
+chunks 'all' vs 'async'</h1>
+<p>In Webpack, the <code>optimization.splitChunks.chunks</code>
+configuration dictates which types of chunks are evaluated for code
+splitting and vendor deduplication. Choosing between the default value
+<code>'async'</code> and the broader value <code>'all'</code>
+fundamentally alters how Webpack handles shared modules across your
+application. This guide explains how both options function, examines how
+they treat synchronous versus dynamic imports, and outlines which
+setting to select based on your performance and architecture
+requirements.</p>
+<h3 id="understanding-the-splitchunkschunks-option">Understanding the
+splitChunks.chunks Option</h3>
+<p>Webpack's <code>SplitChunksPlugin</code> extracts shared dependencies
+into separate files to avoid duplicate code across entry points and
+asynchronous bundles. The <code>chunks</code> property informs Webpack
+which bundles are eligible for this optimization. It primarily accepts
+three string values: <code>'async'</code>, <code>'initial'</code>, and
+<code>'all'</code> (or a custom filter function).</p>
+<h3 id="the-default-behavior-chunks-async">The Default Behavior: chunks:
+'async'</h3>
+<p>When <code>chunks</code> is set to <code>'async'</code>, Webpack only
+optimizes modules imported using dynamic <code>import()</code>
+statements.</p>
+<ul>
+<li><strong>How it works:</strong> If you load a module on-demand (e.g.,
+<code>import('lodash')</code>), Webpack evaluates it for chunk
+splitting. If multiple asynchronous components import the same library,
+that library is separated into a shared chunk.</li>
+<li><strong>Limitations:</strong> Statically imported modules (e.g.,
+<code>import _ from 'lodash'</code> at the top of an entry point file)
+are completely ignored. If multiple entry points or synchronous files
+import the same package, that package is duplicated in each resulting
+initial bundle.</li>
+<li><strong>Best used for:</strong> Applications where simplicity is
+preferred and minimizing the total number of initial HTTP script
+requests takes precedence over aggressive vendor deduplication.</li>
+</ul>
+<h3 id="the-comprehensive-approach-chunks-all">The Comprehensive
+Approach: chunks: 'all'</h3>
+<p>Setting <code>chunks</code> to <code>'all'</code> indicates that
+Webpack should evaluate every module for splitting, whether it is loaded
+synchronously or asynchronously.</p>
+<ul>
+<li><strong>How it works:</strong> Webpack checks for duplicate
+dependencies across both static entry points and dynamic imports. If a
+module like <code>react</code> or <code>lodash</code> is shared among
+different entry points, or shared between an entry point and a dynamic
+import, Webpack extracts it into a dedicated vendor chunk.</li>
+<li><strong>Benefits:</strong> This provides maximum deduplication and
+optimal long-term browser caching. When a common vendor library is
+extracted into its own bundle, users do not need to re-download it when
+application logic changes.</li>
+<li><strong>Best used for:</strong> Multi-page applications (MPAs),
+single-page applications with multiple entry points, or
+performance-critical apps where minimizing payload size and maximizing
+cache hits are critical.</li>
+</ul>
+<h3 id="key-differences-at-a-glance">Key Differences at a Glance</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;"><code>chunks: 'async'</code>
+(Default)</th>
+<th style="text-align: left;"><code>chunks: 'all'</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Eligibility</strong></td>
+<td style="text-align: left;">Only dynamically imported
+(<code>import()</code>) modules</td>
+<td style="text-align: left;">Both static
+(<code>import x from 'y'</code>) and dynamic imports</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Initial Bundle Size</strong></td>
+<td style="text-align: left;">Often larger due to duplicated static
+dependencies</td>
+<td style="text-align: left;">Smaller, as shared code is split out</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>HTTP Requests on
+Load</strong></td>
+<td style="text-align: left;">Fewer initial script requests</td>
+<td style="text-align: left;">May increase initial script requests
+unless tuned</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Caching Efficiency</strong></td>
+<td style="text-align: left;">Lower for common static vendor
+packages</td>
+<td style="text-align: left;">Higher, vendor code can be cached
+independently</td>
+</tr>
+</tbody>
+</table>
+<h3 id="practical-configuration-and-recommendation">Practical
+Configuration and Recommendation</h3>
+<p>In most modern web applications, using <code>'all'</code> is the
+recommended practice because it prevents shared libraries from bloating
+your main bundle. However, using <code>'all'</code> may generate
+additional initial script tags. To manage this, combine
+<code>'all'</code> with Webpack's constraint controls:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>module<span class="op">.</span><span class="at">exports</span> <span class="op">=</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">optimization</span><span class="op">:</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">splitChunks</span><span class="op">:</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">chunks</span><span class="op">:</span> <span class="st">&#39;all&#39;</span><span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">minSize</span><span class="op">:</span> <span class="dv">20000</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      <span class="dt">maxInitialRequests</span><span class="op">:</span> <span class="dv">30</span><span class="op">,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="dt">automaticNameDelimiter</span><span class="op">:</span> <span class="st">&#39;~&#39;</span><span class="op">,</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>      <span class="dt">cacheGroups</span><span class="op">:</span> {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">defaultVendors</span><span class="op">:</span> {</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>          <span class="dt">test</span><span class="op">:</span> <span class="ss">/</span><span class="sc">[\\/]</span><span class="ss">node_modules</span><span class="sc">[\\/]</span><span class="ss">/</span><span class="op">,</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>          <span class="dt">priority</span><span class="op">:</span> <span class="op">-</span><span class="dv">10</span><span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>          <span class="dt">reuseExistingChunk</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">default</span><span class="op">:</span> {</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>          <span class="dt">minChunks</span><span class="op">:</span> <span class="dv">2</span><span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>          <span class="dt">priority</span><span class="op">:</span> <span class="op">-</span><span class="dv">20</span><span class="op">,</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>          <span class="dt">reuseExistingChunk</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span></code></pre></div>
+<p>Using <code>chunks: 'all'</code> with these parameters guarantees
+that code is only extracted if it meets minimum size thresholds,
+striking the right balance between avoiding duplicate code and
+preventing excessive network requests.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/webpack-split-chunks-chunks-all-vs-async';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

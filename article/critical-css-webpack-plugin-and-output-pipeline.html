@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Critical CSS Webpack Plugin and Output Pipeline - webpack</title>
+    <meta name="description" content="The critical-css-webpack-plugin is a build-time optimization tool designed to extract above-the-fold CSS and inline it directly into HTML files generated during the build. This article explains what the plugin does, why it is essential for web performance">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/critical-css-webpack-plugin-and-output-pipeline">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Critical CSS Webpack Plugin and Output Pipeline - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/critical-css-webpack-plugin-and-output-pipeline" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="The critical-css-webpack-plugin is a build-time optimization tool designed to extract above-the-fold CSS and inline it directly into HTML files generated during the build. This article explains what the plugin does, why it is essential for web performance" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="critical-css-webpack-plugin-and-output-pipeline">Critical CSS
+Webpack Plugin and Output Pipeline</h1>
+<p>The <code>critical-css-webpack-plugin</code> is a build-time
+optimization tool designed to extract above-the-fold CSS and inline it
+directly into HTML files generated during the build. This article
+explains what the plugin does, why it is essential for web performance,
+and specifically how it intercepts and modifies Webpack's asset
+generation lifecycle to eliminate render-blocking stylesheets.</p>
+<h2 id="what-is-critical-css-webpack-plugin">What is
+critical-css-webpack-plugin?</h2>
+<p>The <code>critical-css-webpack-plugin</code> wraps the functionality
+of tools like Addy Osmani's <code>critical</code> into the Webpack
+bundling ecosystem. In standard web applications, browsers must
+download, parse, and execute all external stylesheets linked in the
+<code>&lt;head&gt;</code> before rendering any content, resulting in
+render-blocking behavior that degrades Core Web Vitals such as First
+Contentful Paint (FCP).</p>
+<p>The plugin automates the extraction of "critical" CSS—the minimal set
+of styles required to render the visible portion of a web page (above
+the fold) for target viewport sizes. It inlines these styles directly
+into the HTML document inside <code>&lt;style&gt;</code> tags and defers
+the loading of the remaining non-critical styles, ensuring the browser
+can render the initial screen instantly without waiting for external
+network requests.</p>
+<h2 id="how-it-alters-the-webpack-output-pipeline">How It Alters the
+Webpack Output Pipeline</h2>
+<p>To understand how the plugin works, it is necessary to contrast it
+with the standard Webpack compilation flow.</p>
+<h3 id="standard-output-pipeline">Standard Output Pipeline</h3>
+<ol type="1">
+<li><strong>Module Resolution and Bundling:</strong> Webpack parses
+entry files, runs loaders (<code>css-loader</code>,
+<code>MiniCssExtractPlugin.loader</code>), and constructs dependency
+graphs.</li>
+<li><strong>Compilation and Chunking:</strong> Chunks are created, and
+<code>MiniCssExtractPlugin</code> extracts CSS into standalone
+<code>.css</code> files.</li>
+<li><strong>HTML Generation:</strong> Plugins such as
+<code>HtmlWebpackPlugin</code> hook into the process to emit
+<code>.html</code> files containing
+<code>&lt;link rel="stylesheet"&gt;</code> tags pointing to the
+extracted CSS assets.</li>
+<li><strong>Asset Emission:</strong> The compiled assets are finalized
+and written to the output directory specified in
+<code>output.path</code>.</li>
+</ol>
+<h3 id="the-altered-pipeline-with-critical-css-webpack-plugin">The
+Altered Pipeline with critical-css-webpack-plugin</h3>
+<p>The <code>critical-css-webpack-plugin</code> modifies the standard
+pipeline during the late stages of compilation, specifically targeting
+Webpack's asset processing stage (such as the <code>processAssets</code>
+hook in Webpack 5) and hooking into the event stream of
+<code>HtmlWebpackPlugin</code>.</p>
+<ol type="1">
+<li><strong>Asset Interception:</strong> Instead of letting Webpack
+write the generated HTML and CSS directly to disk, the plugin intercepts
+the compiled in-memory assets.</li>
+<li><strong>Headless Browser Execution:</strong> The plugin launches a
+headless browser environment (typically Chromium via Puppeteer) behind
+the scenes. It feeds the in-memory compiled HTML and CSS into this
+headless instance at defined viewport dimensions.</li>
+<li><strong>Rule Calculation:</strong> The headless browser evaluates
+the rendered DOM and computes which CSS rules apply to elements visible
+within the viewport dimensions. All other rules are flagged as
+non-critical.</li>
+<li><strong>HTML Mutation:</strong>
+<ul>
+<li>The plugin injects an inline <code>&lt;style&gt;</code> block
+containing the extracted critical CSS directly into the
+<code>&lt;head&gt;</code> of the HTML asset.</li>
+<li>It rewrites existing <code>&lt;link rel="stylesheet"&gt;</code>
+elements to load asynchronously, often applying strategies like
+<code>rel="preload"</code> with an
+<code>onload="this.rel='stylesheet'"</code> fallback, or wrapping them
+in noscript blocks.</li>
+</ul></li>
+<li><strong>Asset Replacement:</strong> The plugin replaces the original
+HTML asset in Webpack's <code>compilation.assets</code> object with the
+mutated version. Depending on configuration, it can also prune the
+critical rules from the external CSS files to prevent duplicate style
+definitions.</li>
+<li><strong>Final Emission:</strong> Webpack finishes the build
+lifecycle and emits the modified HTML and restructured CSS files to the
+distribution folder.</li>
+</ol></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/critical-css-webpack-plugin-and-output-pipeline';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>

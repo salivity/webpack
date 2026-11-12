@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Browsers Prioritize Webpack Preload Chunks - webpack</title>
+    <meta name="description" content="When you use the webpackPreload magic comment in Webpack, the bundler generates a dynamic import that instructs the browser to download a specific chunk alongside the parent script. This article explains how modern browsers interpret these preload directi">
+    <link rel="canonical" href="https://salivity.github.io/webpack/article/how-browsers-prioritize-webpack-preload-chunks">
+    <link rel="search" type="application/opensearchdescription+xml" title="webpack" href="/webpack/opensearch.xml">
+    <link rel="icon" href="/webpack/favicon.ico">
+    <link rel="stylesheet" href="/webpack/css/style.css">
+    <link media="print" rel="stylesheet" href="/webpack/css/print.css">
+    <script src="/webpack/js/fuse.min.js"></script>
+    <script src="/webpack/js/script.js"></script>
+    <script id="MathJax-script" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-chtml.min.js" defer></script>
+    <script src="/monetize/monetize.js"></script>
+    <script src="/social/social.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="How Browsers Prioritize Webpack Preload Chunks - webpack" />
+    <meta property="og:url" content="https://salivity.github.io/webpack/article/how-browsers-prioritize-webpack-preload-chunks" />
+    <meta property="og:image" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:secure_url" content="https://salivity.github.io/webpack/images/open-graph/default.webp" />
+    <meta property="og:image:width" content="1120" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:description" content="When you use the webpackPreload magic comment in Webpack, the bundler generates a dynamic import that instructs the browser to download a specific chunk alongside the parent script. This article explains how modern browsers interpret these preload directi" />
+    <link rel="manifest" href="/webpack/pwa/manifest.json" />
+</head>
+<body>
+    <header>
+        <a href="/webpack/" aria-label="Go To Home Page" title="Go To Home Page" id="logo">
+            <span>salivity.github.io/</span><span>webpack</span>
+        </a>
+        <nav>
+            <ul class="header-links">
+                <li><a href="/webpack/search" title="Search" aria-label="Go To Search Page"><svg class="svg-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14"></path></svg></a></li>
+                <li><a id="theme-toggle" title="Theme" href="javascript:void(0);" aria-label="Toggle Website Theme"></a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        
+    <div class="article-layout">
+        <aside id="profile-sidebar" class="profile-column" aria-label="Author Profile"></aside>
+        <div class="article-main-column">
+            <article><h1 id="how-browsers-prioritize-webpack-preload-chunks">How Browsers
+Prioritize Webpack Preload Chunks</h1>
+<p>When you use the <code>webpackPreload</code> magic comment in
+Webpack, the bundler generates a dynamic import that instructs the
+browser to download a specific chunk alongside the parent script. This
+article explains how modern browsers interpret these preload directives,
+assign network fetch priorities, and schedule resource delivery to
+optimize current-page performance without blocking critical render
+paths.</p>
+<h3 id="the-underlying-mechanism-link-relpreload">The Underlying
+Mechanism: <code>&lt;link rel="preload"&gt;</code></h3>
+<p>When you annotate a dynamic import with
+<code>/* webpackPreload: true */</code>, Webpack outputs code that
+appends a <code>&lt;link rel="preload" as="script" href="..."&gt;</code>
+tag to the document's <code>&lt;head&gt;</code> during runtime.</p>
+<p>Unlike standard asynchronous chunk loading, which only triggers a
+network request when code execution reaches the <code>import()</code>
+statement, preloading exposes the dependency to the browser's network
+stack much earlier.</p>
+<h3 id="browser-network-priority-levels">Browser Network Priority
+Levels</h3>
+<p>Modern browser rendering engines (such as Blink in Chromium or WebKit
+in Safari) maintain a priority queue for network requests, ranging from
+"Highest" down to "Lowest."</p>
+<ol type="1">
+<li><strong>High Priority Assignment</strong>: Resources preloaded with
+<code>as="script"</code> are typically assigned a <strong>High</strong>
+priority in Chromium-based browsers. This places them just below
+parser-blocking HTML, critical CSS, and synchronous scripts, but well
+above standard asynchronous scripts, images, and prefetch requests.</li>
+<li><strong>Parallel Scheduling</strong>: Because the priority is
+elevated, the browser's network layer initiates the request immediately
+over available HTTP/2 or HTTP/3 multiplexed streams. It does not wait
+for the parent chunk to finish parsing or executing.</li>
+<li><strong>Execution Isolation</strong>: Preloading strictly handles
+the download and caching phase. The browser downloads the chunk and
+places it into the memory/HTTP cache, but it delays script compilation
+and execution until the application explicitly evaluates the
+corresponding <code>import()</code> call.</li>
+</ol>
+<h3
+id="webpackpreload-vs-webpackprefetch-prioritization"><code>webpackPreload</code>
+vs. <code>webpackPrefetch</code> Prioritization</h3>
+<p>Understanding how browsers prioritize preload chunks requires
+contrasting them with prefetch chunks:</p>
+<ul>
+<li><strong><code>webpackPreload</code>
+(<code>rel="preload"</code>)</strong>: Targets resources required for
+the <strong>current</strong> navigation. Browsers prioritize it at a
+<strong>High</strong> level to ensure the chunk is ready the moment the
+user interacts with the feature on the current page.</li>
+<li><strong><code>webpackPrefetch</code>
+(<code>rel="prefetch"</code>)</strong>: Targets resources needed for
+<strong>future</strong> navigations. Browsers assign this an
+<strong>Idle</strong> or <strong>Lowest</strong> priority, downloading
+chunks only when CPU and network bandwidth are completely
+unconstrained.</li>
+</ul>
+<h3 id="bandwidth-competition-considerations">Bandwidth Competition
+Considerations</h3>
+<p>Because browsers prioritize <code>webpackPreload</code> chunks
+aggressively, overusing this directive can degrade performance. If too
+many chunks request high-priority network slots simultaneously, they
+compete for bandwidth with critical CSS, web fonts, and the initial
+JavaScript bundle. For optimal loading metrics like Largest Contentful
+Paint (LCP), reserve <code>webpackPreload</code> exclusively for chunks
+that are guaranteed to be executed shortly after the initial page
+load.</p></article>
+        <div id='disqus_thread'></div>
+        <script>
+
+            var disqus_config = function () {
+                this.page.url =         'https://salivity.github.io/webpack/article/how-browsers-prioritize-webpack-preload-chunks';  
+                //this.page.identifier =  PAGE_IDENTIFIER; 
+            };
+            
+            (function() {
+                var d = document, s = d.createElement('script');
+                s.src = 'https://salivity-github-io.disqus.com/embed.js';
+                s.setAttribute('data-timestamp', +new Date());
+                (d.head || d.body).appendChild(s);
+            })();
+        </script>
+    
+        </div>
+    </div>
+    
+    </main>
+    <footer>
+        <nav>
+            <ul class="social-links">
+            </ul>
+        </nav>
+        <nav>
+            <ul class="footer-links">
+                <li><a href="https://smvc.dev/contact">Contact</a></li>
+                <li><a href="/webpack/privacy-policy">Privacy Policy</a></li>
+                <li><a href="/webpack/terms-and-conditions">Terms and Conditions</a></li>
+            </ul>
+        </nav>
+        <div class="copyright">
+            Copyright &copy; <span id="current-year"></span>
+        </div>
+    </footer>
+</body>
+</html>
